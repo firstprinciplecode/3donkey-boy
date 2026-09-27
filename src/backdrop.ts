@@ -1,0 +1,33 @@
+// Static decorative SVG (no runtime data is interpolated).
+
+const GHOST_SVG = `
+<svg viewBox="0 0 22 18" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+  <rect x="5" y="0" width="12" height="6" fill="#6fe0da" fill-opacity=".8"/>
+  <rect x="8" y="2" width="6" height="3" fill="#2e2e38"/>
+  <rect x="4" y="6" width="14" height="8" fill="#1b1b22"/>
+  <rect x="0" y="6" width="4" height="2" fill="#1b1b22"/><rect x="1" y="8" width="3" height="2" fill="#1b1b22"/>
+  <rect x="18" y="6" width="4" height="2" fill="#1b1b22"/><rect x="18" y="8" width="3" height="2" fill="#1b1b22"/>
+  <rect x="6" y="8" width="2" height="2" fill="#ff2f7a"/><rect x="14" y="8" width="2" height="2" fill="#ff2f7a"/>
+  <rect x="7" y="11" width="1" height="2" fill="#f4f1e6"/><rect x="9" y="11" width="1" height="2" fill="#f4f1e6"/>
+  <rect x="12" y="11" width="1" height="2" fill="#f4f1e6"/><rect x="14" y="11" width="1" height="2" fill="#f4f1e6"/>
+  <rect x="5" y="14" width="1" height="2" fill="#1b1b22"/><rect x="8" y="14" width="1" height="3" fill="#1b1b22"/>
+  <rect x="11" y="14" width="1" height="2" fill="#1b1b22"/><rect x="13" y="14" width="1" height="3" fill="#1b1b22"/>
+  <rect x="16" y="14" width="1" height="2" fill="#1b1b22"/>
+</svg>`;
+
+function ghost(className: string): HTMLDivElement {
+  const el = document.createElement('div');
+  el.className = `ghost ${className}`;
+  el.innerHTML = GHOST_SVG;
+  return el;
+}
+
+/** Background layer: far-away blurred ghosts behind the canvas (the 3D scenery does the rest). */
+export function createBackdrop(root: HTMLElement): void {
+  root.append(ghost('ghost--far g-a'), ghost('ghost--far g-b'));
+}
+
+/** Foreground layer: big out-of-focus ghosts at the edges, like the poster's depth of field. */
+export function createForeground(root: HTMLElement): void {
+  root.append(ghost('ghost--near g-c'), ghost('ghost--near g-d'), ghost('ghost--near g-e'));
+}

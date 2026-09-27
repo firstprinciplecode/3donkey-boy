@@ -1,0 +1,23 @@
+{
+  "name": "donkey-boy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A voxel Donkey Kong-style platformer built with Three.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc",
+    "check:levels": "node --import tsx scripts/validate-levels.ts && node --import tsx scripts/sim-routes.ts"
+  },
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}
