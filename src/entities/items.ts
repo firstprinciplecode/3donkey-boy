@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { COLORS, RAINBOW } from '../config';
 import type { ItemType, Level, Spot } from '../level';
+import { SKINS, type RelicLook } from '../levels/skins';
 import { box } from '../voxel';
 import { createOneUpToken } from './token';
 
@@ -44,8 +45,43 @@ function makeKey(): THREE.Group {
   return g;
 }
 
-function makeMesh(type: ItemType, colorIndex: number): THREE.Group {
+function makeRelic(look: RelicLook): THREE.Group {
+  const g = new THREE.Group();
+  const glow = (c: number) => ({ emissive: c });
+  if (look === 'pumpkin') {
+    g.add(
+      box(0.6, 0.46, 0.5, COLORS.orange, 0, 0, 0, glow(COLORS.orange)),
+      box(0.42, 0.42, 0.6, COLORS.maple, 0, 0, 0),
+      box(0.1, 0.16, 0.1, COLORS.leafDark, 0, 0.3, 0),
+      box(0.1, 0.08, 0.04, COLORS.yellow, -0.12, 0.06, 0.31, glow(COLORS.yellow)),
+      box(0.1, 0.08, 0.04, COLORS.yellow, 0.12, 0.06, 0.31, glow(COLORS.yellow)),
+      box(0.26, 0.06, 0.04, COLORS.yellow, 0, -0.1, 0.31, glow(COLORS.yellow)),
+    );
+  } else if (look === 'present') {
+    g.add(
+      box(0.5, 0.44, 0.5, COLORS.red, 0, 0, 0, glow(COLORS.red)),
+      box(0.1, 0.46, 0.52, COLORS.yellow, 0, 0, 0),
+      box(0.52, 0.46, 0.1, COLORS.yellow, 0, 0, 0),
+      box(0.3, 0.12, 0.12, COLORS.yellow, -0.1, 0.28, 0),
+      box(0.3, 0.12, 0.12, COLORS.yellow, 0.1, 0.28, 0),
+    );
+  } else {
+    g.add(
+      box(0.44, 0.1, 0.34, COLORS.gold, 0, -0.3, 0, glow(COLORS.gold)),
+      box(0.3, 0.42, 0.26, COLORS.gold, 0, -0.04, 0, glow(COLORS.gold)),
+      box(0.36, 0.26, 0.3, COLORS.gold, 0, 0.3, 0, glow(COLORS.gold)),
+      box(0.08, 0.08, 0.04, COLORS.teal, -0.08, 0.32, 0.16),
+      box(0.08, 0.08, 0.04, COLORS.teal, 0.08, 0.32, 0.16),
+      box(0.12, 0.08, 0.3, COLORS.teal, 0, 0.47, 0),
+    );
+  }
+  return g;
+}
+
+function makeMesh(type: ItemType, colorIndex: number, relic: RelicLook): THREE.Group {
   switch (type) {
+    case 'relic':
+      return makeRelic(relic);
     case 'gem':
       return makeGem(RAINBOW[colorIndex % RAINBOW.length]);
     case 'hotdog':
@@ -71,7 +107,7 @@ export class Item {
     this.type = type;
     const p = level.ringPoint(spot.ring, level.spotS(spot));
     this.position = new THREE.Vector3(p.x, level.tierTop(spot.ring) + 0.8, p.z);
-    this.group = makeMesh(type, colorIndex);
+    this.group = makeMesh(type, colorIndex, SKINS[level.def.skin].relic.look);
     this.group.position.copy(this.position);
   }
 

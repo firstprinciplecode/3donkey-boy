@@ -22,6 +22,18 @@ export const COLORS = {
   purple: 0x8e4fd8,
   brown: 0x7a4a2a,
   tan: 0xe8b26a,
+  snow: 0xf7fbff,
+  snowShade: 0xdbe8f2,
+  ice: 0xbfe9f5,
+  iceDark: 0x8fcfe6,
+  maple: 0xe8612c,
+  rust: 0xb8471f,
+  gold: 0xf2b632,
+  lava: 0xff5a1f,
+  basalt: 0x3a3440,
+  basaltDark: 0x2a2530,
+  sandstone: 0xe0b878,
+  sandstoneDark: 0xc79a5c,
 } as const;
 
 export const RAINBOW: readonly number[] = [
@@ -70,7 +82,27 @@ export const OBSTACLES = {
   /** Forgiveness at pit edges: you only fall once your centre is this far past the lip. */
   pitMargin: 0.2,
   switchReach: 0.6,
+  /** Launch speed off a spring pad; clears a 5-wide pit at full run. */
+  springVelocity: 17,
+  springReach: 0.45,
+  /** How quickly your speed catches up with the stick on ice (normal floor is instant). */
+  iceGrip: 1.6,
 } as const;
+
+export const HAZARDS = {
+  /** A jet rumbles for this long before it erupts, then stays up this long. */
+  jetWarn: 0.6,
+  jetBurst: 1.1,
+  jetHeight: 2.6,
+  /** Drops let go when you come this close along the ring, after a short shake. */
+  dropTrigger: 2.4,
+  dropShake: 0.45,
+  dropGravity: -26,
+  dropRespawn: 3.5,
+  dropRadius: 0.35,
+} as const;
+
+export const CRAWLER = { speed: 2.1, radius: 0.42, rearEvery: 3.2, rearTime: 1.1 } as const;
 
 export const GAME_RULES = {
   lives: 3,
@@ -81,7 +113,17 @@ export const GAME_RULES = {
   maxSpeedMul: 1.8,
 } as const;
 
-export const SCORE = { jumpBarrel: 100, gem: 50, hotdog: 300, smashBarrel: 300, smashFire: 500, smashGhost: 500 } as const;
+export const SCORE = {
+  jumpBarrel: 100,
+  jumpCrawler: 200,
+  gem: 50,
+  hotdog: 300,
+  relic: 500,
+  smashBarrel: 300,
+  smashFire: 500,
+  smashGhost: 500,
+  smashCrawler: 500,
+} as const;
 
 export const CAMERA = {
   /** Angle from straight down: 90° is a flat Fez-style side view, 60° the isometric look. */

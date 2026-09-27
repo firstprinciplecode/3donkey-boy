@@ -26,6 +26,16 @@ const ROUTES: Record<string, Step[]> = {
     go(1, 1, -12), climb, go(-1, 0, 6), climb, go(-1, 0, -6), go(1, 1, -2), climb,
     go(-1, 0, 3), climb, go(-1, 3, 0), go(1, 1, 0), climb, go(-1, 0, 0), climb,
   ],
+  'harvest woods': [go(1, 1, -4), climb, go(1, 2, 3), climb, go(1, 3, 2), climb, go(1, 0, -2), climb, go(-1, 3, 0), climb],
+  'frost peak': [go(-1, 3, 6), climb, go(1, 0, -4), climb, go(-1, 3, 3), climb, go(1, 0, 2), climb, go(-1, 3, 0), climb],
+  'serpent tomb': [
+    go(-1, 3, 8), climb, go(-1, 2, 5), climb, go(-1, 1, 2), climb,
+    go(-1, 0, 3), climb, go(-1, 3, 0), climb, go(-1, 2, 0), climb,
+  ],
+  'volcano isle': [
+    go(1, 1, -8), climb, go(-1, 0, 6), climb, go(1, 1, 0), climb,
+    go(-1, 0, -3), climb, go(1, 1, -2), climb, go(-1, 0, 0), climb,
+  ],
 };
 
 const DT = 1 / 120;
@@ -37,6 +47,7 @@ for (const def of LEVELS) {
   const p = new Player(level);
   p.reset(def.playerStart);
   const keys = def.items.filter((it) => it.type === 'key').map((it) => it.spot);
+  const relics = new Set(def.items.filter((it) => it.type === 'relic').map((it) => it.spot));
   const steps = ROUTES[def.name];
   let i = 0;
   let t = 0;
@@ -91,6 +102,10 @@ for (const def of LEVELS) {
     for (const k of keys) {
       if (k.ring === p.ring && level.ringDistance(p.ring, p.s, level.spotS(k)) < 0.5) obs.unlockKeyDoors();
     }
+    for (const r of relics) {
+      if (r.ring === p.ring && level.ringDistance(p.ring, p.s, level.spotS(r)) < 0.5) relics.delete(r);
+    }
+    if (def.items.some((it) => it.type === 'relic') && relics.size === 0) obs.unlockRelicDoors();
     if (r.fellInPit) {
       outcome = `fell in a pit on ring ${p.ring} at step ${i}`;
       break;

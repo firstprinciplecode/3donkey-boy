@@ -17,7 +17,27 @@ export function validateLevel(def: LevelDef): string[] {
   if (!intIn(def.terraceDepth, 2, LIMITS.maxDepth)) err(`terraceDepth must be an integer 2..${LIMITS.maxDepth}`);
   if (!intIn(def.summitHalf, 3, 8)) err('summitHalf must be an integer 3..8');
   if (!intIn(def.tierHeight, 2, 8)) err('tierHeight must be an integer 2..8');
-  const lists = [def.ladders, def.chutes, def.items, def.patrols, def.pits, def.crumbles, def.conveyors, def.platforms, def.locks];
+  const ice = def.ice ?? [];
+  const springs = def.springs ?? [];
+  const jets = def.jets ?? [];
+  const drops = def.drops ?? [];
+  const crawlers = def.crawlers ?? [];
+  const lists = [
+    def.ladders,
+    def.chutes,
+    def.items,
+    def.patrols,
+    def.pits,
+    def.crumbles,
+    def.conveyors,
+    def.platforms,
+    def.locks,
+    ice,
+    springs,
+    jets,
+    drops,
+    crawlers,
+  ];
   if (lists.some((l) => l.length > LIMITS.maxEntries)) err(`at most ${LIMITS.maxEntries} entries per list`);
   if (errors.length) return errors;
 
@@ -51,6 +71,7 @@ export function validateLevel(def: LevelDef): string[] {
     ...def.crumbles.map((s) => ['crumble', s] as [string, SpanDef]),
     ...def.conveyors.map((s) => ['conveyor', s] as [string, SpanDef]),
     ...def.platforms.map((s) => ['platform gap', s] as [string, SpanDef]),
+    ...ice.map((s) => ['ice', s] as [string, SpanDef]),
   ];
   for (const [what, s] of spans) {
     checkSpot(what, s);
@@ -66,7 +87,7 @@ export function validateLevel(def: LevelDef): string[] {
 
   const within = (s: SpanDef, ring: number, side: number, offset: number, pad: number) =>
     s.ring === ring && s.side === side && Math.abs(offset - s.offset) < s.width / 2 + pad;
-  const blocking = spans.filter(([what]) => what !== 'conveyor');
+  const blocking = spans.filter(([what]) => what !== 'conveyor' && what !== 'ice');
   for (const [what, s] of blocking) {
     def.ladders.forEach((l, i) => {
       if (within(s, l.ring, l.side, l.offset, 0.8)) err(`${what} ${label(s)} covers the foot of ladder ${i}`);
@@ -87,6 +108,30 @@ export function validateLevel(def: LevelDef): string[] {
     }
   }
 
+  const near = (a: SpotDef, b: SpotDef, pad: number) => a.ring === b.ring && a.side === b.side && Math.abs(a.offset - b.offset) < pad;
+  const ladderEnds = def.ladders.flatMap((l) => [l, { ...l, ring: l.ring + 1 }]);
+  const keepClear = (what: string, s: SpotDef, pad: number) => {
+    if (ladderEnds.some((l) => near(l, s, pad))) err(`${what} ${label(s)} is too close to a ladder`);
+    if ([def.playerStart, def.drum].some((p) => near(p, s, pad))) err(`${what} ${label(s)} is too close to the start or drum`);
+  };
+  for (const sp of springs) {
+    checkSpot('spring', sp);
+    keepClear('spring', sp, 1);
+    for (const [what, s] of blocking) if (within(s, sp.ring, sp.side, sp.offset, 0.5)) err(`spring ${label(sp)} sits in a ${what}`);
+  }
+  for (const j of jets) {
+    checkSpot('jet', j);
+    keepClear('jet', j, 1.2);
+    if (!(j.period >= 2 && j.period <= 12)) err(`jet ${label(j)} period must be 2..12s`);
+  }
+  for (const d of drops) {
+    checkSpot('drop', d);
+    keepClear('drop', d, 1.2);
+  }
+  for (const c of crawlers) {
+    if (!intIn(c.ring, 0, def.rings - 1)) err(`crawler patrol on missing ring ${c.ring}`);
+  }
+
   const lockedLadders = new Set<number>();
   for (const lock of def.locks) {
     if (!intIn(lock.ladder, 0, def.ladders.length - 1)) {
@@ -97,6 +142,7 @@ export function validateLevel(def: LevelDef): string[] {
     lockedLadders.add(lock.ladder);
     if (lock.kind === 'switch') checkSpot('switch', lock.switchAt);
     if (lock.kind === 'key' && !def.items.some((it) => it.type === 'key')) err('key lock without a key item');
+    if (lock.kind === 'relics' && !def.items.some((it) => it.type === 'relic')) err('relic lock without any relic items');
   }
   return errors;
 }

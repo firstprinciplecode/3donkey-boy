@@ -1,0 +1,76 @@
+:root {
+  --ink: #1b1b22;
+  --font: 'Arial Rounded MT Bold', 'SF Pro Rounded', ui-rounded, 'Nunito', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #f3f6ee;
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+header {
+  padding: 28px 32px 8px;
+}
+
+h1 {
+  margin: 0 0 6px;
+  font-size: 28px;
+}
+
+header p {
+  margin: 0;
+  color: #3d4a38;
+  font-size: 16px;
+}
+
+header a {
+  color: var(--ink);
+}
+
+main {
+  padding: 8px 32px 40px;
+}
+
+section {
+  margin-top: 22px;
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  margin: 0;
+  background: #e7f3dc;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.card canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #e7f3dc;
+}
+
+figcaption {
+  padding: 0 8px 12px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+}

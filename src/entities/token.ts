@@ -14,7 +14,7 @@ export function createOneUpToken(radius: number): THREE.Group {
   const rimGeo = new THREE.CylinderGeometry(radius, radius, depth, 28);
   rimGeo.rotateX(Math.PI / 2);
   const rim = new THREE.Mesh(rimGeo, material(COLORS.grassDark));
-  rim.castShadow = true;
+  rim.receiveShadow = true;
 
   const faceGeo = new THREE.CircleGeometry(radius * 0.98, 28);
   const front = new THREE.Mesh(faceGeo, faceMaterial);

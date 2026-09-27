@@ -71,6 +71,7 @@ export function buildWorld(level: Level, glowing = false): THREE.Group {
   buildLanterns(vb, level);
   buildSummit(vb, level);
   buildDrum(vb, level);
+  vb.castShadows(false);
   buildBackground(vb, skin, rand);
 
   return vb.build(glowing);
@@ -222,7 +223,88 @@ const DECOR: Record<DecorKind, DecorFn> = {
     f.box(vb, 0, y + h + 0.3, 0, 0.4, 0.4, 0.18, COLORS.cream);
     f.box(vb, 0, y + h + 0.3, 0, 0.18, 0.18, 0.2, c);
   },
+  maple(vb, f, y, rand) {
+    const s = 0.9 + rand() * 0.3;
+    const crown = rand() < 0.5 ? COLORS.maple : COLORS.orange;
+    f.block(vb, 0, y, 0, 0.26 * s, 0.7 * s, 0.26 * s, COLORS.brown);
+    f.block(vb, 0, y + 0.6 * s, 0, 1.05 * s, 0.6 * s, 1.05 * s, crown);
+    f.block(vb, 0, y + 1.15 * s, 0, 0.75 * s, 0.5 * s, 0.75 * s, COLORS.yellow);
+    f.block(vb, 0.3 * s, y + 1.6 * s, 0.1, 0.3 * s, 0.3 * s, 0.3 * s, crown);
+  },
+  pumpkin(vb, f, y, rand) {
+    const s = 0.8 + rand() * 0.4;
+    f.block(vb, 0, y, 0, 0.7 * s, 0.5 * s, 0.6 * s, COLORS.orange);
+    f.block(vb, 0, y + 0.04, 0, 0.5 * s, 0.44 * s, 0.7 * s, COLORS.maple);
+    f.block(vb, 0, y + 0.5 * s, 0, 0.1, 0.18, 0.1, COLORS.leafDark);
+  },
+  haystack(vb, f, y) {
+    f.block(vb, 0, y, 0, 1.1, 0.5, 0.8, COLORS.yellow);
+    f.block(vb, 0, y + 0.5, 0, 0.8, 0.4, 0.6, COLORS.tan);
+    f.box(vb, 0, y + 0.25, 0.41, 1.12, 0.08, 0.02, COLORS.brown);
+  },
+  mushroom(vb, f, y, rand) {
+    const h = 0.5 + rand() * 0.4;
+    f.block(vb, 0, y, 0, 0.22, h, 0.22, COLORS.cream);
+    f.block(vb, 0, y + h, 0, 0.8, 0.3, 0.8, COLORS.red);
+    f.box(vb, -0.18, y + h + 0.31, 0.12, 0.14, 0.02, 0.14, COLORS.cream);
+    f.box(vb, 0.2, y + h + 0.31, -0.1, 0.12, 0.02, 0.12, COLORS.cream);
+  },
+  snowpine(vb, f, y, rand) {
+    const s = 0.9 + rand() * 0.35;
+    f.block(vb, 0, y, 0, 0.2 * s, 0.4 * s, 0.2 * s, COLORS.brown);
+    f.cone(vb, 0, y + 0.3 * s, 0, 0.46 * s, 1.1 * s, COLORS.leafDark);
+    f.cone(vb, 0, y + 0.9 * s, 0, 0.34 * s, 0.9 * s, COLORS.snow);
+  },
+  snowman(vb, f, y) {
+    f.block(vb, 0, y, 0, 0.7, 0.6, 0.7, COLORS.snow);
+    f.block(vb, 0, y + 0.6, 0, 0.5, 0.45, 0.5, COLORS.snow);
+    f.block(vb, 0, y + 1.05, 0, 0.36, 0.34, 0.36, COLORS.snowShade);
+    f.box(vb, -0.08, y + 1.26, 0.19, 0.06, 0.06, 0.02, COLORS.black);
+    f.box(vb, 0.08, y + 1.26, 0.19, 0.06, 0.06, 0.02, COLORS.black);
+    f.box(vb, 0, y + 1.18, 0.26, 0.06, 0.06, 0.16, COLORS.orange);
+    f.box(vb, 0, y + 0.98, 0, 0.54, 0.08, 0.54, COLORS.red);
+    f.block(vb, 0, y + 1.39, 0, 0.44, 0.06, 0.44, COLORS.black);
+    f.block(vb, 0, y + 1.45, 0, 0.26, 0.26, 0.26, COLORS.black);
+  },
+  iceblock(vb, f, y, rand) {
+    const s = 0.6 + rand() * 0.4;
+    f.block(vb, 0, y, 0, s, s, s, COLORS.ice);
+    f.block(vb, 0.12, y + s, -0.08, s * 0.6, s * 0.6, s * 0.6, COLORS.iceDark);
+  },
+  obelisk(vb, f, y, rand) {
+    const h = 1.6 + rand() * 0.8;
+    f.block(vb, 0, y, 0, 0.6, 0.2, 0.6, COLORS.sandstoneDark);
+    f.block(vb, 0, y + 0.2, 0, 0.4, h, 0.4, COLORS.sandstone);
+    f.box(vb, 0, y + 0.2 + h * 0.6, 0.21, 0.18, 0.18, 0.02, COLORS.teal);
+    f.cone(vb, 0, y + 0.2 + h, 0, 0.28, 0.4, COLORS.gold);
+  },
+  urn(vb, f, y) {
+    f.block(vb, 0, y, 0, 0.36, 0.14, 0.36, COLORS.rust);
+    f.block(vb, 0, y + 0.14, 0, 0.56, 0.5, 0.56, COLORS.maple);
+    f.box(vb, 0, y + 0.4, 0, 0.58, 0.08, 0.58, COLORS.gold);
+    f.block(vb, 0, y + 0.64, 0, 0.3, 0.2, 0.3, COLORS.rust);
+  },
+  rock(vb, f, y, rand) {
+    const s = 0.7 + rand() * 0.5;
+    f.block(vb, 0, y, 0, 0.9 * s, 0.5 * s, 0.8 * s, COLORS.stoneDark);
+    f.block(vb, 0.1, y + 0.5 * s, 0, 0.6 * s, 0.35 * s, 0.5 * s, COLORS.stone);
+  },
+  tiki(vb, f, y) {
+    f.block(vb, 0, y, 0, 0.55, 1.5, 0.45, COLORS.brown);
+    f.box(vb, 0, y + 1.2, 0.23, 0.4, 0.1, 0.02, COLORS.yellow);
+    f.box(vb, -0.12, y + 1.02, 0.24, 0.1, 0.1, 0.02, COLORS.lava);
+    f.box(vb, 0.12, y + 1.02, 0.24, 0.1, 0.1, 0.02, COLORS.lava);
+    f.box(vb, 0, y + 0.66, 0.24, 0.3, 0.12, 0.02, COLORS.cream);
+    f.block(vb, 0, y + 1.5, 0, 0.7, 0.2, 0.55, COLORS.grass);
+  },
 };
+
+/** One decor prop on its own, facing +z, for previews such as the assets page. */
+export function buildDecorPiece(kind: DecorKind, rand: Rand = () => 0.45): THREE.Group {
+  const vb = new VoxelBuilder();
+  DECOR[kind](vb, new Frame(0, 0, 0), 0, rand);
+  return vb.build();
+}
 
 function pickDecor(skin: Skin, rand: Rand): DecorKind {
   const entries = Object.entries(skin.decor) as [DecorKind, number][];

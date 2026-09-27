@@ -80,4 +80,9 @@ export const sfx = {
   hammer: () => arpeggio([659, 784, 988, 1319], 0.06, 0.1),
   smash: () => tone(220, 0.18, { type: 'square', slideTo: 90, volume: 0.14 }),
   fire: () => tone(90, 0.4, { type: 'sawtooth', slideTo: 300, volume: 0.06 }),
+  spring: () => tone(180, 0.35, { type: 'square', slideTo: 900, volume: 0.09 }),
+  crack: () => tone(1400, 0.08, { type: 'triangle', slideTo: 700, volume: 0.07 }),
+  shatter: () => tone(900, 0.2, { type: 'sawtooth', slideTo: 200, volume: 0.05 }),
+  jet: () => tone(70, 0.5, { type: 'sawtooth', slideTo: 160, volume: 0.07 }),
+  relic: () => arpeggio([587, 740, 880, 1175], 0.07, 0.12),
 };

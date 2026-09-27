@@ -31,18 +31,27 @@ export class Stage {
   private readonly sun = new THREE.DirectionalLight();
 
   constructor(container: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const dpr = window.devicePixelRatio || 1;
+    // Retina pixels already soften edges, so skip MSAA there and stay under 2×.
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: dpr <= 1,
+      alpha: true,
+      powerPreference: 'high-performance',
+    });
+    this.renderer.setPixelRatio(Math.min(dpr, 1.5));
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.BasicShadowMap;
+    // The sun and the pyramid stay put during a round, so the map is redrawn only when lighting changes.
+    this.renderer.shadowMap.autoUpdate = false;
+    this.renderer.shadowMap.needsUpdate = true;
     container.appendChild(this.renderer.domElement);
 
     const { hemi, sun } = this;
     this.setLighting(LIGHTING.day);
     sun.target.position.set(0, 8, 0);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(1024, 1024);
     const sc = sun.shadow.camera;
     sc.left = -30;
     sc.right = 30;
@@ -80,6 +89,7 @@ export class Stage {
     this.sun.color.setHex(l.sunColor);
     this.sun.intensity = l.sunIntensity;
     this.sun.position.set(...l.sunPosition);
+    this.renderer.shadowMap.needsUpdate = true;
   }
 
   follow(goal: CameraGoal, dt: number): void {

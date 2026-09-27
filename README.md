@@ -50,7 +50,7 @@ the `localStorage` key `popscotch.hiscores`.
 
 ### Levels
 
-Three hand-made levels play in order, then loop faster with more ghosts. The HUD shows
+Seven hand-made levels play in order, then loop faster with more ghosts. The HUD shows
 the current level and its name. Time of day moves on every round (day, dusk, night) and
 shifts each lap, so a level looks different each time it comes around. Dusk and night
 bring lower light, stars, and glowing windows, lanterns, and balloons.
@@ -60,6 +60,10 @@ bring lower light, stars, and glowing windows, lanterns, and balloons.
 | meadow | 4 tall tiers | spirals right | spike pit, conveyor, switch gate, hammer |
 | candy hills | 5 tiers | spirals left | crumbling floors, moving platform, pits, key door |
 | desert arcade | 6 short tiers | zig-zags each ring | everything, 3 flames |
+| harvest woods | 5 tiers, autumn | spirals right | spring pads, falling acorns, hedgehogs, 3 pumpkins unseal the summit |
+| frost peak | 5 short tiers, winter | zig-zags each ring | ice, icicles, belly-sliding penguins, switch gate, key door |
+| serpent tomb | 6 short tiers, desert | spirals left | snakes that rear up, fire traps, stalactites, 3 golden idols |
+| volcano isle | 6 tiers, summer | zig-zags each ring | lava jets, lava rocks, scorpions, springs, switch gate, key door |
 
 ### Obstacles
 
@@ -71,6 +75,12 @@ bring lower light, stars, and glowing windows, lanterns, and balloons.
 - **Key doors.** A pink door blocks a ladder until you pick up the key somewhere on the level.
 - **Hammer.** Smash barrels (300), flames (500), and ghosts (500) for 9 seconds. You can't climb while holding it.
 - **Flames.** Born when a barrel hits the drum. They wander the rings and use ladders.
+- **Spring pads.** Run onto one to launch over a pit too wide to jump.
+- **Ice.** You keep sliding after you let go, so brake early before a pit.
+- **Fire jets.** Vents rumble, then erupt on a beat. Wait for the flame to drop.
+- **Falling drops.** Icicles, acorns, stalactites, and lava rocks shake loose when you walk underneath.
+- **Ground monsters.** Hedgehogs, penguins, snakes, and scorpions pace the rings. Jump them for 200. Snakes and scorpions rear up; penguins and hedgehogs dash.
+- **Relic seals.** Some summits stay sealed until every pumpkin or idol on the level is collected.
 
 ## Develop
 
@@ -98,16 +108,17 @@ src/
   hiscore.ts         top-10 table and three-letter names
   level.ts           pyramid geometry and ring coordinates from a level definition
   levels/types.ts    level definition format (plain JSON-friendly data)
-  levels/defs.ts     the three hand-made levels
+  levels/defs.ts     the seven hand-made levels
   levels/skins.ts    per-level look: tier colours, decor mix, background palette
   levels/validate.ts sanity checks for level definitions (bounds, overlaps, locks)
   timeOfDay.ts       day / dusk / night lighting, and which round gets which
-  obstacles.ts       crumbling tiles, moving platforms, conveyors, gates, doors
+  obstacles.ts       crumbling tiles, moving platforms, conveyors, ice, springs, gates, doors
+  hazards.ts         fire jets and drops that fall when you walk underneath
   world.ts           static voxel pyramid baked into instanced meshes (rebuilt per level)
   background.ts      3D background: towers, clouds, islands, balloons, flying critters
   stage.ts           renderer, lights, orbiting orthographic camera
   config.ts          palette and tuning (physics, barrels, fire, hammer, camera)
-  entities/          player, boss, barrels, ghosts, fire, items, token, particles
+  entities/          player, boss, barrels, ghosts, crawlers, fire, items, token, particles
   hud.ts             DOM HUD, banners, overlays, score popups
   backdrop.ts        blurred poster ghosts layered in front of and behind the canvas
   audio.ts           synthesized sound effects and the shared WebAudio bus

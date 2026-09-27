@@ -45,6 +45,10 @@ body {
 
 body[data-skin='candy'] { --sky-a: #fde8f3; --sky-b: #f3cfe6; --sky-c: #d9b6e3; }
 body[data-skin='desert'] { --sky-a: #fff1d6; --sky-b: #fbd9a8; --sky-c: #f0b88a; }
+body[data-skin='autumn'] { --sky-a: #fff0d8; --sky-b: #f8d3a4; --sky-c: #e9a878; }
+body[data-skin='winter'] { --sky-a: #f4fbff; --sky-b: #d6ebf7; --sky-c: #aecde6; }
+body[data-skin='tomb'] { --sky-a: #fff4dc; --sky-b: #f3dca4; --sky-c: #c9b98a; }
+body[data-skin='volcano'] { --sky-a: #ffe9d2; --sky-b: #f6b98e; --sky-c: #b77a7a; }
 
 body[data-time='dusk'] {
   --sky-a: #ffd9b0; --sky-b: #e7a2a2; --sky-c: #8d6fa8;
@@ -56,6 +60,10 @@ body[data-time='dusk'] {
 }
 body[data-time='dusk'][data-skin='candy'] { --sky-a: #ffd3e4; --sky-b: #d99ac8; --sky-c: #7d68b0; }
 body[data-time='dusk'][data-skin='desert'] { --sky-a: #ffcf8a; --sky-b: #f08a6a; --sky-c: #8a4f7a; }
+body[data-time='dusk'][data-skin='autumn'] { --sky-a: #ffc98a; --sky-b: #e57e5a; --sky-c: #7a4a6a; }
+body[data-time='dusk'][data-skin='winter'] { --sky-a: #ffd9d0; --sky-b: #c9a4c8; --sky-c: #6a6fa8; }
+body[data-time='dusk'][data-skin='tomb'] { --sky-a: #ffd79a; --sky-b: #e59a62; --sky-c: #6f5a7a; }
+body[data-time='dusk'][data-skin='volcano'] { --sky-a: #ffb27a; --sky-b: #d9584a; --sky-c: #5a2a4a; }
 
 body[data-time='night'] {
   --sky-a: #34466e; --sky-b: #1d2745; --sky-c: #0f152b;
@@ -68,6 +76,69 @@ body[data-time='night'] {
 }
 body[data-time='night'][data-skin='candy'] { --sky-a: #45315f; --sky-b: #2a1d46; --sky-c: #170f2b; }
 body[data-time='night'][data-skin='desert'] { --sky-a: #42305a; --sky-b: #251a3c; --sky-c: #120d22; }
+body[data-time='night'][data-skin='autumn'] { --sky-a: #3f2f4f; --sky-b: #261c33; --sky-c: #140e1d; }
+body[data-time='night'][data-skin='winter'] { --sky-a: #2f4a78; --sky-b: #1a2a4d; --sky-c: #0c142b; }
+body[data-time='night'][data-skin='tomb'] { --sky-a: #33385a; --sky-b: #1e2240; --sky-c: #0e1024; }
+body[data-time='night'][data-skin='volcano'] { --sky-a: #4a2238; --sky-b: #2b1326; --sky-c: #150a14; }
+
+/* ---------- weather: snow, falling leaves, embers ---------- */
+
+.weather {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+}
+
+body[data-skin='winter'] .weather,
+body[data-skin='autumn'] .weather,
+body[data-skin='volcano'] .weather {
+  opacity: 1;
+}
+
+.weather span {
+  position: absolute;
+  top: -4%;
+  width: var(--size);
+  height: var(--size);
+  background: #fff;
+  border-radius: 50%;
+  filter: blur(var(--blur));
+  animation: fall var(--dur) linear var(--delay) infinite;
+}
+
+body[data-skin='autumn'] .weather span {
+  border-radius: 1px;
+  background: var(--leaf);
+  animation-name: tumble;
+}
+
+body[data-skin='volcano'] .weather span {
+  top: auto;
+  bottom: -4%;
+  background: #ffb040;
+  box-shadow: 0 0 6px #ff5a1f;
+  animation-name: rise;
+}
+
+@keyframes fall {
+  to { transform: translate3d(var(--drift), 110vh, 0); }
+}
+
+@keyframes tumble {
+  50% { transform: translate3d(calc(var(--drift) * -0.6), 55vh, 0) rotate(200deg); }
+  to { transform: translate3d(var(--drift), 110vh, 0) rotate(420deg); }
+}
+
+@keyframes rise {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  to { opacity: 0; transform: translate3d(var(--drift), -70vh, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weather { display: none; }
+}
 
 .stars {
   position: absolute;

@@ -49,7 +49,31 @@ export function createBackdrop(root: HTMLElement): void {
   root.append(stars(), ghost('ghost--far g-a'), ghost('ghost--far g-b'));
 }
 
+const FLAKE_COUNT = 40;
+const LEAVES = ['#e8612c', '#ff9a1f', '#ffd23a', '#b8471f'];
+
+/** Snow, leaves or embers depending on the level skin; CSS decides which (or none) show. */
+function weather(): HTMLDivElement {
+  const layer = document.createElement('div');
+  layer.className = 'weather';
+  for (let i = 0; i < FLAKE_COUNT; i++) {
+    const flake = document.createElement('span');
+    const near = Math.random() < 0.25;
+    flake.style.cssText = [
+      `left:${(Math.random() * 100).toFixed(2)}%`,
+      `--size:${(near ? 7 + Math.random() * 5 : 3 + Math.random() * 3).toFixed(1)}px`,
+      `--blur:${near ? 2 : 0}px`,
+      `--dur:${(near ? 6 + Math.random() * 4 : 10 + Math.random() * 8).toFixed(2)}s`,
+      `--delay:${(-Math.random() * 18).toFixed(2)}s`,
+      `--drift:${((Math.random() - 0.5) * 30).toFixed(1)}vw`,
+      `--leaf:${LEAVES[i % LEAVES.length]}`,
+    ].join(';');
+    layer.appendChild(flake);
+  }
+  return layer;
+}
+
 /** Foreground layer: big out-of-focus ghosts at the edges, like the poster's depth of field. */
 export function createForeground(root: HTMLElement): void {
-  root.append(ghost('ghost--near g-c'), ghost('ghost--near g-d'), ghost('ghost--near g-e'));
+  root.append(weather(), ghost('ghost--near g-c'), ghost('ghost--near g-d'), ghost('ghost--near g-e'));
 }

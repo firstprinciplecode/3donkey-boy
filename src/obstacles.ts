@@ -14,6 +14,10 @@ export type Carry = number | null;
 export interface ObstacleEnv {
   carry(ring: number, s: number): Carry;
   isLadderOpen(index: number): boolean;
+  /** How fast walking speed catches up with the controls; Infinity on normal floor. */
+  grip(ring: number, s: number): number;
+  /** True if there is a spring pad under this spot. */
+  spring(ring: number, s: number): boolean;
 }
 
 export interface ObstacleEvents {
@@ -54,7 +58,22 @@ interface Lock {
   switchFlag: THREE.Mesh | null;
 }
 
-const LOCK_COLORS = { switch: COLORS.red, key: COLORS.pink } as const;
+interface Spring {
+  ring: number;
+  s: number;
+  coil: THREE.Group;
+  t: number;
+}
+
+const LOCK_COLORS = { switch: COLORS.red, key: COLORS.pink, relics: COLORS.teal } as const;
+
+/** Spring pad: a base plate and a coil group that squashes when it fires. */
+export function springParts(): { base: THREE.Mesh; coil: THREE.Group } {
+  const coil = new THREE.Group();
+  for (let i = 0; i < 3; i++) coil.add(box(0.5, 0.08, 0.5, i % 2 ? COLORS.cream : COLORS.grey, 0, 0.12 + i * 0.12, 0));
+  coil.add(box(0.8, 0.12, 0.8, COLORS.red, 0, 0.46, 0), box(0.5, 0.04, 0.5, COLORS.yellow, 0, 0.53, 0));
+  return { base: box(0.9, 0.08, 0.9, COLORS.charcoal, 0, 0.04, 0), coil };
+}
 
 /** Dynamic level pieces: crumbling tiles, moving platforms, conveyors and locked ladders. */
 export class Obstacles implements ObstacleEnv {
@@ -64,6 +83,8 @@ export class Obstacles implements ObstacleEnv {
   private readonly crumbles: Crumble[] = [];
   private readonly platforms: Platform[] = [];
   private readonly conveyors: Conveyor[] = [];
+  private readonly ice: RingSpan[];
+  private readonly springs: Spring[] = [];
   private readonly locks: Lock[] = [];
   private readonly lockByLadder = new Map<number, Lock>();
   private readonly ownedMaterials: THREE.Material[] = [];
@@ -76,6 +97,9 @@ export class Obstacles implements ObstacleEnv {
     def.crumbles.forEach((c) => this.addCrumble(level.span(c)));
     def.platforms.forEach((p) => this.addPlatform(p));
     def.conveyors.forEach((c) => this.addConveyor(level.span(c), c.dir));
+    this.ice = (def.ice ?? []).map((s) => level.span(s));
+    this.ice.forEach((s) => this.addIce(s));
+    (def.springs ?? []).forEach((s) => this.addSpring(s));
     def.locks.forEach((l) => this.addLock(l));
     this.reset(true);
   }
@@ -138,6 +162,11 @@ export class Obstacles implements ObstacleEnv {
 
     for (const p of this.platforms) this.placePlatform(p, this.clock);
     for (const c of this.conveyors) c.texture.offset.x -= (OBSTACLES.conveyorSpeed * dt) / 1;
+    for (const sp of this.springs) {
+      sp.t += dt;
+      const k = Math.max(0, 1 - sp.t / 0.45);
+      sp.coil.scale.y = 1 - 0.45 * k * Math.cos(sp.t * 28);
+    }
 
     for (const lock of this.locks) {
       if (lock.def.kind === 'switch' && !lock.open && player.grounded && player.ring === lock.def.switchAt.ring) {
@@ -177,6 +206,22 @@ export class Obstacles implements ObstacleEnv {
     return 0;
   }
 
+  grip(ring: number, s: number): number {
+    for (const span of this.ice) if (this.level.inSpan(span, ring, s)) return OBSTACLES.iceGrip;
+    return Infinity;
+  }
+
+  spring(ring: number, s: number): boolean {
+    return this.springs.some((sp) => sp.ring === ring && this.level.ringDistance(ring, s, sp.s) < OBSTACLES.springReach);
+  }
+
+  /** Plays the squash animation on the pad under this spot. */
+  boing(ring: number, s: number): void {
+    for (const sp of this.springs) {
+      if (sp.ring === ring && this.level.ringDistance(ring, s, sp.s) < OBSTACLES.springReach) sp.t = 0;
+    }
+  }
+
   isLadderOpen(index: number): boolean {
     const lock = this.lockByLadder.get(index);
     return !lock || lock.open;
@@ -189,9 +234,18 @@ export class Obstacles implements ObstacleEnv {
 
   /** Opens every key door; returns true if any was closed. */
   unlockKeyDoors(): boolean {
+    return this.unlock('key');
+  }
+
+  /** Opens the relic seals once the last relic has been collected. */
+  unlockRelicDoors(): boolean {
+    return this.unlock('relics');
+  }
+
+  private unlock(kind: LockDef['kind']): boolean {
     let any = false;
     for (const lock of this.locks) {
-      if (lock.def.kind === 'key' && !lock.open) {
+      if (lock.def.kind === kind && !lock.open) {
         this.openLock(lock);
         any = true;
       }
@@ -294,6 +348,27 @@ export class Obstacles implements ObstacleEnv {
     this.conveyors.push({ span, dir, texture });
   }
 
+  private addIce(span: RingSpan): void {
+    const { ring, side, offset, width } = span.def;
+    const depth = this.level.def.terraceDepth - 0.3;
+    const g = this.anchor(ring, side, offset);
+    const sheet = box(width, 0.05, depth, COLORS.ice, 0, 0.025, 0, { opacity: 0.85 });
+    sheet.renderOrder = 1;
+    g.add(sheet);
+    for (let u = -width / 2 + 0.6; u < width / 2 - 0.3; u += 1.3) {
+      g.add(box(0.5, 0.02, 0.06, COLORS.snow, u, 0.06, depth * 0.2), box(0.3, 0.02, 0.06, COLORS.snow, u + 0.4, 0.06, -depth * 0.25));
+    }
+    this.group.add(g);
+  }
+
+  private addSpring(spot: Spot): void {
+    const g = this.anchor(spot.ring, spot.side, spot.offset);
+    const { base, coil } = springParts();
+    g.add(base, coil);
+    this.group.add(g);
+    this.springs.push({ ring: spot.ring, s: this.level.spotS(spot), coil, t: 1 });
+  }
+
   private addLock(def: LockDef): void {
     const L = this.level;
     const ladder = L.def.ladders[def.ladder];
@@ -304,13 +379,25 @@ export class Obstacles implements ObstacleEnv {
       g.add(box(0.14, 2, 0.14, color, -0.65, 1, 0), box(0.14, 2, 0.14, color, 0.65, 1, 0));
       for (let y = 0.35; y < 2; y += 0.4) g.add(box(1.3, 0.08, 0.08, COLORS.yellow, 0, y, 0));
       for (let x = -0.33; x <= 0.34; x += 0.33) g.add(box(0.07, 1.9, 0.07, COLORS.yellow, x, 0.95, 0));
-    } else {
+    } else if (def.kind === 'key') {
       g.add(
         box(1.4, 2.2, 0.26, color, 0, 1.1, 0),
         box(1.56, 0.16, 0.34, COLORS.cream, 0, 2.2, 0),
         box(0.3, 0.3, 0.1, COLORS.yellow, 0, 1.2, 0.16),
         box(0.12, 0.3, 0.1, COLORS.yellow, 0, 0.95, 0.16),
       );
+    } else {
+      const relics = L.def.items.filter((it) => it.type === 'relic').length;
+      g.add(
+        box(1.5, 2.3, 0.3, color, 0, 1.15, 0),
+        box(1.7, 0.2, 0.4, COLORS.gold, 0, 2.35, 0),
+        box(0.2, 2.3, 0.36, COLORS.gold, -0.75, 1.15, 0),
+        box(0.2, 2.3, 0.36, COLORS.gold, 0.75, 1.15, 0),
+      );
+      for (let i = 0; i < relics; i++) {
+        const x = (i - (relics - 1) / 2) * 0.38;
+        g.add(box(0.24, 0.24, 0.06, COLORS.black, x, 1.5, 0.17), box(0.12, 0.12, 0.08, COLORS.gold, x, 1.5, 0.18));
+      }
     }
     this.group.add(g);
 

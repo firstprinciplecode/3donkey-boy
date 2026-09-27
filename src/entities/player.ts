@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COLORS, PHYSICS } from '../config';
+import { COLORS, OBSTACLES, PHYSICS } from '../config';
 import { PIT_DEPTH, mod, sideYaw, type LadderPath, type Level, type Spot } from '../level';
 import type { ObstacleEnv } from '../obstacles';
 import { damp, dampAngle } from '../utils';
@@ -24,6 +24,8 @@ export interface StepResult {
   blockedLadder: number;
   /** Tried to climb while holding the hammer. */
   hammerBlocked: boolean;
+  /** Launched off a spring pad. */
+  bounced: boolean;
 }
 
 export class Player {
@@ -149,6 +151,7 @@ export class Player {
       fellInPit: false,
       blockedLadder: -1,
       hammerBlocked: false,
+      bounced: false,
     };
     if (this.state === 'ground') this.stepGround(dt, c, env, result);
     else if (this.state === 'air') this.stepAir(dt, env, result);
@@ -187,8 +190,10 @@ export class Player {
 
     const dir = Number(c.right) - Number(c.left);
     if (dir !== 0) this.facing = dir;
-    this.vs = dir * PHYSICS.moveSpeed;
-    this.moving = dir !== 0;
+    const grip = env.grip(this.ring, this.s);
+    const target = dir * PHYSICS.moveSpeed;
+    this.vs = Number.isFinite(grip) ? damp(this.vs, target, grip, dt) : target;
+    this.moving = dir !== 0 || Math.abs(this.vs) > 0.5;
 
     const carry = env.carry(this.ring, this.s) ?? 0;
     if (c.jump) {
@@ -203,7 +208,20 @@ export class Player {
     if (env.carry(this.ring, this.s) === null) {
       this.state = 'air';
       this.vy = 0;
+    } else if (this.onSpring(env)) {
+      this.launch(result);
     }
+  }
+
+  /** Pads only fire when you run onto them, so you can stand on one without bouncing forever. */
+  private onSpring(env: ObstacleEnv): boolean {
+    return Math.abs(this.vs) > 0.5 && env.spring(this.ring, this.s);
+  }
+
+  private launch(result: StepResult): void {
+    this.state = 'air';
+    this.vy = OBSTACLES.springVelocity;
+    result.bounced = true;
   }
 
   private stepAir(dt: number, env: ObstacleEnv, result: StepResult): void {
@@ -225,6 +243,10 @@ export class Player {
     if (!overGap && this.y <= top) {
       this.y = top;
       this.vy = 0;
+      if (this.onSpring(env)) {
+        this.launch(result);
+        return;
+      }
       this.state = 'ground';
       result.landed = true;
     }

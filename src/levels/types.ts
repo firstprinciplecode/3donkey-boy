@@ -7,8 +7,8 @@
  * side; their edges must land on whole numbers so they line up with the voxel grid.
  */
 
-export type SkinName = 'meadow' | 'candy' | 'desert';
-export type ItemType = 'gem' | 'hotdog' | 'oneup' | 'hammer' | 'key';
+export type SkinName = 'meadow' | 'candy' | 'desert' | 'autumn' | 'winter' | 'tomb' | 'volcano';
+export type ItemType = 'gem' | 'hotdog' | 'oneup' | 'hammer' | 'key' | 'relic';
 
 export interface SpotDef {
   ring: number;
@@ -32,9 +32,19 @@ export interface PlatformDef extends SpanDef {
   period: number;
 }
 
+/** A vent that erupts in a column of fire on a timer. */
+export interface JetDef extends SpotDef {
+  /** Seconds for one quiet + erupt cycle. */
+  period: number;
+  /** Shifts this jet's cycle so neighbouring jets take turns. */
+  phase?: number;
+}
+
 export type LockDef =
   | { kind: 'switch'; ladder: number; switchAt: SpotDef }
-  | { kind: 'key'; ladder: number };
+  | { kind: 'key'; ladder: number }
+  /** Opens once every `relic` item on the level has been picked up. */
+  | { kind: 'relics'; ladder: number };
 
 export interface ItemDef {
   type: ItemType;
@@ -76,4 +86,16 @@ export interface LevelDef {
   conveyors: ConveyorDef[];
   platforms: PlatformDef[];
   locks: LockDef[];
+
+  /** One line shown under the round banner the first time the level is played. */
+  tip?: string;
+  /** Slippery floor: you keep sliding after letting go. */
+  ice?: SpanDef[];
+  /** Pads that launch you high enough to clear a 5-wide pit. */
+  springs?: SpotDef[];
+  jets?: JetDef[];
+  /** Icicles, acorns or rocks hanging over the walkway; they drop when you walk underneath. */
+  drops?: SpotDef[];
+  /** Ground monsters (snakes, penguins, …, by skin) that pace a stretch of ring. Jump them for points. */
+  crawlers?: PatrolDef[];
 }

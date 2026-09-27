@@ -55,7 +55,7 @@ function barrelAssets() {
 export function createBarrelMesh(): THREE.Mesh {
   const { geometry, materials } = barrelAssets();
   const mesh = new THREE.Mesh(geometry, materials);
-  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   return mesh;
 }
 

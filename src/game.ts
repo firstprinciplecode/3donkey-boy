@@ -6,6 +6,7 @@ import {
   BARREL,
   CAMERA,
   COLORS,
+  CRAWLER,
   FIRE,
   GAME_RULES,
   GHOST,
@@ -17,6 +18,7 @@ import {
 } from './config';
 import { BarrelManager, createBarrelPile } from './entities/barrels';
 import { Boss } from './entities/boss';
+import { Crawler } from './entities/crawler';
 import { Fire } from './entities/fire';
 import { Ghost } from './entities/ghost';
 import { ITEM_RADIUS, Item } from './entities/items';
@@ -25,10 +27,12 @@ import { Player } from './entities/player';
 import { createOneUpToken } from './entities/token';
 import type { HiScoreEntry } from './hiscore';
 import { cycleLetter, insertScore, insertionIndex, loadBoard, saveBoard, topScore } from './hiscore';
+import { Hazards, type HazardEvents } from './hazards';
 import type { Hud } from './hud';
 import type { Input } from './input';
 import { BOSS_POS, Level, sideYaw, squareCoords } from './level';
 import { LEVELS } from './levels/defs';
+import { SKINS } from './levels/skins';
 import { validateLevel } from './levels/validate';
 import { Obstacles } from './obstacles';
 import type { Stage } from './stage';
@@ -74,6 +78,7 @@ export class Game {
   private readonly itemLayer = new THREE.Group();
   private readonly ghostLayer = new THREE.Group();
   private readonly fireLayer = new THREE.Group();
+  private readonly crawlerLayer = new THREE.Group();
   private readonly goal: THREE.Group;
   private readonly goalBase = new THREE.Vector3();
   private readonly throwOrigin = new THREE.Vector3();
@@ -84,11 +89,13 @@ export class Game {
   private time: TimeOfDay = 'day';
   private level: Level;
   private obstacles: Obstacles;
+  private hazards: Hazards;
   private world: THREE.Group | null = null;
   private pile: THREE.Group | null = null;
   private ghosts: Ghost[] = [];
   private items: Item[] = [];
   private fires: Fire[] = [];
+  private crawlers: Crawler[] = [];
   /** Pyramid side the play camera is locked to. */
   private viewSide = 0;
   /** Unwrapped camera azimuth, so turns always take the short way round. */
@@ -106,6 +113,7 @@ export class Game {
 
     this.level = new Level(LEVELS[0]);
     this.obstacles = new Obstacles(this.level);
+    this.hazards = new Hazards(this.level);
     this.player = new Player(this.level);
     this.barrels = new BarrelManager(this.level);
     this.goal = createOneUpToken(0.8);
@@ -120,6 +128,7 @@ export class Game {
       this.itemLayer,
       this.ghostLayer,
       this.fireLayer,
+      this.crawlerLayer,
       this.goal,
       this.sky.group,
     );
@@ -146,6 +155,7 @@ export class Game {
     this.player.reset(this.level.def.playerStart);
     this.spawnItems();
     this.spawnGhosts(0);
+    this.spawnCrawlers();
     this.hud.showTitle(this.board);
   }
 
@@ -161,6 +171,7 @@ export class Game {
     switch (this.state) {
       case 'title':
         for (const g of this.ghosts) g.update(dt);
+        for (const c of this.crawlers) c.update(dt, this.obstacles);
         if (this.input.consume('Space')) {
           unlockAudio();
           this.startGame();
@@ -220,7 +231,7 @@ export class Game {
       this.levelLayer.remove(this.world);
       disposeWorld(this.world);
     }
-    this.levelLayer.remove(this.obstacles.group);
+    this.levelLayer.remove(this.obstacles.group, this.hazards.group);
     this.obstacles.dispose();
     if (this.pile) this.levelLayer.remove(this.pile);
 
@@ -229,6 +240,7 @@ export class Game {
     this.world = buildWorld(level, LIGHTING[time].glow);
     this.stage.setLighting(LIGHTING[time]);
     this.obstacles = new Obstacles(level);
+    this.hazards = new Hazards(level);
     this.player.level = level;
     this.barrels.level = level;
     this.barrels.env = this.obstacles;
@@ -240,7 +252,7 @@ export class Game {
     this.goalBase.set(top.x, top.y + 2, top.z);
     this.goal.position.copy(this.goalBase);
     this.pile = createBarrelPile(BOSS_POS.x - 0.4, summitY, 2.1);
-    this.levelLayer.add(this.world, this.obstacles.group, this.pile);
+    this.levelLayer.add(this.world, this.obstacles.group, this.hazards.group, this.pile);
 
     this.showcaseFocus.set(0, summitY / 2, 0);
     this.showcaseZoom = Math.min(CAMERA.showcaseZoom, 8 / level.tierHalf(0));
@@ -274,6 +286,7 @@ export class Game {
     this.particles.clear();
     this.clearFires();
     this.obstacles.reset(fresh);
+    this.hazards.reset();
     this.player.reset(def.playerStart);
     this.hammerTime = 0;
     music.setSpeed(this.speedMul);
@@ -284,11 +297,34 @@ export class Game {
     this.bossClock = 1.2;
     if (fresh) this.spawnItems();
     this.spawnGhosts(this.loop);
+    this.spawnCrawlers();
     this.hud.setBonus(this.bonus);
     this.hud.setRound(this.round);
     const when = this.time === 'day' ? '' : ` · ${this.time}`;
-    this.hud.banner(`round-${this.round}`, READY_TIME * 1000, `level ${this.levelIndex + 1} · ${def.name}${when}`);
+    const tip = def.tip && this.loop === 0 ? ` · ${def.tip}` : '';
+    this.hud.banner(`round-${this.round}`, READY_TIME * 1000 + (tip ? 900 : 0), `level ${this.levelIndex + 1} · ${def.name}${when}${tip}`);
     this.setState('ready');
+  }
+
+  private spawnCrawlers(): void {
+    this.crawlerLayer.clear();
+    const look = SKINS[this.level.def.skin].crawler;
+    const speed = CRAWLER.speed * this.speedMul;
+    this.crawlers = (this.level.def.crawlers ?? []).map((p) => new Crawler(this.level, p, look, speed));
+    for (const c of this.crawlers) this.crawlerLayer.add(c.group);
+  }
+
+  private get relicsLeft(): number {
+    return this.items.filter((it) => it.type === 'relic' && !it.collected).length;
+  }
+
+  private onHazards(events: HazardEvents): void {
+    if (events.cracked) sfx.crack();
+    for (const s of events.shattered) {
+      this.particles.burst(s.at.x, s.at.y, s.at.z, s.colors, 10, 3);
+      sfx.shatter();
+    }
+    if (events.erupted.some((at) => at.distanceTo(this.player.position) < 9)) sfx.jet();
   }
 
   private spawnItems(): void {
@@ -334,6 +370,10 @@ export class Game {
       jump = false;
       if (result.jumped) sfx.jump();
       if (result.landed) sfx.land();
+      if (result.bounced) {
+        sfx.spring();
+        this.obstacles.boing(this.player.ring, this.player.s);
+      }
       if (result.blockedLadder >= 0) this.lockHint(result.blockedLadder);
       if (result.hammerBlocked) this.hint("can't climb holding the hammer");
       if (result.fellInPit) {
@@ -347,6 +387,8 @@ export class Game {
       this.barrels.update(h);
       for (const g of this.ghosts) g.update(h);
       for (const f of this.fires) f.update(h, env, this.speedMul);
+      for (const c of this.crawlers) c.update(h, env);
+      this.onHazards(this.hazards.update(h, this.player));
       const events = this.obstacles.update(h, { ring: this.player.ring, s: this.player.s, grounded: this.player.grounded });
       if (events.crumbled) sfx.crumble();
       if (events.switched) {
@@ -402,6 +444,12 @@ export class Game {
 
   private lockHint(ladder: number): void {
     const kind = this.obstacles.lockKind(ladder);
+    if (kind === 'relics') {
+      const left = this.relicsLeft;
+      const name = SKINS[this.level.def.skin].relic.name;
+      this.hint(`sealed · ${left} ${name}${left === 1 ? '' : 's'} to go!`);
+      return;
+    }
     this.hint(kind === 'key' ? 'locked · find the key!' : 'gated · find the switch!');
   }
 
@@ -467,6 +515,31 @@ export class Game {
       this.smash(g.position.x, g.position.y, g.position.z, SCORE.smashGhost);
     }
 
+    for (let i = this.crawlers.length - 1; i >= 0; i--) {
+      const c = this.crawlers[i];
+      const cp = c.position;
+      if (this.hitsPlayer(cp.x, cp.y, cp.z, c.radius)) {
+        if (!armed) return this.die();
+        this.crawlerLayer.remove(c.group);
+        this.crawlers.splice(i, 1);
+        this.smash(cp.x, cp.y, cp.z, SCORE.smashCrawler);
+        continue;
+      }
+      if (p.grounded) c.scored = false;
+      const floor = c.group.position.y;
+      const clearedAbove =
+        p.state === 'air' && c.ring === p.ring && Math.hypot(pp.x - cp.x, pp.z - cp.z) < 0.8 && pp.y > floor + c.height - 0.1;
+      if (!c.scored && clearedAbove) {
+        c.scored = true;
+        this.addScore(SCORE.jumpCrawler, cp, 1.2);
+        sfx.score();
+      }
+    }
+
+    for (const d of this.hazards.dangers) {
+      if (this.hitsPlayer(d.x, d.y, d.z, d.r)) return this.die();
+    }
+
     for (const item of this.items) {
       const c = item.position;
       if (!item.collected && this.hitsPlayer(c.x, c.y, c.z, ITEM_RADIUS)) this.collect(item);
@@ -509,6 +582,20 @@ export class Game {
         this.particles.burst(c.x, c.y, c.z, [COLORS.yellow, COLORS.cream], 16, 4);
         sfx.unlock();
         break;
+      case 'relic': {
+        this.addScore(SCORE.relic);
+        this.particles.burst(c.x, c.y, c.z, [COLORS.gold, COLORS.yellow, COLORS.cream], 16, 4);
+        const left = this.relicsLeft;
+        const total = this.items.filter((it) => it.type === 'relic').length;
+        if (left === 0 && this.obstacles.unlockRelicDoors()) {
+          this.popup('summit unsealed!', c.x, c.y + 0.6, c.z);
+          sfx.unlock();
+        } else {
+          this.popup(`${SKINS[this.level.def.skin].relic.name} ${total - left}/${total}`, c.x, c.y + 0.6, c.z);
+          sfx.relic();
+        }
+        break;
+      }
     }
   }
 

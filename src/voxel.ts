@@ -43,7 +43,6 @@ export function box(
   const mesh = new THREE.Mesh(unitBox, material(color, opts));
   mesh.scale.set(sx, sy, sz);
   mesh.position.set(x, y, z);
-  mesh.castShadow = (opts?.opacity ?? 1) >= 1;
   mesh.receiveShadow = true;
   return mesh;
 }
@@ -52,7 +51,7 @@ export function cone(radius: number, height: number, color: number, x = 0, yBott
   const mesh = new THREE.Mesh(unitCone, material(color));
   mesh.scale.set(radius * 2, height, radius * 2);
   mesh.position.set(x, yBottom + height / 2, z);
-  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   return mesh;
 }
 
@@ -63,18 +62,28 @@ const STRIDE = 7;
  * so the whole world renders in a couple of draw calls.
  */
 export class VoxelBuilder {
+  private casting = true;
   private readonly boxes: number[] = [];
   private readonly cones: number[] = [];
   private readonly glows: number[] = [];
+  private readonly sceneryBoxes: number[] = [];
+  private readonly sceneryCones: number[] = [];
+  private readonly sceneryGlows: number[] = [];
+
+  /** Following voxels skip the shadow map. Used for distant scenery. */
+  castShadows(on: boolean): this {
+    this.casting = on;
+    return this;
+  }
 
   box(x: number, y: number, z: number, sx: number, sy: number, sz: number, color: number): this {
-    this.boxes.push(x, y, z, sx, sy, sz, color);
+    (this.casting ? this.boxes : this.sceneryBoxes).push(x, y, z, sx, sy, sz, color);
     return this;
   }
 
   /** Box that lights up (renders unlit) when built with `glowing`; a plain box otherwise. */
   glow(x: number, y: number, z: number, sx: number, sy: number, sz: number, color: number): this {
-    this.glows.push(x, y, z, sx, sy, sz, color);
+    (this.casting ? this.glows : this.sceneryGlows).push(x, y, z, sx, sy, sz, color);
     return this;
   }
 
@@ -84,13 +93,13 @@ export class VoxelBuilder {
   }
 
   cone(x: number, yBottom: number, z: number, radius: number, height: number, color: number): this {
-    this.cones.push(x, yBottom + height / 2, z, radius * 2, height, radius * 2, color);
+    (this.casting ? this.cones : this.sceneryCones).push(x, yBottom + height / 2, z, radius * 2, height, radius * 2, color);
     return this;
   }
 
   build(glowing = false): THREE.Group {
     const group = new THREE.Group();
-    const bake = (data: number[], geometry: THREE.BufferGeometry, unlit = false) => {
+    const bake = (data: number[], geometry: THREE.BufferGeometry, unlit = false, shadow = true) => {
       const count = data.length / STRIDE;
       if (!count) return;
       const mat = unlit ? new THREE.MeshBasicMaterial() : new THREE.MeshLambertMaterial();
@@ -105,20 +114,23 @@ export class VoxelBuilder {
         mesh.setMatrixAt(i, dummy.matrix);
         mesh.setColorAt(i, color.setHex(data[o + 6]));
       }
-      mesh.castShadow = !unlit;
-      mesh.receiveShadow = !unlit;
+      mesh.castShadow = shadow && !unlit;
+      mesh.receiveShadow = shadow && !unlit;
       mesh.frustumCulled = false;
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       group.add(mesh);
     };
+    const solid = glowing ? this.boxes : [...this.boxes, ...this.glows];
+    const scenery = glowing ? this.sceneryBoxes : [...this.sceneryBoxes, ...this.sceneryGlows];
+    bake(solid, unitBox, false, true);
+    bake(scenery, unitBox, false, false);
     if (glowing) {
-      bake(this.boxes, unitBox);
-      bake(this.glows, unitBox, true);
-    } else {
-      bake([...this.boxes, ...this.glows], unitBox);
+      bake(this.glows, unitBox, true, false);
+      bake(this.sceneryGlows, unitBox, true, false);
     }
-    bake(this.cones, unitCone);
+    bake(this.cones, unitCone, false, true);
+    bake(this.sceneryCones, unitCone, false, false);
     return group;
   }
 }
