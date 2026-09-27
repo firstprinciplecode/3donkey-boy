@@ -72,7 +72,7 @@ bring lower light, stars, and glowing windows, lanterns, and balloons.
 | candy hills | 5 tiers | spirals left | crumbling floors, moving platform, pits, key door |
 | desert arcade | 6 short tiers | zig-zags each ring | everything, 3 flames |
 | harvest woods | 5 tiers, autumn | spirals right | spring pads, falling acorns, hedgehogs, 3 pumpkins unseal the summit |
-| frost peak | 5 short tiers, winter | zig-zags each ring | ice, icicles, belly-sliding penguins, switch gate, key door |
+| frost peak | 5 short tiers, winter | zig-zags each ring | snowballs instead of barrels (they grow as they roll and pay up to 200 to jump), ice, icicles, belly-sliding penguins, switch gate, key door |
 | serpent tomb | 6 short tiers, desert | spirals left | snakes that rear up, fire traps, stalactites, 3 golden idols |
 | volcano isle | 6 tiers, summer | zig-zags each ring | lava jets, lava rocks, scorpions, springs, switch gate, key door |
 

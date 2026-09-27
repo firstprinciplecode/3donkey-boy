@@ -279,6 +279,7 @@ export class Game {
     this.player.level = level;
     this.barrels.level = level;
     this.barrels.env = this.obstacles;
+    this.barrels.look = SKINS[level.def.skin].projectile;
 
     const summitY = level.tierTop(level.summitTier);
     this.boss.group.position.set(BOSS_POS.x, summitY, BOSS_POS.z);
@@ -286,7 +287,7 @@ export class Game {
     const top = level.summitPath.point(level.summitPath.length);
     this.goalBase.set(top.x, top.y + 2, top.z);
     this.goal.position.copy(this.goalBase);
-    this.pile = createBarrelPile(BOSS_POS.x - 0.4, summitY, 2.1);
+    this.pile = createBarrelPile(BOSS_POS.x - 0.4, summitY, 2.1, this.barrels.look);
     this.cascades = new Cascades(level);
     this.levelLayer.add(this.world, this.obstacles.group, this.hazards.group, this.pile, this.cascades.group);
 
@@ -528,8 +529,8 @@ export class Game {
     return sphereHitsCylinder(x, y, z, r, p.x, p.y, p.z, PLAYER_SIZE.halfWidth, PLAYER_SIZE.height);
   }
 
-  private smash(x: number, y: number, z: number, points: number): void {
-    this.particles.burst(x, y, z, [COLORS.cream, COLORS.yellow, COLORS.orange], 14, 5);
+  private smash(x: number, y: number, z: number, points: number, colors: number[] = SPLINTERS): void {
+    this.particles.burst(x, y, z, colors, 14, 5);
     this.addScore(points, new THREE.Vector3(x, y, z), 0.8);
     sfx.smash();
   }
@@ -542,10 +543,11 @@ export class Game {
 
     for (const b of this.barrels.barrels) {
       if (b.done || b.state === 'sink') continue;
-      if (this.hitsPlayer(b.pos.x, b.pos.y + R, b.pos.z, R * 0.8)) {
+      const br = b.radius;
+      if (this.hitsPlayer(b.pos.x, b.pos.y + br, b.pos.z, br * 0.8)) {
         if (!armed) return this.die();
         this.barrels.smash(b);
-        this.smash(b.pos.x, b.pos.y + R, b.pos.z, SCORE.smashBarrel);
+        this.smash(b.pos.x, b.pos.y + br, b.pos.z, SCORE.smashBarrel, b.look === 'snowball' ? SNOW_BURST : SPLINTERS);
         continue;
       }
       const clearedAbove =
@@ -553,11 +555,12 @@ export class Game {
         b.state === 'roll' &&
         b.ring === p.ring &&
         Math.hypot(pp.x - b.pos.x, pp.z - b.pos.z) < 0.7 &&
-        pp.y > b.pos.y + R * 2 - 0.1 &&
+        pp.y > b.pos.y + br * 2 - 0.1 &&
         pp.y - b.pos.y < 2.4;
       if (!b.scored && clearedAbove) {
         b.scored = true;
-        this.addScore(SCORE.jumpBarrel, b.pos, 1.4);
+        // Bigger snowballs are riskier to clear, so they pay more: 100 up to 200 at full size.
+        this.addScore(Math.round((SCORE.jumpBarrel * (br / R)) / 50) * 50, b.pos, 1.4);
         sfx.score();
       }
     }
@@ -748,7 +751,7 @@ export class Game {
   private clearRound(): void {
     this.setState('clear');
     for (const b of this.barrels.barrels) {
-      this.particles.burst(b.pos.x, b.pos.y + BARREL.radius, b.pos.z, RAINBOW, 8, 4);
+      this.particles.burst(b.pos.x, b.pos.y + b.radius, b.pos.z, RAINBOW, 8, 4);
     }
     this.barrels.clear();
     this.clearFires();
@@ -926,6 +929,8 @@ const PLAY_POLAR = THREE.MathUtils.degToRad(CAMERA.playPolarDeg);
 const SHOWCASE_POLAR = THREE.MathUtils.degToRad(CAMERA.showcasePolarDeg);
 const YAW_BIAS = THREE.MathUtils.degToRad(CAMERA.yawBiasDeg);
 const SHOWCASE_TURN_TIME = 0.8;
+const SPLINTERS = [COLORS.cream, COLORS.yellow, COLORS.orange];
+const SNOW_BURST = [COLORS.snow, COLORS.snowShade, COLORS.ice];
 
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;

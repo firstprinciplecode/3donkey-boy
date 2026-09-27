@@ -28,6 +28,7 @@ export type DecorKind =
 export type CrawlerLook = 'hedgehog' | 'penguin' | 'snake' | 'scorpion';
 export type DropLook = 'acorn' | 'icicle' | 'spike' | 'lavarock';
 export type RelicLook = 'pumpkin' | 'idol' | 'present';
+export type ProjectileLook = 'barrel' | 'snowball';
 
 export interface TierStyle {
   /** Alternating colours for the terrace top (rainbow styles cycle through all of them). */
@@ -49,6 +50,8 @@ export interface Skin {
   balloons: readonly number[];
   crawler: CrawlerLook;
   drop: DropLook;
+  /** What the boss throws; only the look changes, the physics and hitbox stay the same. */
+  projectile: ProjectileLook;
   relic: { look: RelicLook; name: string };
 }
 
@@ -91,6 +94,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.red, COLORS.yellow, COLORS.teal],
     crawler: 'hedgehog',
     drop: 'acorn',
+    projectile: 'barrel',
     relic: { look: 'idol', name: 'idol' },
   },
   candy: {
@@ -109,6 +113,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.pink, COLORS.purple, COLORS.cyan],
     crawler: 'hedgehog',
     drop: 'acorn',
+    projectile: 'barrel',
     relic: { look: 'present', name: 'present' },
   },
   desert: {
@@ -127,6 +132,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.red, COLORS.orange, COLORS.blue],
     crawler: 'snake',
     drop: 'spike',
+    projectile: 'barrel',
     relic: { look: 'idol', name: 'idol' },
   },
   autumn: {
@@ -145,6 +151,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.maple, COLORS.yellow, COLORS.teal],
     crawler: 'hedgehog',
     drop: 'acorn',
+    projectile: 'barrel',
     relic: { look: 'pumpkin', name: 'pumpkin' },
   },
   winter: {
@@ -163,6 +170,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.red, COLORS.teal, COLORS.yellow],
     crawler: 'penguin',
     drop: 'icicle',
+    projectile: 'snowball',
     relic: { look: 'present', name: 'present' },
   },
   tomb: {
@@ -181,6 +189,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.gold, COLORS.teal, COLORS.red],
     crawler: 'snake',
     drop: 'spike',
+    projectile: 'barrel',
     relic: { look: 'idol', name: 'idol' },
   },
   volcano: {
@@ -199,6 +208,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.lava, COLORS.yellow, COLORS.teal],
     crawler: 'scorpion',
     drop: 'lavarock',
+    projectile: 'barrel',
     relic: { look: 'idol', name: 'idol' },
   },
 };

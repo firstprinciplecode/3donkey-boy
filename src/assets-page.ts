@@ -2,7 +2,7 @@ import './assets-page.css';
 import * as THREE from 'three';
 import { SkyCritters } from './background';
 import { COLORS } from './config';
-import { createBarrelMesh } from './entities/barrels';
+import { createBarrelMesh, createSnowballMesh } from './entities/barrels';
 import { Boss } from './entities/boss';
 import { Crawler } from './entities/crawler';
 import { Fire } from './entities/fire';
@@ -345,6 +345,7 @@ const sections: { title: string; cells: Entry[] }[] = [
       { name: 'flame', object: flame.group },
       { name: 'sky critter', object: skyCritter() },
       { name: 'barrel', object: createBarrelMesh() },
+      { name: 'snowball', object: createSnowballMesh() },
     ],
   },
   {

@@ -76,6 +76,12 @@ export const BARREL = {
   maxAlive: 9,
 } as const;
 
+/**
+ * Snowballs grow as they roll. At maxScale a standing jump has a ~110 ms timing window (a barrel
+ * gives ~580 ms); by 2x it closes entirely, so keep this below ~1.9.
+ */
+export const SNOWBALL = { maxScale: 1.85, growDistance: 40 } as const;
+
 export const GHOST = { speed: 1.8, radius: 0.45 } as const;
 
 export const FIRE = { speed: 2.3, radius: 0.38, ladderChance: 0.4, minTurn: 1.2, maxTurn: 3.5 } as const;
