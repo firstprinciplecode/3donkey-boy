@@ -65,9 +65,16 @@ const STRIDE = 7;
 export class VoxelBuilder {
   private readonly boxes: number[] = [];
   private readonly cones: number[] = [];
+  private readonly glows: number[] = [];
 
   box(x: number, y: number, z: number, sx: number, sy: number, sz: number, color: number): this {
     this.boxes.push(x, y, z, sx, sy, sz, color);
+    return this;
+  }
+
+  /** Box that lights up (renders unlit) when built with `glowing`; a plain box otherwise. */
+  glow(x: number, y: number, z: number, sx: number, sy: number, sz: number, color: number): this {
+    this.glows.push(x, y, z, sx, sy, sz, color);
     return this;
   }
 
@@ -81,12 +88,13 @@ export class VoxelBuilder {
     return this;
   }
 
-  build(): THREE.Group {
+  build(glowing = false): THREE.Group {
     const group = new THREE.Group();
-    const bake = (data: number[], geometry: THREE.BufferGeometry) => {
+    const bake = (data: number[], geometry: THREE.BufferGeometry, unlit = false) => {
       const count = data.length / STRIDE;
       if (!count) return;
-      const mesh = new THREE.InstancedMesh(geometry, new THREE.MeshLambertMaterial(), count);
+      const mat = unlit ? new THREE.MeshBasicMaterial() : new THREE.MeshLambertMaterial();
+      const mesh = new THREE.InstancedMesh(geometry, mat, count);
       const dummy = new THREE.Object3D();
       const color = new THREE.Color();
       for (let i = 0; i < count; i++) {
@@ -97,14 +105,19 @@ export class VoxelBuilder {
         mesh.setMatrixAt(i, dummy.matrix);
         mesh.setColorAt(i, color.setHex(data[o + 6]));
       }
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
+      mesh.castShadow = !unlit;
+      mesh.receiveShadow = !unlit;
       mesh.frustumCulled = false;
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       group.add(mesh);
     };
-    bake(this.boxes, unitBox);
+    if (glowing) {
+      bake(this.boxes, unitBox);
+      bake(this.glows, unitBox, true);
+    } else {
+      bake([...this.boxes, ...this.glows], unitBox);
+    }
     bake(this.cones, unitCone);
     return group;
   }

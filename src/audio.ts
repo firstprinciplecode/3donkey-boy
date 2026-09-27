@@ -21,6 +21,11 @@ export function unlockAudio(): void {
   }
 }
 
+/** The shared context and master bus (null until the first user gesture unlocks audio). */
+export function audioGraph(): { ctx: AudioContext; master: GainNode } | null {
+  return ctx && master ? { ctx, master } : null;
+}
+
 export function toggleMute(): boolean {
   muted = !muted;
   if (master) master.gain.value = muted ? 0 : VOLUME;

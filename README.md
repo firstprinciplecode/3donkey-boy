@@ -31,9 +31,15 @@ fall into open pits, and end in the pink drum, which spits out a wandering flame
 for 100 pt. Ghosts patrol the rings. Gems (50 pt), hot dogs (300 pt) and a 1-up (extra life) are
 scattered around. Letting the bonus timer hit zero costs a life.
 
+A bouncy Moog-style synth loop plays while you climb. It speeds up on later loops and jumps an
+octave while you hold the hammer.
+
 ### Levels
 
-Three hand-made levels play in order, then loop faster with more ghosts:
+Three hand-made levels play in order, then loop faster with more ghosts. The HUD shows the
+current level and its name. Time of day moves on every round (day, dusk, night) and shifts
+each lap, so a level looks different each time it comes round: dusk and night bring moody
+lighting, stars, and glowing windows, lanterns and balloons.
 
 | Level | Shape | Route | Features |
 | --- | --- | --- | --- |
@@ -63,6 +69,7 @@ src/
   levels/defs.ts     the three hand-made levels
   levels/skins.ts    per-level look: tier colours, decor mix, background palette
   levels/validate.ts sanity checks for level definitions (bounds, overlaps, locks)
+  timeOfDay.ts       day / dusk / night lighting and which round gets which
   obstacles.ts       crumbling tiles, moving platforms, conveyors, gates, doors
   world.ts           static voxel pyramid baked into instanced meshes (rebuilt per level)
   background.ts      3D background: towers, clouds, floating islands, balloons, flying critters
@@ -71,7 +78,9 @@ src/
   entities/          player, boss, barrels, ghosts, fire, items, token, particles
   hud.ts             DOM HUD, banners, overlays, score popups
   backdrop.ts        blurred poster ghosts layered in front of / behind the canvas
-  input.ts audio.ts textures.ts voxel.ts utils.ts
+  audio.ts           synthesized sound effects + shared WebAudio bus (M mutes everything)
+  music.ts           original 70s-synth-style background loop, sequenced in code
+  input.ts textures.ts voxel.ts utils.ts
 scripts/
   validate-levels.ts  runs validateLevel on every level
   sim-routes.ts       bot walks each level's intended route with real physics + obstacles

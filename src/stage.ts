@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CAMERA } from './config';
+import { LIGHTING, type Lighting } from './timeOfDay';
 import { damp } from './utils';
 
 export interface CameraGoal {
@@ -26,6 +27,8 @@ export class Stage {
   private distance: number = CAMERA.showcaseDistance;
   private width = 1;
   private height = 1;
+  private readonly hemi = new THREE.HemisphereLight();
+  private readonly sun = new THREE.DirectionalLight();
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -35,9 +38,8 @@ export class Stage {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
 
-    const hemi = new THREE.HemisphereLight(0xffffff, 0xa9c79a, 1.6);
-    const sun = new THREE.DirectionalLight(0xfff4e0, 2.2);
-    sun.position.set(-25, 60, 35);
+    const { hemi, sun } = this;
+    this.setLighting(LIGHTING.day);
     sun.target.position.set(0, 8, 0);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -69,6 +71,15 @@ export class Stage {
     this.camera.bottom = -halfH;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(this.width, this.height);
+  }
+
+  setLighting(l: Lighting): void {
+    this.hemi.color.setHex(l.skyColor);
+    this.hemi.groundColor.setHex(l.groundColor);
+    this.hemi.intensity = l.hemiIntensity;
+    this.sun.color.setHex(l.sunColor);
+    this.sun.intensity = l.sunIntensity;
+    this.sun.position.set(...l.sunPosition);
   }
 
   follow(goal: CameraGoal, dt: number): void {

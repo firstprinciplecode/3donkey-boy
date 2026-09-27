@@ -35,6 +35,12 @@ class Frame {
     this.box(vb, u, yBottom + sy / 2, v, su, sy, sv, color);
   }
 
+  glow(vb: VoxelBuilder, u: number, y: number, v: number, su: number, sy: number, sv: number, color: number): void {
+    const { x, z } = this.at(u, v);
+    const alongX = this.side % 2 === 0;
+    vb.glow(x, y, z, alongX ? su : sv, sy, alongX ? sv : su, color);
+  }
+
   cone(vb: VoxelBuilder, u: number, yBottom: number, v: number, radius: number, height: number, color: number): void {
     const { x, z } = this.at(u, v);
     vb.cone(x, yBottom, z, radius, height, color);
@@ -47,8 +53,11 @@ class Frame {
   }
 }
 
-/** Static voxel scenery for a level, baked into instanced meshes. Call `disposeWorld` when swapping levels. */
-export function buildWorld(level: Level): THREE.Group {
+/**
+ * Static voxel scenery for a level, baked into instanced meshes. `glowing` lights up windows,
+ * lanterns and balloons for dusk/night. Call `disposeWorld` when swapping levels.
+ */
+export function buildWorld(level: Level, glowing = false): THREE.Group {
   const vb = new VoxelBuilder();
   const def = level.def;
   const skin = SKINS[def.skin];
@@ -59,11 +68,12 @@ export function buildWorld(level: Level): THREE.Group {
   def.ladders.forEach((l) => buildLadder(vb, level, l));
   def.chutes.forEach((c) => buildChute(vb, level, c));
   buildDecor(vb, level, skin, gaps, rand);
+  buildLanterns(vb, level);
   buildSummit(vb, level);
   buildDrum(vb, level);
   buildBackground(vb, skin, rand);
 
-  return vb.build();
+  return vb.build(glowing);
 }
 
 export function disposeWorld(group: THREE.Group): void {
@@ -115,11 +125,9 @@ function buildTier(vb: VoxelBuilder, level: Level, skin: Skin, k: number, gaps: 
 
       if (cheb < half - 1) continue;
       for (let y = top - 1, layer = 0; y > wallBottom; y--, layer++) {
-        let color: number;
-        if (k === 0) color = skin.baseBands[layer % skin.baseBands.length];
-        else if (rand() < 0.07) color = skin.windowColor;
-        else color = style.side[mod(ix + iz + layer, 2)];
-        vb.box(cx, y - 0.5, cz, 1, 1, 1, color);
+        if (k === 0) vb.box(cx, y - 0.5, cz, 1, 1, 1, skin.baseBands[layer % skin.baseBands.length]);
+        else if (rand() < 0.07) vb.glow(cx, y - 0.5, cz, 1, 1, 1, skin.windowColor);
+        else vb.box(cx, y - 0.5, cz, 1, 1, 1, style.side[mod(ix + iz + layer, 2)]);
       }
     }
   }
@@ -256,6 +264,27 @@ function buildDecor(vb: VoxelBuilder, level: Level, skin: Skin, gaps: readonly S
           }
         }
         offset += 1.8 + rand() * 1.6;
+      }
+    }
+  }
+}
+
+const LANTERN_SPACING = 5;
+
+/** Wall lanterns along the back of each terrace; they only light up at dusk and night. */
+function buildLanterns(vb: VoxelBuilder, level: Level): void {
+  const def = level.def;
+  const lanternY = Math.min(2.3, def.tierHeight - 0.5);
+  for (let k = 0; k < level.ringCount; k++) {
+    const inner = level.tierHalf(k + 1);
+    const y = level.tierTop(k) + lanternY;
+    for (let side = 0; side < 4; side++) {
+      for (let offset = -inner + 2.5; offset <= inner - 2.5; offset += LANTERN_SPACING) {
+        if (def.ladders.some((l) => l.ring === k && l.side === side && Math.abs(l.offset - offset) < 1.2)) continue;
+        const f = new Frame(side, inner, offset);
+        f.box(vb, 0, y, 0.18, 0.08, 0.08, 0.36, COLORS.charcoal);
+        f.box(vb, 0, y - 0.02, 0.36, 0.34, 0.06, 0.34, COLORS.charcoal);
+        f.glow(vb, 0, y - 0.2, 0.36, 0.26, 0.3, 0.26, COLORS.yellow);
       }
     }
   }

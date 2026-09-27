@@ -2,7 +2,7 @@ import { formatScore } from './utils';
 
 // Static markup only; all runtime values are written with textContent.
 const MARKUP = `
-<header class="hud">
+<header class="hud hud--top">
   <div class="hud__cell hud__left">
     <span class="hud__label">player-1</span>
     <div class="hud__lives" data-lives></div>
@@ -11,11 +11,20 @@ const MARKUP = `
     <span class="hud__label">score-</span><span class="hud__value" data-score>000-000</span><span class="hud__label">pt</span>
   </div>
   <div class="hud__cell hud__right">
-    <div><span class="hud__label">round-</span><span class="hud__value hud__value--sm" data-round>1</span></div>
-    <div><span class="hud__label">bonus </span><span class="hud__bonus" data-bonus>5000</span></div>
-    <div><span class="hud__label">hi-</span><span class="hud__value hud__value--sm" data-hi>000-000</span></div>
+    <span class="hud__label">bonus</span><span class="hud__bonus" data-bonus>5000</span>
   </div>
 </header>
+<footer class="hud hud--bottom">
+  <div class="hud__cell hud__left">
+    <span class="hud__label">level-</span><span class="hud__value hud__value--sm" data-level>1</span><span class="hud__level-name" data-level-name></span>
+  </div>
+  <div class="hud__cell hud__center">
+    <span class="hud__label">round-</span><span class="hud__value hud__value--sm" data-round>1</span>
+  </div>
+  <div class="hud__cell hud__right">
+    <span class="hud__label">hi-</span><span class="hud__value hud__value--sm" data-hi>000-000</span>
+  </div>
+</footer>
 <div class="popups" data-popups></div>
 <div class="banner" data-banner>
   <div class="banner__text" data-banner-text></div>
@@ -50,6 +59,8 @@ export class Hud {
   private readonly hi: HTMLElement;
   private readonly bonus: HTMLElement;
   private readonly round: HTMLElement;
+  private readonly level: HTMLElement;
+  private readonly levelName: HTMLElement;
   private readonly lives: HTMLElement;
   private readonly popups: HTMLElement;
   private readonly bannerEl: HTMLElement;
@@ -69,6 +80,8 @@ export class Hud {
     this.hi = query(root, '[data-hi]');
     this.bonus = query(root, '[data-bonus]');
     this.round = query(root, '[data-round]');
+    this.level = query(root, '[data-level]');
+    this.levelName = query(root, '[data-level-name]');
     this.lives = query(root, '[data-lives]');
     this.popups = query(root, '[data-popups]');
     this.bannerEl = query(root, '[data-banner]');
@@ -102,6 +115,11 @@ export class Hud {
 
   setRound(n: number): void {
     this.round.textContent = String(n);
+  }
+
+  setLevel(n: number, name: string): void {
+    this.level.textContent = String(n);
+    this.levelName.textContent = name;
   }
 
   setBonus(n: number): void {

@@ -22,9 +22,31 @@ function ghost(className: string): HTMLDivElement {
   return el;
 }
 
-/** Background layer: far-away blurred ghosts behind the canvas (the 3D scenery does the rest). */
+const STAR_COUNT = 90;
+
+/** Twinkling stars; CSS only shows them at dusk (faint) and night. */
+function stars(): HTMLDivElement {
+  const layer = document.createElement('div');
+  layer.className = 'stars';
+  for (let i = 0; i < STAR_COUNT; i++) {
+    const star = document.createElement('span');
+    const size = Math.random() < 0.15 ? 3 : Math.random() < 0.5 ? 2 : 1.4;
+    star.style.cssText = [
+      `left:${(Math.random() * 100).toFixed(2)}%`,
+      `top:${(Math.random() * Math.random() * 90).toFixed(2)}%`,
+      `width:${size}px`,
+      `height:${size}px`,
+      `animation-delay:${(-Math.random() * 4).toFixed(2)}s`,
+      `animation-duration:${(2 + Math.random() * 3).toFixed(2)}s`,
+    ].join(';');
+    layer.appendChild(star);
+  }
+  return layer;
+}
+
+/** Background layer: stars and far-away blurred ghosts behind the canvas (the 3D scenery does the rest). */
 export function createBackdrop(root: HTMLElement): void {
-  root.append(ghost('ghost--far g-a'), ghost('ghost--far g-b'));
+  root.append(stars(), ghost('ghost--far g-a'), ghost('ghost--far g-b'));
 }
 
 /** Foreground layer: big out-of-focus ghosts at the edges, like the poster's depth of field. */

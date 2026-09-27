@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { sfx, toggleMute, unlockAudio } from './audio';
+import { music } from './music';
 import { SkyCritters } from './background';
 import {
   BARREL,
@@ -30,6 +31,7 @@ import { LEVELS } from './levels/defs';
 import { validateLevel } from './levels/validate';
 import { Obstacles } from './obstacles';
 import type { Stage } from './stage';
+import { LIGHTING, timeForRound, type TimeOfDay } from './timeOfDay';
 import { formatScore, randRange, sphereHitsCylinder } from './utils';
 import { buildWorld, disposeWorld } from './world';
 
@@ -92,6 +94,7 @@ export class Game {
   private readonly showcaseFocus = new THREE.Vector3();
   private showcaseZoom: number = CAMERA.showcaseZoom;
   private levelIndex = -1;
+  private time: TimeOfDay = 'day';
   private level: Level;
   private obstacles: Obstacles;
   private world: THREE.Group | null = null;
@@ -210,13 +213,17 @@ export class Game {
   private setState(state: GameState): void {
     this.state = state;
     this.stateTime = 0;
+    if (state === 'playing') music.start();
+    else if (state === 'paused') music.pause();
+    else music.stop();
   }
 
   /** Swap in a level: rebuilds the voxel world and obstacles, and moves the boss, goal and pile. */
-  private loadLevel(index: number): void {
+  private loadLevel(index: number, time: TimeOfDay = 'day'): void {
     const i = index % LEVELS.length;
-    if (i === this.levelIndex) return;
+    if (i === this.levelIndex && time === this.time) return;
     this.levelIndex = i;
+    this.time = time;
 
     if (this.world) {
       this.levelLayer.remove(this.world);
@@ -228,7 +235,8 @@ export class Game {
 
     const level = new Level(LEVELS[i]);
     this.level = level;
-    this.world = buildWorld(level);
+    this.world = buildWorld(level, LIGHTING[time].glow);
+    this.stage.setLighting(LIGHTING[time]);
     this.obstacles = new Obstacles(level);
     this.player.level = level;
     this.barrels.level = level;
@@ -246,6 +254,8 @@ export class Game {
     this.showcaseFocus.set(0, summitY / 2, 0);
     this.showcaseZoom = Math.min(CAMERA.showcaseZoom, 8 / level.tierHalf(0));
     document.body.dataset.skin = level.def.skin;
+    document.body.dataset.time = time;
+    this.hud.setLevel(i + 1, level.def.name);
   }
 
   private startGame(): void {
@@ -264,7 +274,7 @@ export class Game {
   }
 
   private startRound(fresh: boolean): void {
-    if (fresh) this.loadLevel(this.round - 1);
+    if (fresh) this.loadLevel(this.round - 1, timeForRound(this.round, LEVELS.length));
     const def = this.level.def;
     this.speedMul = Math.min(GAME_RULES.maxSpeedMul, 1 + 0.2 * this.loop + 0.06 * this.levelIndex);
     this.barrels.clear();
@@ -275,6 +285,8 @@ export class Game {
     this.obstacles.reset(fresh);
     this.player.reset(def.playerStart);
     this.hammerTime = 0;
+    music.setSpeed(this.speedMul);
+    music.setHammer(false);
     this.turnTo(def.playerStart.side);
     this.bonus = GAME_RULES.bonusStart;
     this.bonusClock = 0;
@@ -283,7 +295,8 @@ export class Game {
     this.spawnGhosts(this.loop);
     this.hud.setBonus(this.bonus);
     this.hud.setRound(this.round);
-    this.hud.banner(`round-${this.round}`, READY_TIME * 1000, `${def.name} · climb to the 1-up!`);
+    const when = this.time === 'day' ? '' : ` · ${this.time}`;
+    this.hud.banner(`round-${this.round}`, READY_TIME * 1000, `level ${this.levelIndex + 1} · ${def.name}${when}`);
     this.setState('ready');
   }
 
@@ -356,7 +369,10 @@ export class Game {
     if (this.hammerTime > 0) {
       this.hammerTime -= dt;
       this.player.hammerBlink = this.hammerTime < HAMMER.warnAt && Math.floor(this.hammerTime * 8) % 2 === 0;
-      if (this.hammerTime <= 0) this.player.setHammer(false);
+      if (this.hammerTime <= 0) {
+        this.player.setHammer(false);
+        music.setHammer(false);
+      }
     }
 
     this.bossClock -= dt;
@@ -491,6 +507,7 @@ export class Game {
       case 'hammer':
         this.hammerTime = HAMMER.duration;
         this.player.setHammer(true);
+        music.setHammer(true);
         this.popup('hammer!', c.x, c.y + 0.6, c.z);
         this.particles.burst(c.x, c.y, c.z, [COLORS.charcoal, COLORS.yellow], 12, 4);
         sfx.hammer();
@@ -524,6 +541,7 @@ export class Game {
     this.setState('dying');
     this.player.die();
     this.player.setHammer(false);
+    music.setHammer(false);
     this.hammerTime = 0;
     this.lives -= 1;
     this.hud.setLives(this.lives);

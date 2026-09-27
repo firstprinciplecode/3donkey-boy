@@ -31,8 +31,8 @@ function spikeTower(vb: VoxelBuilder, x: number, z: number, bottom: number, heig
       for (let iz = 0; iz < 3; iz++) {
         if (ix === 1 && iz === 1) continue;
         const isWindow = (ix === 1 || iz === 1) && y % 3 === 1 && y < height - 3;
-        const color = isWindow ? windowColor : palette[(ix + iz + y) % 2];
-        vb.box(x - 1 + ix, bottom + y + 0.5, z - 1 + iz, 1, 1, 1, color);
+        if (isWindow) vb.glow(x - 1 + ix, bottom + y + 0.5, z - 1 + iz, 1, 1, 1, windowColor);
+        else vb.box(x - 1 + ix, bottom + y + 0.5, z - 1 + iz, 1, 1, 1, palette[(ix + iz + y) % 2]);
       }
     }
   }
@@ -107,8 +107,8 @@ function buildBalloons(vb: VoxelBuilder, skin: Skin, rand: Rand): void {
     const { x, z } = around(rand, NEAR_LIMIT, 58);
     const y = 4 + rand() * 26;
     const color = skin.balloons[i % skin.balloons.length];
-    vb.box(x, y, z, 1.2, 1.4, 1.2, color);
-    vb.box(x, y + 0.1, z, 1.4, 0.9, 1.4, color);
+    vb.glow(x, y, z, 1.2, 1.4, 1.2, color);
+    vb.glow(x, y + 0.1, z, 1.4, 0.9, 1.4, color);
     vb.box(x - 0.25, y + 0.35, z + 0.71, 0.3, 0.3, 0.02, 0xffffff);
     vb.box(x, y - 0.8, z, 0.3, 0.2, 0.3, color);
     vb.box(x, y - 1.8, z, 0.04, 1.8, 0.04, COLORS.charcoal);
