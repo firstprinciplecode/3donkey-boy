@@ -378,6 +378,36 @@ body[data-time='night'] .hud__level-name {
   box-shadow: 0 2px 0 rgba(27, 27, 34, 0.35);
 }
 
+.hud__letters {
+  display: flex;
+  gap: 2px;
+  margin-left: 6px;
+}
+
+.hud__letters span {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 26px;
+  border: 2px dashed currentColor;
+  border-radius: 5px;
+  font-size: 15px;
+  opacity: 0.35;
+}
+
+.hud__letters span.on {
+  border: 3px solid var(--ink);
+  background: var(--yellow);
+  color: var(--ink);
+  box-shadow: 2px 2px 0 var(--orange);
+  opacity: 1;
+  animation: pop-in 0.3s ease-out;
+}
+
+@keyframes pop-in {
+  from { transform: scale(1.5); }
+}
+
 @keyframes pulse {
   to { transform: scale(1.08); }
 }
@@ -665,6 +695,12 @@ kbd {
     font-size: 8px;
   }
 
+  .hud__letters span {
+    width: 16px;
+    height: 20px;
+    font-size: 11px;
+  }
+
   .board {
     font-size: 14px;
   }
@@ -684,6 +720,7 @@ kbd {
   .overlay__sub,
   .initials__slot--on,
   .stars span,
+  .hud__letters span.on,
   .hud__bonus--low {
     animation: none;
   }

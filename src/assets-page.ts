@@ -7,14 +7,23 @@ import { Boss } from './entities/boss';
 import { Crawler } from './entities/crawler';
 import { Fire } from './entities/fire';
 import { Ghost } from './entities/ghost';
-import { Item } from './entities/items';
+import { Item, makeLetter } from './entities/items';
 import { Player } from './entities/player';
+import { Totem } from './entities/totem';
+import { Frame } from './frame';
+import { castleMonster, rainbowBanner, rainbowTrail, steppedCloud } from './posterScenery';
 import { dropParts, jetParts, ledgeParts } from './hazards';
 import { Level } from './level';
 import { LEVELS } from './levels/defs';
 import type { CrawlerLook, DecorKind, DropLook } from './levels/skins';
 import { springParts } from './obstacles';
-import { makeBarrelCapTexture, makeBarrelSideTexture, makeConveyorTexture, makeOneUpTexture } from './textures';
+import {
+  makeBarrelCapTexture,
+  makeBarrelSideTexture,
+  makeCascadeTexture,
+  makeConveyorTexture,
+  makeOneUpTexture,
+} from './textures';
 import { box, VoxelBuilder } from './voxel';
 import { buildDecorPiece } from './world';
 
@@ -123,6 +132,54 @@ function cloud(): THREE.Group {
   });
 }
 
+/** Poster scenery is authored facing the pyramid (-v); side 2 turns that towards this camera. */
+const facingViewer = () => new Frame(2, 0, 0);
+const fixedRand = () => 0.45;
+
+function picketFence(): THREE.Group {
+  return baked((vb) => {
+    for (let i = 0; i <= 8; i++) {
+      const x = -1.2 + i * 0.3;
+      block(vb, x, 0, 0, 0.08, 0.42, 0.06, COLORS.cream);
+      block(vb, x, 0.42, 0, 0.05, 0.06, 0.05, COLORS.cream);
+    }
+    vb.box(0, 0.14, 0, 2.4, 0.05, 0.03, COLORS.creamDark);
+    vb.box(0, 0.32, 0, 2.4, 0.05, 0.03, COLORS.creamDark);
+    vb.box(0, -0.15, 0, 2.8, 0.3, 0.8, COLORS.grass);
+  });
+}
+
+function neonPanel(): THREE.Group {
+  return baked((vb) => {
+    const palette = [COLORS.neon, COLORS.pink, COLORS.magenta, COLORS.violet];
+    for (let y = 0; y < 4; y++) for (let x = -1.5; x <= 1.5; x++) vb.box(x, 3.5 - y, 0, 1, 1, 1, palette[y]);
+    for (let x = -1; x <= 1; x++) vb.glow(x, 2, 0.55, 0.12, 3.9, 0.1, 0xffb3ec);
+  }, true);
+}
+
+function baseSpikes(): THREE.Group {
+  return baked((vb) => {
+    for (let x = -1.5; x <= 1.5; x++) {
+      vb.box(x, 0.5, 0, 1, 1, 1, [COLORS.red, COLORS.orange, COLORS.yellow, COLORS.grass][x + 1.5]);
+      vb.spike(x, 0, 0, 1.35, 0.8 + ((x + 2) % 3) * 0.6, x % 2 ? COLORS.black : COLORS.charcoal);
+    }
+  });
+}
+
+function cascade(kind: 'rainbow' | 'water'): THREE.Group {
+  const g = new THREE.Group();
+  const texture = makeCascadeTexture(kind);
+  texture.repeat.set(1, 0.8);
+  const fall = new THREE.Mesh(new THREE.PlaneGeometry(kind === 'rainbow' ? 2.1 : 1.6, 3.2), new THREE.MeshBasicMaterial({ map: texture }));
+  fall.position.set(0, 1.6, 0.52);
+  g.add(fall, box(2.8, 3.2, 1, COLORS.stoneDark, 0, 1.6, 0));
+  return g;
+}
+
+function scenery(fill: (vb: VoxelBuilder) => void): THREE.Group {
+  return baked(fill, true);
+}
+
 const DECOR_NAMES: [DecorKind, string][] = [
   ['tree', 'tree'],
   ['pine', 'pine'],
@@ -143,6 +200,9 @@ const DECOR_NAMES: [DecorKind, string][] = [
   ['urn', 'urn'],
   ['rock', 'rock'],
   ['tiki', 'tiki'],
+  ['topiary', 'topiary'],
+  ['shrub', 'lime shrub'],
+  ['pottree', 'potted tree'],
 ];
 
 const CRAWLER_NAMES: [CrawlerLook, string][] = [
@@ -289,7 +349,10 @@ const sections: { title: string; cells: Entry[] }[] = [
   },
   {
     title: 'Ground monsters',
-    cells: CRAWLER_NAMES.map(([look, name]) => ({ name, object: crawler(look) })),
+    cells: [
+      ...CRAWLER_NAMES.map(([look, name]) => ({ name, object: crawler(look) })),
+      { name: 'spike totem', object: new Totem(level, { ring: 0, from: [0, 0], to: [0, 0] }, 0).group },
+    ],
   },
   {
     title: 'Pickups',
@@ -302,6 +365,10 @@ const sections: { title: string; cells: Entry[] }[] = [
       { name: 'pumpkin relic', object: relic(3) },
       { name: 'present relic', object: relic(4) },
       { name: 'golden idol', object: relic(5) },
+      { name: 'letter 1', object: makeLetter('1') },
+      { name: 'letter U', object: makeLetter('U') },
+      { name: 'letter P', object: makeLetter('P') },
+      { name: 'bonus orb', object: new Item(level, 'orb', spot, 0).group },
     ],
   },
   {
@@ -326,6 +393,11 @@ const sections: { title: string; cells: Entry[] }[] = [
       { name: 'key door', object: gate('key') },
       { name: 'relic seal', object: gate('relics') },
       { name: 'floor switch', object: floorSwitch() },
+      { name: 'picket fence', object: picketFence() },
+      { name: 'neon ribbed wall', object: neonPanel() },
+      { name: 'base spikes', object: baseSpikes() },
+      { name: 'rainbow cascade', object: cascade('rainbow') },
+      { name: 'waterfall', object: cascade('water') },
     ],
   },
   {
@@ -336,6 +408,10 @@ const sections: { title: string; cells: Entry[] }[] = [
       { name: 'balloon', object: balloon() },
       { name: 'tower', object: tower() },
       { name: 'cloud', object: cloud() },
+      { name: 'stepped cloud', object: scenery((vb) => steppedCloud(vb, facingViewer(), 0, 4, fixedRand)) },
+      { name: 'rainbow banner', object: scenery((vb) => rainbowBanner(vb, facingViewer(), 0, 'D', fixedRand)) },
+      { name: 'rainbow trail', object: scenery((vb) => rainbowTrail(vb, facingViewer(), 0, fixedRand)) },
+      { name: 'castle monster', object: scenery((vb) => castleMonster(vb, facingViewer(), 0, 20)) },
     ],
   },
   {
@@ -345,6 +421,8 @@ const sections: { title: string; cells: Entry[] }[] = [
       { name: 'barrel side', image: makeBarrelSideTexture().image },
       { name: 'barrel cap', image: makeBarrelCapTexture().image },
       { name: 'conveyor mark', image: makeConveyorTexture().image },
+      { name: 'rainbow cascade', image: makeCascadeTexture('rainbow').image },
+      { name: 'waterfall', image: makeCascadeTexture('water').image },
     ],
   },
 ];

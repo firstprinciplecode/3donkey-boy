@@ -85,4 +85,8 @@ export const sfx = {
   shatter: () => tone(900, 0.2, { type: 'sawtooth', slideTo: 200, volume: 0.05 }),
   jet: () => tone(70, 0.5, { type: 'sawtooth', slideTo: 160, volume: 0.07 }),
   relic: () => arpeggio([587, 740, 880, 1175], 0.07, 0.12),
+  stomp: () => tone(70, 0.25, { type: 'square', slideTo: 35, volume: 0.12 }),
+  orb: () => tone(880, 0.12, { type: 'sine', slideTo: 1760, volume: 0.09 }),
+  letter: () => arpeggio([784, 988, 1175], 0.06, 0.1),
+  spelled: () => arpeggio([523, 659, 784, 1047, 1319, 1568, 2093], 0.07, 0.14, 0.1),
 };

@@ -42,14 +42,21 @@ function storedName(raw: string): string {
   return cleaned.padEnd(NAME_LENGTH, '-');
 }
 
+/** One row per name: sorted high to low, and a repeated name keeps only its best score. */
 export function normalizeBoard(value: unknown): HiScoreEntry[] {
   if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
   return value
     .filter(isEntry)
     .map((entry) => ({ name: storedName(entry.name), score: Math.max(0, Math.floor(entry.score)) }))
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score)
+    .filter((entry) => !seen.has(entry.name) && seen.add(entry.name))
     .slice(0, HISCORE_SIZE);
+}
+
+export function bestFor(board: HiScoreEntry[], name: string): number {
+  return board.find((entry) => entry.name === name)?.score ?? 0;
 }
 
 /** Where a new score would land, or null if it misses the table. Ties rank below the older score. */
@@ -61,16 +68,44 @@ export function insertionIndex(board: HiScoreEntry[], score: number): number | n
   return index;
 }
 
+/**
+ * Records a score under `name`. A name already on the table only moves up when the new score
+ * beats its best (`improved: false` returns the untouched board and that name's row).
+ */
 export function insertScore(
   board: HiScoreEntry[],
   name: string,
   score: number,
-): { board: HiScoreEntry[]; index: number } | null {
-  const index = insertionIndex(board, score);
+): { board: HiScoreEntry[]; index: number; improved: boolean } | null {
+  const clean = sanitizeName(name);
+  const points = Math.floor(score);
+  const existing = board.findIndex((entry) => entry.name === clean);
+  if (existing !== -1 && board[existing].score >= points) return { board, index: existing, improved: false };
+  const rest = board.filter((_, i) => i !== existing);
+  const index = insertionIndex(rest, points);
   if (index === null) return null;
-  const next = board.slice();
-  next.splice(index, 0, { name: sanitizeName(name), score: Math.floor(score) });
-  return { board: next.slice(0, HISCORE_SIZE), index };
+  rest.splice(index, 0, { name: clean, score: points });
+  return { board: rest.slice(0, HISCORE_SIZE), index, improved: true };
+}
+
+/** Initials from the last saved score, so returning players don't retype them. */
+export const PLAYER_NAME_KEY = 'popscotch.player';
+
+export function loadPlayerName(): string | null {
+  try {
+    const raw = window.localStorage.getItem(PLAYER_NAME_KEY);
+    return raw && /^[A-Z]{3}$/.test(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+export function savePlayerName(name: string): void {
+  try {
+    window.localStorage.setItem(PLAYER_NAME_KEY, sanitizeName(name));
+  } catch {
+    // Unavailable storage just means the name is asked for again next time.
+  }
 }
 
 export function topScore(board: HiScoreEntry[]): number {

@@ -20,7 +20,10 @@ export type DecorKind =
   | 'obelisk'
   | 'urn'
   | 'rock'
-  | 'tiki';
+  | 'tiki'
+  | 'topiary'
+  | 'shrub'
+  | 'pottree';
 
 export type CrawlerLook = 'hedgehog' | 'penguin' | 'snake' | 'scorpion';
 export type DropLook = 'acorn' | 'icicle' | 'spike' | 'lavarock';
@@ -76,7 +79,7 @@ export const SKINS: Record<SkinName, Skin> = {
     tiers: [STYLE.grass, STYLE.tile, STYLE.checker, STYLE.grass, STYLE.rainbow],
     baseBands: RAINBOW,
     windowColor: COLORS.cyan,
-    decor: { tree: 3, pine: 2, pot: 3, arcade: 1, cart: 1 },
+    decor: { tree: 3, pine: 2, pot: 2, arcade: 1, cart: 1, topiary: 2, shrub: 2, pottree: 2 },
     clouds: [COLORS.cream, 0xffffff],
     towers: [
       [COLORS.cream, COLORS.creamDark],
@@ -94,7 +97,7 @@ export const SKINS: Record<SkinName, Skin> = {
     tiers: [STYLE.candy, STYLE.mint, STYLE.checker, STYLE.candy, STYLE.mint, STYLE.rainbow],
     baseBands: [COLORS.pink, COLORS.cream, COLORS.purple, COLORS.cream],
     windowColor: COLORS.yellow,
-    decor: { lollipop: 4, pot: 2, arcade: 2, cart: 1, tree: 1 },
+    decor: { lollipop: 4, pot: 2, arcade: 2, cart: 1, tree: 1, topiary: 2, pottree: 1 },
     clouds: [0xffe3f0, 0xffffff],
     towers: [
       [COLORS.pink, 0xffb3cf],
@@ -112,7 +115,7 @@ export const SKINS: Record<SkinName, Skin> = {
     tiers: [STYLE.sand, STYLE.brick, STYLE.tile, STYLE.sand, STYLE.brick, STYLE.checker, STYLE.rainbow],
     baseBands: [COLORS.orange, COLORS.tan, COLORS.sand, 0xc4553a],
     windowColor: COLORS.teal,
-    decor: { cactus: 4, palm: 2, pot: 2, arcade: 1, cart: 1 },
+    decor: { cactus: 4, palm: 2, pot: 1, arcade: 1, cart: 1, pottree: 2 },
     clouds: [0xfff1dc, 0xffffff],
     towers: [
       [COLORS.creamDark, COLORS.sand],
@@ -130,7 +133,7 @@ export const SKINS: Record<SkinName, Skin> = {
     tiers: [STYLE.moss, STYLE.leaves, STYLE.harvest, STYLE.leaves, STYLE.checker, STYLE.rainbow],
     baseBands: [COLORS.maple, COLORS.orange, COLORS.yellow, COLORS.brown],
     windowColor: COLORS.yellow,
-    decor: { maple: 4, pumpkin: 3, haystack: 2, mushroom: 2, pine: 1, cart: 1 },
+    decor: { maple: 4, pumpkin: 3, haystack: 2, mushroom: 2, pine: 1, cart: 1, shrub: 1 },
     clouds: [0xfff0dc, 0xffffff],
     towers: [
       [COLORS.cream, COLORS.creamDark],
@@ -166,7 +169,7 @@ export const SKINS: Record<SkinName, Skin> = {
     tiers: [STYLE.sandstone, STYLE.tomb, STYLE.sandstone, STYLE.tomb, STYLE.checker, STYLE.sandstone, STYLE.rainbow],
     baseBands: [COLORS.gold, COLORS.sandstone, COLORS.teal, COLORS.sandstoneDark],
     windowColor: COLORS.lava,
-    decor: { obelisk: 3, urn: 3, palm: 2, cactus: 2, rock: 1 },
+    decor: { obelisk: 3, urn: 3, palm: 2, cactus: 2, rock: 1, pottree: 1 },
     clouds: [0xfff4e0, 0xffffff],
     towers: [
       [COLORS.sandstone, COLORS.sandstoneDark],
@@ -184,7 +187,7 @@ export const SKINS: Record<SkinName, Skin> = {
     tiers: [STYLE.beach, STYLE.jungle, STYLE.basalt, STYLE.jungle, STYLE.basalt, STYLE.checker, STYLE.rainbow],
     baseBands: [COLORS.lava, COLORS.orange, COLORS.basalt, COLORS.basaltDark],
     windowColor: COLORS.lava,
-    decor: { palm: 4, tiki: 3, rock: 2, pot: 1, cart: 1 },
+    decor: { palm: 4, tiki: 3, rock: 2, pot: 1, cart: 1, shrub: 2 },
     clouds: [0xffe6d0, 0xd9d2dc],
     towers: [
       [COLORS.basalt, COLORS.basaltDark],

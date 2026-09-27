@@ -1,57 +1,15 @@
 import * as THREE from 'three';
 import { COLORS } from './config';
-import { BOSS_POS, NORMALS, PIT_DEPTH, TANGENTS, mod, squareCoords, squarePoint, type Level, type Spot } from './level';
+import { BOSS_POS, PIT_DEPTH, mod, squareCoords, type Level, type Spot } from './level';
 import { SKINS, type DecorKind, type Skin } from './levels/skins';
 import type { SpanDef } from './levels/types';
 import { buildBackground } from './background';
+import { Frame } from './frame';
+import { buildBaseSpikes, buildFences, buildNeonRibs, neonPanels, type NeonPanels } from './terraceExtras';
 import { seededRandom } from './utils';
 import { VoxelBuilder } from './voxel';
 
 type Rand = () => number;
-
-/**
- * Local frame on one side of the pyramid: `u` runs along the side (to the right as seen from
- * outside), `v` points outward. Lets decor be authored once and placed on any of the 4 faces.
- */
-class Frame {
-  private readonly side: number;
-  private readonly bx: number;
-  private readonly bz: number;
-
-  constructor(side: number, radius: number, offset: number) {
-    this.side = side;
-    const p = squarePoint(radius, side, offset);
-    this.bx = p.x;
-    this.bz = p.z;
-  }
-
-  box(vb: VoxelBuilder, u: number, y: number, v: number, su: number, sy: number, sv: number, color: number): void {
-    const { x, z } = this.at(u, v);
-    const alongX = this.side % 2 === 0;
-    vb.box(x, y, z, alongX ? su : sv, sy, alongX ? sv : su, color);
-  }
-
-  block(vb: VoxelBuilder, u: number, yBottom: number, v: number, su: number, sy: number, sv: number, color: number): void {
-    this.box(vb, u, yBottom + sy / 2, v, su, sy, sv, color);
-  }
-
-  glow(vb: VoxelBuilder, u: number, y: number, v: number, su: number, sy: number, sv: number, color: number): void {
-    const { x, z } = this.at(u, v);
-    const alongX = this.side % 2 === 0;
-    vb.glow(x, y, z, alongX ? su : sv, sy, alongX ? sv : su, color);
-  }
-
-  cone(vb: VoxelBuilder, u: number, yBottom: number, v: number, radius: number, height: number, color: number): void {
-    const { x, z } = this.at(u, v);
-    vb.cone(x, yBottom, z, radius, height, color);
-  }
-
-  private at(u: number, v: number): { x: number; z: number } {
-    const t = TANGENTS[this.side];
-    const n = NORMALS[this.side];
-    return { x: this.bx + t.x * u + n.x * v, z: this.bz + t.z * u + n.z * v };
-  }
-}
 
 /**
  * Static voxel scenery for a level, baked into instanced meshes. `glowing` lights up windows,
@@ -64,14 +22,19 @@ export function buildWorld(level: Level, glowing = false): THREE.Group {
   const rand = seededRandom(hashString(def.name));
   const gaps: SpanDef[] = [...def.pits, ...def.crumbles, ...def.platforms];
 
-  for (let k = 0; k <= level.summitTier; k++) buildTier(vb, level, skin, k, gaps, rand);
+  const neon = neonPanels(level, rand);
+
+  for (let k = 0; k <= level.summitTier; k++) buildTier(vb, level, skin, k, gaps, rand, neon);
   def.ladders.forEach((l) => buildLadder(vb, level, l));
   def.chutes.forEach((c) => buildChute(vb, level, c));
   buildDecor(vb, level, skin, gaps, rand);
   buildLanterns(vb, level);
+  buildNeonRibs(vb, level, neon);
+  buildFences(vb, level, gaps, rand);
   buildSummit(vb, level);
   buildDrum(vb, level);
   vb.castShadows(false);
+  buildBaseSpikes(vb, level, rand);
   buildBackground(vb, skin, rand);
 
   return vb.build(glowing);
@@ -101,7 +64,15 @@ function inGap(gaps: readonly SpanDef[], ring: number, x: number, z: number): bo
  * One tier: a terrace ring of cells on top, plus the outer wall down to (one below) the terrace
  * underneath. Gap spans are cut out of the top layer and floored with spikes one cell down.
  */
-function buildTier(vb: VoxelBuilder, level: Level, skin: Skin, k: number, gaps: readonly SpanDef[], rand: Rand): void {
+function buildTier(
+  vb: VoxelBuilder,
+  level: Level,
+  skin: Skin,
+  k: number,
+  gaps: readonly SpanDef[],
+  rand: Rand,
+  neon: NeonPanels,
+): void {
   const half = level.tierHalf(k);
   const inner = k < level.summitTier ? level.tierHalf(k + 1) : 0;
   const top = level.tierTop(k);
@@ -125,8 +96,11 @@ function buildTier(vb: VoxelBuilder, level: Level, skin: Skin, k: number, gaps: 
       }
 
       if (cheb < half - 1) continue;
+      const palette = neon.get(`${k}:${squareCoords(cx, cz).side}`);
+      const layers = Math.round(top - wallBottom) - 1;
       for (let y = top - 1, layer = 0; y > wallBottom; y--, layer++) {
         if (k === 0) vb.box(cx, y - 0.5, cz, 1, 1, 1, skin.baseBands[layer % skin.baseBands.length]);
+        else if (palette) vb.box(cx, y - 0.5, cz, 1, 1, 1, palette[Math.min(palette.length - 1, Math.floor((layer / layers) * palette.length))]);
         else if (rand() < 0.07) vb.glow(cx, y - 0.5, cz, 1, 1, 1, skin.windowColor);
         else vb.box(cx, y - 0.5, cz, 1, 1, 1, style.side[mod(ix + iz + layer, 2)]);
       }
@@ -158,6 +132,15 @@ function buildChute(vb: VoxelBuilder, level: Level, c: Spot): void {
 }
 
 type DecorFn = (vb: VoxelBuilder, f: Frame, y: number, rand: Rand) => void;
+
+/** Voxel "sphere": three crossed slabs, the lime topiary look from the poster. */
+function limeBall(vb: VoxelBuilder, f: Frame, yCenter: number, r: number, u = 0): void {
+  const d = r * 2;
+  f.box(vb, u, yCenter, 0, d, d * 0.62, d * 0.62, COLORS.lime);
+  f.box(vb, u, yCenter, 0, d * 0.62, d, d * 0.62, COLORS.lime);
+  f.box(vb, u, yCenter, 0, d * 0.62, d * 0.62, d, COLORS.limeDark);
+  f.box(vb, u - r * 0.25, yCenter + r * 0.3, r + 0.02, d * 0.2, d * 0.2, 0.04, COLORS.cream);
+}
 
 const DECOR: Record<DecorKind, DecorFn> = {
   tree(vb, f, y, rand) {
@@ -288,6 +271,28 @@ const DECOR: Record<DecorKind, DecorFn> = {
     const s = 0.7 + rand() * 0.5;
     f.block(vb, 0, y, 0, 0.9 * s, 0.5 * s, 0.8 * s, COLORS.stoneDark);
     f.block(vb, 0.1, y + 0.5 * s, 0, 0.6 * s, 0.35 * s, 0.5 * s, COLORS.stone);
+  },
+  topiary(vb, f, y, rand) {
+    const h = 0.5 + rand() * 0.5;
+    f.block(vb, 0, y, 0, 0.5, 0.36, 0.5, COLORS.terracotta);
+    f.box(vb, 0, y + 0.36, 0, 0.58, 0.08, 0.58, COLORS.creamDark);
+    f.block(vb, 0, y + 0.4, 0, 0.08, h, 0.08, COLORS.brown);
+    limeBall(vb, f, y + 0.4 + h + 0.35, 0.36);
+    if (rand() < 0.5) limeBall(vb, f, y + 0.4 + h + 0.95, 0.22);
+  },
+  shrub(vb, f, y, rand) {
+    const r = 0.3 + rand() * 0.14;
+    limeBall(vb, f, y + r, r);
+    limeBall(vb, f, y + r * 0.7, r * 0.7, 0.45);
+  },
+  pottree(vb, f, y, rand) {
+    const s = 0.8 + rand() * 0.3;
+    const pot = [COLORS.pink, COLORS.teal, COLORS.yellow, COLORS.terracotta][Math.floor(rand() * 4)];
+    f.block(vb, 0, y, 0, 0.44, 0.34, 0.44, pot);
+    f.box(vb, 0, y + 0.3, 0, 0.5, 0.08, 0.5, COLORS.cream);
+    f.block(vb, 0, y + 0.34, 0, 0.08, 0.3 * s, 0.08, COLORS.brown);
+    f.cone(vb, 0, y + 0.5 * s, 0, 0.3 * s, 0.9 * s, COLORS.grassDark);
+    f.block(vb, 0, y + 1.35 * s, 0, 0.1, 0.1, 0.1, COLORS.yellow);
   },
   tiki(vb, f, y) {
     f.block(vb, 0, y, 0, 0.55, 1.5, 0.45, COLORS.brown);

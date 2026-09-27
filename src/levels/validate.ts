@@ -22,7 +22,9 @@ export function validateLevel(def: LevelDef): string[] {
   const jets = def.jets ?? [];
   const drops = def.drops ?? [];
   const crawlers = def.crawlers ?? [];
+  const totems = def.totems ?? [];
   const lists = [
+    totems,
     def.ladders,
     def.chutes,
     def.items,
@@ -131,6 +133,26 @@ export function validateLevel(def: LevelDef): string[] {
   for (const c of crawlers) {
     if (!intIn(c.ring, 0, def.rings - 1)) err(`crawler patrol on missing ring ${c.ring}`);
   }
+  for (const t of totems) {
+    const from = { ring: t.ring, side: t.from[0], offset: t.from[1] };
+    const to = { ring: t.ring, side: t.to[0], offset: t.to[1] };
+    checkSpot('totem patrol start', from);
+    checkSpot('totem patrol end', to);
+    if (from.side !== to.side || from.offset >= to.offset) {
+      err(`totem patrol ${label(from)} must run along one side with from.offset < to.offset`);
+      continue;
+    }
+    const covers = (s: SpotDef, pad: number) =>
+      s.ring === t.ring && s.side === from.side && s.offset > from.offset - pad && s.offset < to.offset + pad;
+    if (ladderEnds.some((l) => covers(l, 1.5))) err(`totem patrol ${label(from)} walks over a ladder end`);
+    if (covers(def.playerStart, 2.5)) err(`totem patrol ${label(from)} is too close to the player start`);
+  }
+
+  const letterTypes = ['letter-1', 'letter-u', 'letter-p'] as const;
+  for (const type of letterTypes) {
+    if (def.items.filter((it) => it.type === type).length > 1) err(`${type} appears more than once`);
+  }
+  if (def.items.some((it) => it.type === 'orb')) err('orbs are generated; do not list them in items');
 
   const lockedLadders = new Set<number>();
   for (const lock of def.locks) {

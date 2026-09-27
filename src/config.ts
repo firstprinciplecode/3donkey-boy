@@ -34,6 +34,14 @@ export const COLORS = {
   basaltDark: 0x2a2530,
   sandstone: 0xe0b878,
   sandstoneDark: 0xc79a5c,
+  mint: 0x8ef0c8,
+  mintDark: 0x4fc9a0,
+  lime: 0xc6f03a,
+  limeDark: 0x8cc21e,
+  neon: 0xff4fd8,
+  violet: 0x6a2fd8,
+  terracotta: 0xd9673a,
+  water: 0x3fd6ff,
 } as const;
 
 export const RAINBOW: readonly number[] = [
@@ -104,6 +112,19 @@ export const HAZARDS = {
 
 export const CRAWLER = { speed: 2.1, radius: 0.42, rearEvery: 3.2, rearTime: 1.1 } as const;
 
+export const TOTEM = {
+  speed: 1.4,
+  radius: 0.6,
+  /** Standing height of the body; jump apex is ~1.7, so it can't be cleared from the ground. */
+  height: 2.3,
+  hopEvery: 2.2,
+  crouchTime: 0.3,
+  hopTime: 0.9,
+  hopHeight: 2.2,
+} as const;
+
+export const ORBS = { perRing: 2, height: 2.1, radius: 0.34 } as const;
+
 export const GAME_RULES = {
   lives: 3,
   maxLives: 6,
@@ -123,6 +144,11 @@ export const SCORE = {
   smashFire: 500,
   smashGhost: 500,
   smashCrawler: 500,
+  underTotem: 300,
+  smashTotem: 800,
+  letter: 100,
+  spelled: 3000,
+  orb: 100,
 } as const;
 
 export const CAMERA = {

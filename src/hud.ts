@@ -7,6 +7,7 @@ const MARKUP = `
   <div class="hud__cell hud__left">
     <span class="hud__label">player-1</span>
     <div class="hud__lives" data-lives></div>
+    <div class="hud__letters" data-letters aria-label="letters collected"><span>1</span><span>U</span><span>P</span></div>
   </div>
   <div class="hud__cell hud__center">
     <span class="hud__label">score-</span><span class="hud__value" data-score>000-000</span><span class="hud__label">pt</span>
@@ -49,7 +50,7 @@ const MARKUP = `
     </div>
     <div class="initials" data-initials hidden>
       <div class="initials__slots" data-slots></div>
-      <p class="overlay__hint">arrows or a letter key &middot; space saves</p>
+      <p class="overlay__hint" data-initials-hint></p>
     </div>
   </div>
 </div>`;
@@ -71,6 +72,7 @@ export class Hud {
   private readonly level: HTMLElement;
   private readonly levelName: HTMLElement;
   private readonly lives: HTMLElement;
+  private readonly letters: HTMLElement;
   private readonly popups: HTMLElement;
   private readonly bannerEl: HTMLElement;
   private readonly bannerText: HTMLElement;
@@ -85,6 +87,7 @@ export class Hud {
   private readonly board: HTMLElement;
   private readonly initialsEl: HTMLElement;
   private readonly slots: HTMLElement;
+  private readonly initialsHint: HTMLElement;
   private bannerTimer = 0;
 
   constructor(root: HTMLElement) {
@@ -96,6 +99,7 @@ export class Hud {
     this.level = query(root, '[data-level]');
     this.levelName = query(root, '[data-level-name]');
     this.lives = query(root, '[data-lives]');
+    this.letters = query(root, '[data-letters]');
     this.popups = query(root, '[data-popups]');
     this.bannerEl = query(root, '[data-banner]');
     this.bannerText = query(root, '[data-banner-text]');
@@ -110,6 +114,7 @@ export class Hud {
     this.board = query(root, '[data-board]');
     this.initialsEl = query(root, '[data-initials]');
     this.slots = query(root, '[data-slots]');
+    this.initialsHint = query(root, '[data-initials-hint]');
 
     [...TITLE].forEach((ch, i) => {
       const span = document.createElement('span');
@@ -155,6 +160,11 @@ export class Hud {
     );
   }
 
+  /** Lights up the 1-U-P chips collected so far in this level. */
+  setLetters(held: readonly boolean[]): void {
+    [...this.letters.children].forEach((chip, i) => chip.classList.toggle('on', !!held[i]));
+  }
+
   showTitle(board: HiScoreEntry[]): void {
     this.title.hidden = false;
     this.heading.hidden = true;
@@ -166,11 +176,15 @@ export class Hud {
     this.overlay.classList.add('overlay--visible', 'overlay--scores');
   }
 
-  showInitials(letters: readonly string[], cursor: number, score: number): void {
+  /** `returning`: the initials are pre-filled from last time, so space just keeps them. */
+  showInitials(letters: readonly string[], cursor: number, score: number, returning = false): void {
     this.title.hidden = true;
     this.heading.hidden = false;
-    this.heading.textContent = 'enter your initials';
+    this.heading.textContent = returning ? 'new personal best!' : 'enter your initials';
     this.sub.textContent = `${formatScore(score)} pt`;
+    this.initialsHint.textContent = returning
+      ? 'space keeps your initials · arrows or a letter key change them'
+      : 'arrows or a letter key · space saves';
     this.controlsList.hidden = true;
     this.hint.hidden = true;
     this.boardWrap.hidden = true;

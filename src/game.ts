@@ -15,18 +15,32 @@ import {
   PLAYER_SIZE,
   RAINBOW,
   SCORE,
+  TOTEM,
 } from './config';
+import { Cascades } from './cascades';
+import { orbSpots } from './levels/orbs';
+import { Totem } from './entities/totem';
 import { BarrelManager, createBarrelPile } from './entities/barrels';
 import { Boss } from './entities/boss';
 import { Crawler } from './entities/crawler';
 import { Fire } from './entities/fire';
 import { Ghost } from './entities/ghost';
-import { ITEM_RADIUS, Item } from './entities/items';
+import { ITEM_RADIUS, Item, LETTER_CHARS } from './entities/items';
 import { Particles } from './entities/particles';
 import { Player } from './entities/player';
 import { createOneUpToken } from './entities/token';
 import type { HiScoreEntry } from './hiscore';
-import { cycleLetter, insertScore, insertionIndex, loadBoard, saveBoard, topScore } from './hiscore';
+import {
+  bestFor,
+  cycleLetter,
+  insertScore,
+  insertionIndex,
+  loadBoard,
+  loadPlayerName,
+  saveBoard,
+  savePlayerName,
+  topScore,
+} from './hiscore';
 import { Hazards, type HazardEvents } from './hazards';
 import type { Hud } from './hud';
 import type { Input } from './input';
@@ -56,6 +70,8 @@ export class Game {
   private board: HiScoreEntry[] = [];
   private initials: string[] = ['A', 'A', 'A'];
   private initialCursor = 0;
+  /** The initials were pre-filled from a previous save. */
+  private returning = false;
   private lives: number = GAME_RULES.lives;
   private round = 1;
   private speedMul = 1;
@@ -65,6 +81,8 @@ export class Game {
   private footstepClock = 0;
   private hammerTime = 0;
   private hintClock = 0;
+  /** Started from a later level (dev level select), so the score stays off the hi-score table. */
+  private practice = false;
 
   private readonly stage: Stage;
   private readonly hud: Hud;
@@ -79,6 +97,7 @@ export class Game {
   private readonly ghostLayer = new THREE.Group();
   private readonly fireLayer = new THREE.Group();
   private readonly crawlerLayer = new THREE.Group();
+  private readonly totemLayer = new THREE.Group();
   private readonly goal: THREE.Group;
   private readonly goalBase = new THREE.Vector3();
   private readonly throwOrigin = new THREE.Vector3();
@@ -96,6 +115,8 @@ export class Game {
   private items: Item[] = [];
   private fires: Fire[] = [];
   private crawlers: Crawler[] = [];
+  private totems: Totem[] = [];
+  private cascades: Cascades | null = null;
   /** Pyramid side the play camera is locked to. */
   private viewSide = 0;
   /** Unwrapped camera azimuth, so turns always take the short way round. */
@@ -109,6 +130,7 @@ export class Game {
 
     if (import.meta.env.DEV) {
       for (const problem of LEVELS.flatMap(validateLevel)) console.warn(`[level] ${problem}`);
+      console.info(`[dev] press 1-${Math.min(9, LEVELS.length)} on the title screen to start at that level`);
     }
 
     this.level = new Level(LEVELS[0]);
@@ -129,6 +151,7 @@ export class Game {
       this.ghostLayer,
       this.fireLayer,
       this.crawlerLayer,
+      this.totemLayer,
       this.goal,
       this.sky.group,
     );
@@ -156,6 +179,7 @@ export class Game {
     this.spawnItems();
     this.spawnGhosts(0);
     this.spawnCrawlers();
+    this.spawnTotems();
     this.hud.showTitle(this.board);
   }
 
@@ -172,9 +196,16 @@ export class Game {
       case 'title':
         for (const g of this.ghosts) g.update(dt);
         for (const c of this.crawlers) c.update(dt, this.obstacles);
+        for (const t of this.totems) t.update(dt, this.obstacles);
         if (this.input.consume('Space')) {
           unlockAudio();
           this.startGame();
+        } else if (import.meta.env.DEV) {
+          const pick = this.devLevelKey();
+          if (pick) {
+            unlockAudio();
+            this.startGame(pick);
+          }
         }
         break;
       case 'ready':
@@ -233,6 +264,10 @@ export class Game {
     }
     this.levelLayer.remove(this.obstacles.group, this.hazards.group);
     this.obstacles.dispose();
+    if (this.cascades) {
+      this.levelLayer.remove(this.cascades.group);
+      this.cascades.dispose();
+    }
     if (this.pile) this.levelLayer.remove(this.pile);
 
     const level = new Level(LEVELS[i]);
@@ -252,7 +287,8 @@ export class Game {
     this.goalBase.set(top.x, top.y + 2, top.z);
     this.goal.position.copy(this.goalBase);
     this.pile = createBarrelPile(BOSS_POS.x - 0.4, summitY, 2.1);
-    this.levelLayer.add(this.world, this.obstacles.group, this.hazards.group, this.pile);
+    this.cascades = new Cascades(level);
+    this.levelLayer.add(this.world, this.obstacles.group, this.hazards.group, this.pile, this.cascades.group);
 
     this.showcaseFocus.set(0, summitY / 2, 0);
     this.showcaseZoom = Math.min(CAMERA.showcaseZoom, 8 / level.tierHalf(0));
@@ -261,10 +297,19 @@ export class Game {
     this.hud.setLevel(i + 1, level.def.name);
   }
 
-  private startGame(): void {
+  /** Dev builds only: number keys on the title screen start at that level. */
+  private devLevelKey(): number {
+    for (let n = 1; n <= Math.min(9, LEVELS.length); n++) {
+      if (this.input.consume(`Digit${n}`) || this.input.consume(`Numpad${n}`)) return n;
+    }
+    return 0;
+  }
+
+  private startGame(startLevel = 1): void {
+    this.practice = startLevel > 1;
     this.score = 0;
     this.lives = GAME_RULES.lives;
-    this.round = 1;
+    this.round = startLevel;
     this.hud.setScore(0);
     this.hud.setLives(this.lives);
     this.hud.hideOverlay();
@@ -298,6 +343,7 @@ export class Game {
     if (fresh) this.spawnItems();
     this.spawnGhosts(this.loop);
     this.spawnCrawlers();
+    this.spawnTotems();
     this.hud.setBonus(this.bonus);
     this.hud.setRound(this.round);
     const when = this.time === 'day' ? '' : ` · ${this.time}`;
@@ -312,6 +358,19 @@ export class Game {
     const speed = CRAWLER.speed * this.speedMul;
     this.crawlers = (this.level.def.crawlers ?? []).map((p) => new Crawler(this.level, p, look, speed));
     for (const c of this.crawlers) this.crawlerLayer.add(c.group);
+  }
+
+  private spawnTotems(): void {
+    this.totemLayer.clear();
+    const speed = TOTEM.speed * this.speedMul;
+    this.totems = (this.level.def.totems ?? []).map((p) => new Totem(this.level, p, speed));
+    for (const t of this.totems) this.totemLayer.add(t.group);
+  }
+
+  private get lettersHeld(): boolean[] {
+    return (['letter-1', 'letter-u', 'letter-p'] as const).map((type) =>
+      this.items.some((it) => it.type === type && it.collected),
+    );
   }
 
   private get relicsLeft(): number {
@@ -330,7 +389,9 @@ export class Game {
   private spawnItems(): void {
     this.itemLayer.clear();
     this.items = this.level.def.items.map((spawn, i) => new Item(this.level, spawn.type, spawn.spot, i));
+    orbSpots(this.level).forEach((spot, i) => this.items.push(new Item(this.level, 'orb', spot, i)));
     for (const item of this.items) this.itemLayer.add(item.group);
+    this.hud.setLetters(this.lettersHeld);
   }
 
   private spawnGhosts(loop: number): void {
@@ -388,6 +449,10 @@ export class Game {
       for (const g of this.ghosts) g.update(h);
       for (const f of this.fires) f.update(h, env, this.speedMul);
       for (const c of this.crawlers) c.update(h, env);
+      for (const t of this.totems) {
+        t.update(h, env);
+        if (t.landed) this.onTotemLanded(t);
+      }
       this.onHazards(this.hazards.update(h, this.player));
       const events = this.obstacles.update(h, { ring: this.player.ring, s: this.player.s, grounded: this.player.grounded });
       if (events.crumbled) sfx.crumble();
@@ -536,6 +601,26 @@ export class Game {
       }
     }
 
+    for (let i = this.totems.length - 1; i >= 0; i--) {
+      const t = this.totems[i];
+      const tp = t.position;
+      if (this.hitsPlayer(tp.x, tp.y, tp.z, t.radius) || this.hitsPlayer(t.head.x, t.head.y, t.head.z, t.radius)) {
+        if (!armed) return this.die();
+        this.totemLayer.remove(t.group);
+        this.totems.splice(i, 1);
+        this.smash(tp.x, tp.y, tp.z, SCORE.smashTotem);
+        continue;
+      }
+      const floor = this.level.tierTop(t.ring);
+      const passedUnder =
+        t.airborne && t.ring === p.ring && Math.hypot(pp.x - tp.x, pp.z - tp.z) < 0.5 && pp.y + PLAYER_SIZE.height < floor + t.clearance;
+      if (!t.scored && passedUnder) {
+        t.scored = true;
+        this.addScore(SCORE.underTotem, pp, 2);
+        sfx.score();
+      }
+    }
+
     for (const d of this.hazards.dangers) {
       if (this.hitsPlayer(d.x, d.y, d.z, d.r)) return this.die();
     }
@@ -546,11 +631,42 @@ export class Game {
     }
   }
 
+  private onTotemLanded(t: Totem): void {
+    const g = t.group.position;
+    this.particles.burst(g.x, g.y + 0.1, g.z, [COLORS.cream, COLORS.creamDark, COLORS.charcoal], 8, 3);
+    if (t.group.position.distanceTo(this.player.position) < 10) sfx.stomp();
+  }
+
+  private collectLetter(item: Item): void {
+    const c = item.position;
+    this.particles.burst(c.x, c.y, c.z, [COLORS.yellow, COLORS.orange, COLORS.cream], 14, 4);
+    const held = this.lettersHeld;
+    this.hud.setLetters(held);
+    if (held.every(Boolean)) {
+      this.lives = Math.min(GAME_RULES.maxLives, this.lives + 1);
+      this.hud.setLives(this.lives);
+      this.addScore(SCORE.spelled);
+      this.popup('1-U-P! extra life', c.x, c.y + 0.8, c.z);
+      this.particles.burst(c.x, c.y, c.z, RAINBOW, 30, 6);
+      sfx.spelled();
+      return;
+    }
+    this.addScore(SCORE.letter);
+    this.popup(`${LETTER_CHARS[item.type]} · ${held.filter(Boolean).length}/3`, c.x, c.y + 0.6, c.z);
+    sfx.letter();
+  }
+
   private collect(item: Item): void {
     item.collected = true;
     this.itemLayer.remove(item.group);
     const c = item.position;
+    if (LETTER_CHARS[item.type]) return this.collectLetter(item);
     switch (item.type) {
+      case 'orb':
+        this.addScore(SCORE.orb, c, 0.4);
+        this.particles.burst(c.x, c.y, c.z, [COLORS.cream, COLORS.cyan, COLORS.pink], 10, 3);
+        sfx.orb();
+        break;
       case 'gem':
         this.addScore(SCORE.gem, c, 0.6);
         this.particles.burst(c.x, c.y, c.z, RAINBOW, 10, 3);
@@ -657,14 +773,16 @@ export class Game {
 
   private gameOver(): void {
     sfx.gameOver();
-    if (insertionIndex(this.board, this.score) !== null) {
-      this.initials = ['A', 'A', 'A'];
-      this.initialCursor = 0;
-      this.setState('initials');
-      this.hud.showInitials(this.initials, this.initialCursor, this.score);
-      return;
+    if (this.practice || insertionIndex(this.board, this.score) === null) return this.showGameOver(null);
+    const known = loadPlayerName();
+    if (known && bestFor(this.board, known) >= this.score) {
+      return this.showGameOver(this.board.findIndex((entry) => entry.name === known));
     }
-    this.showGameOver(null);
+    this.initials = [...(known ?? 'AAA')];
+    this.initialCursor = 0;
+    this.returning = known !== null;
+    this.setState('initials');
+    this.hud.showInitials(this.initials, this.initialCursor, this.score, this.returning);
   }
 
   /** Three-letter name entry. Up/down cycles a slot, left/right moves, typing fills it. */
@@ -698,13 +816,17 @@ export class Game {
     }
 
     if (this.input.consume('Space') || this.input.consume('Enter') || this.input.consume('NumpadEnter')) {
-      const placed = insertScore(this.board, this.initials.join(''), this.score);
+      const name = this.initials.join('');
+      savePlayerName(name);
+      const placed = insertScore(this.board, name, this.score);
       if (placed) {
-        this.board = placed.board;
-        saveBoard(this.board);
-        this.hiScore = topScore(this.board);
-        this.hud.setHi(this.hiScore);
-        sfx.score();
+        if (placed.improved) {
+          this.board = placed.board;
+          saveBoard(this.board);
+          this.hiScore = topScore(this.board);
+          this.hud.setHi(this.hiScore);
+          sfx.score();
+        }
         this.showGameOver(placed.index);
       } else {
         this.showGameOver(null);
@@ -714,7 +836,7 @@ export class Game {
 
     if (changed) {
       sfx.land();
-      this.hud.showInitials(this.initials, this.initialCursor, this.score);
+      this.hud.showInitials(this.initials, this.initialCursor, this.score, this.returning);
     }
   }
 
@@ -742,6 +864,7 @@ export class Game {
     for (const item of this.items) if (!item.collected) item.animate(dt);
     this.particles.update(dt);
     this.sky.update(dt);
+    this.cascades?.update(dt);
 
     this.goal.rotation.y += dt * (this.state === 'clear' ? 12 : 1.6);
     this.goal.position.y = this.goalBase.y + Math.sin(this.clock * 2) * 0.15;

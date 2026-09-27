@@ -8,7 +8,18 @@
  */
 
 export type SkinName = 'meadow' | 'candy' | 'desert' | 'autumn' | 'winter' | 'tomb' | 'volcano';
-export type ItemType = 'gem' | 'hotdog' | 'oneup' | 'hammer' | 'key' | 'relic';
+/** `letter-*` spell 1-U-P for an extra life; `orb` bubbles are generated, never authored. */
+export type ItemType =
+  | 'gem'
+  | 'hotdog'
+  | 'oneup'
+  | 'hammer'
+  | 'key'
+  | 'relic'
+  | 'letter-1'
+  | 'letter-u'
+  | 'letter-p'
+  | 'orb';
 
 export interface SpotDef {
   ring: number;
@@ -98,4 +109,6 @@ export interface LevelDef {
   drops?: SpotDef[];
   /** Ground monsters (snakes, penguins, …, by skin) that pace a stretch of ring. Jump them for points. */
   crawlers?: PatrolDef[];
+  /** Spike totems: too tall to jump, but they hop — run underneath while they are airborne. */
+  totems?: PatrolDef[];
 }

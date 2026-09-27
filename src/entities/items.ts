@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { COLORS, RAINBOW } from '../config';
-import type { ItemType, Level, Spot } from '../level';
+import { COLORS, ORBS, RAINBOW } from '../config';
+import { sideYaw, type ItemType, type Level, type Spot } from '../level';
 import { SKINS, type RelicLook } from '../levels/skins';
-import { box } from '../voxel';
+import { GLYPH_H, GLYPH_W, glyphCells } from '../pixelFont';
+import { ball, box } from '../voxel';
 import { createOneUpToken } from './token';
 
 export const ITEM_RADIUS = 0.45;
@@ -78,8 +79,43 @@ function makeRelic(look: RelicLook): THREE.Group {
   return g;
 }
 
+export const LETTER_CHARS: Partial<Record<ItemType, string>> = { 'letter-1': '1', 'letter-u': 'U', 'letter-p': 'P' };
+const ORB_COLORS = [COLORS.red, COLORS.yellow, COLORS.orange, COLORS.teal, COLORS.pink];
+
+/** Chunky yellow block letter with an orange extruded back, like the poster's 1-U-P. */
+export function makeLetter(ch: string, cell = 0.13): THREE.Group {
+  const g = new THREE.Group();
+  const face = new THREE.Group();
+  const ox = (-GLYPH_W / 2 + 0.5) * cell;
+  const oy = (-GLYPH_H / 2 + 0.5) * cell;
+  for (const [cx, cy] of glyphCells(ch)) {
+    const x = ox + cx * cell;
+    const y = oy + cy * cell;
+    face.add(
+      box(cell, cell, cell * 0.8, COLORS.yellow, x, y, cell * 0.2, { emissive: COLORS.yellow }),
+      box(cell, cell, cell * 0.8, COLORS.orange, x + cell * 0.25, y - cell * 0.25, -cell * 0.45),
+    );
+  }
+  g.add(face);
+  return g;
+}
+
+function makeOrb(colorIndex: number): THREE.Group {
+  const g = new THREE.Group();
+  const color = ORB_COLORS[colorIndex % ORB_COLORS.length];
+  g.add(
+    ball(ORBS.radius, color, 0, 0, 0, { emissive: color }),
+    ball(ORBS.radius * 0.28, COLORS.cream, -ORBS.radius * 0.38, ORBS.radius * 0.4, ORBS.radius * 0.62, { emissive: COLORS.cream }),
+  );
+  return g;
+}
+
 function makeMesh(type: ItemType, colorIndex: number, relic: RelicLook): THREE.Group {
+  const ch = LETTER_CHARS[type];
+  if (ch) return makeLetter(ch);
   switch (type) {
+    case 'orb':
+      return makeOrb(colorIndex);
     case 'relic':
       return makeRelic(relic);
     case 'gem':
@@ -106,14 +142,21 @@ export class Item {
   constructor(level: Level, type: ItemType, spot: Spot, colorIndex: number) {
     this.type = type;
     const p = level.ringPoint(spot.ring, level.spotS(spot));
-    this.position = new THREE.Vector3(p.x, level.tierTop(spot.ring) + 0.8, p.z);
+    const lift = type === 'orb' ? ORBS.height : 0.8;
+    this.position = new THREE.Vector3(p.x, level.tierTop(spot.ring) + lift, p.z);
     this.group = makeMesh(type, colorIndex, SKINS[level.def.skin].relic.look);
     this.group.position.copy(this.position);
+    if (LETTER_CHARS[type]) this.group.rotation.y = sideYaw(spot.side);
+    this.baseYaw = this.group.rotation.y;
   }
+
+  private readonly baseYaw: number;
 
   animate(dt: number): void {
     this.t += dt;
     this.group.position.y = this.position.y + Math.sin(this.t * 2.6) * 0.12;
-    this.group.rotation.y += dt * (this.type === 'gem' ? 2.2 : 1.3);
+    if (LETTER_CHARS[this.type]) this.group.rotation.y = this.baseYaw + Math.sin(this.t * 1.8) * 0.5;
+    else if (this.type === 'orb') this.group.scale.setScalar(1 + Math.sin(this.t * 4) * 0.06);
+    else this.group.rotation.y += dt * (this.type === 'gem' ? 2.2 : 1.3);
   }
 }

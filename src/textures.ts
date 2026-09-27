@@ -77,6 +77,46 @@ export function makeConveyorTexture(): THREE.CanvasTexture {
   return tex;
 }
 
+/**
+ * Falling-stream texture that tiles vertically: rainbow columns or cyan water, with pale streaks
+ * that read as motion when the texture scrolls.
+ */
+export function makeCascadeTexture(kind: 'rainbow' | 'water'): THREE.CanvasTexture {
+  const [c, g] = canvas2d(112, 128);
+  const columns = kind === 'rainbow' ? RAINBOW : [0x3fd6ff, 0x6fe0da, 0x2fb8f0, 0x6fe0da];
+  const w = c.width / columns.length;
+  columns.forEach((color, i) => {
+    g.fillStyle = hex(color);
+    g.fillRect(i * w, 0, w + 1, c.height);
+  });
+  let seed = kind === 'rainbow' ? 7 : 13;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  g.fillStyle = 'rgba(255,255,255,0.55)';
+  for (let i = 0; i < 26; i++) {
+    const x = rnd() * c.width;
+    const y = rnd() * c.height;
+    const len = 10 + rnd() * 26;
+    g.fillRect(x, y, 3, len);
+    if (y + len > c.height) g.fillRect(x, y - c.height, 3, len);
+  }
+  const tex = toTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+/** Vertical alpha ramp (opaque at the top) for the tail of a cascade falling into the void. */
+export function makeFadeTexture(): THREE.CanvasTexture {
+  const [c, g] = canvas2d(4, 64);
+  const grad = g.createLinearGradient(0, 0, 0, 64);
+  grad.addColorStop(0, '#fff');
+  grad.addColorStop(1, '#000');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 4, 64);
+  const tex = new THREE.CanvasTexture(c);
+  return tex;
+}
+
 /** Pie wedges on the caps: the caps face the camera, so they carry the spin. */
 export function makeBarrelCapTexture(): THREE.CanvasTexture {
   const [c, g] = canvas2d(128, 128);

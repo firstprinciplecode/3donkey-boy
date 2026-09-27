@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { COLORS } from './config';
 import type { Skin } from './levels/skins';
+import { buildPosterScenery } from './posterScenery';
 import { box } from './voxel';
 import type { VoxelBuilder } from './voxel';
 
@@ -17,6 +18,7 @@ export function buildBackground(vb: VoxelBuilder, skin: Skin, rand: Rand): void 
   buildClouds(vb, skin, rand);
   buildIslands(vb, skin, rand);
   buildBalloons(vb, skin, rand);
+  buildPosterScenery(vb, rand);
 }
 
 function around(rand: Rand, min: number, max: number): { x: number; z: number } {
@@ -63,7 +65,7 @@ function buildTowers(vb: VoxelBuilder, skin: Skin, rand: Rand): void {
 }
 
 function buildClouds(vb: VoxelBuilder, skin: Skin, rand: Rand): void {
-  for (let i = 0; i < 28; i++) {
+  for (let i = 0; i < 18; i++) {
     const { x, z } = around(rand, NEAR_LIMIT, 65);
     const cy = -10 + rand() * 42;
     const puffs = 3 + Math.floor(rand() * 4);
@@ -85,13 +87,20 @@ function buildIslands(vb: VoxelBuilder, skin: Skin, rand: Rand): void {
         vb.box(x + ix + 0.5, y - 0.5, z + iz + 0.5, 1, 1, 1, skin.island.top);
       }
     }
+    let underside = y - 1;
+    let lastH = half;
     skin.island.bands.forEach((color, layer) => {
       const h = half - Math.floor(layer / 2);
       if (h <= 0) return;
       for (let ix = -h; ix < h; ix++) {
         for (let iz = -h; iz < h; iz++) vb.box(x + ix + 0.5, y - 1.5 - layer, z + iz + 0.5, 1, 1, 1, color);
       }
+      underside = y - 2 - layer;
+      lastH = h;
     });
+    for (let ix = -lastH; ix < lastH; ix++) {
+      for (let iz = -lastH; iz < lastH; iz++) vb.spike(x + ix + 0.5, underside, z + iz + 0.5, 1.35, 0.8 + rand() * 1.4, COLORS.black);
+    }
     if (rand() < 0.6) {
       vb.block(x, y, z, 0.3, 0.7, 0.3, COLORS.brown);
       vb.block(x, y + 0.6, z, 1.1, 0.9, 1.1, COLORS.leaf);
