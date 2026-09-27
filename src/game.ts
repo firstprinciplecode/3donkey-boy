@@ -10,7 +10,6 @@ import {
   GAME_RULES,
   GHOST,
   HAMMER,
-  HISCORE_KEY,
   PHYSICS,
   PLAYER_SIZE,
   RAINBOW,
@@ -24,6 +23,8 @@ import { ITEM_RADIUS, Item } from './entities/items';
 import { Particles } from './entities/particles';
 import { Player } from './entities/player';
 import { createOneUpToken } from './entities/token';
+import type { HiScoreEntry } from './hiscore';
+import { cycleLetter, insertScore, insertionIndex, loadBoard, saveBoard, topScore } from './hiscore';
 import type { Hud } from './hud';
 import type { Input } from './input';
 import { BOSS_POS, Level, sideYaw, squareCoords } from './level';
@@ -32,39 +33,25 @@ import { validateLevel } from './levels/validate';
 import { Obstacles } from './obstacles';
 import type { Stage } from './stage';
 import { LIGHTING, timeForRound, type TimeOfDay } from './timeOfDay';
-import { formatScore, randRange, sphereHitsCylinder } from './utils';
+import { randRange, sphereHitsCylinder } from './utils';
 import { buildWorld, disposeWorld } from './world';
 
-type GameState = 'title' | 'ready' | 'playing' | 'paused' | 'dying' | 'clear' | 'gameover';
+type GameState = 'title' | 'ready' | 'playing' | 'paused' | 'dying' | 'clear' | 'initials' | 'gameover';
 
 const READY_TIME = 1.6;
 const DEATH_TIME = 2.2;
 const CLEAR_TIME = 3.2;
 const HINT_COOLDOWN = 1.4;
 
-function loadHiScore(): number {
-  try {
-    const value = Number(window.localStorage.getItem(HISCORE_KEY));
-    return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function saveHiScore(value: number): void {
-  try {
-    window.localStorage.setItem(HISCORE_KEY, String(Math.floor(value)));
-  } catch {
-    // Storage can be unavailable (private mode, quota); the hi-score just won't persist.
-  }
-}
-
 export class Game {
   private state: GameState = 'title';
   private stateTime = 0;
   private clock = 0;
   private score = 0;
-  private hiScore: number;
+  private hiScore = 0;
+  private board: HiScoreEntry[] = [];
+  private initials: string[] = ['A', 'A', 'A'];
+  private initialCursor = 0;
   private lives: number = GAME_RULES.lives;
   private round = 1;
   private speedMul = 1;
@@ -147,7 +134,8 @@ export class Game {
       this.particles.burst(b.pos.x, b.pos.y + 0.4, b.pos.z, RAINBOW, 8, 3);
     };
 
-    this.hiScore = loadHiScore();
+    this.board = loadBoard();
+    this.hiScore = topScore(this.board);
     this.hud.setHi(this.hiScore);
     this.hud.setScore(0);
     this.hud.setLives(this.lives);
@@ -158,7 +146,7 @@ export class Game {
     this.player.reset(this.level.def.playerStart);
     this.spawnItems();
     this.spawnGhosts(0);
-    this.hud.showTitle();
+    this.hud.showTitle(this.board);
   }
 
   update(dt: number): void {
@@ -195,6 +183,9 @@ export class Game {
         break;
       case 'clear':
         this.updateClear(dt);
+        break;
+      case 'initials':
+        this.editInitials();
         break;
       case 'gameover':
         if (this.stateTime > 1 && this.input.consume('Space')) this.startGame();
@@ -549,7 +540,6 @@ export class Game {
     this.particles.burst(pp.x, pp.y + 0.8, pp.z, [COLORS.orange, COLORS.cyan, COLORS.yellow], 18, 5);
     if (fell) sfx.fall();
     else sfx.hit();
-    saveHiScore(this.hiScore);
   }
 
   private clearRound(): void {
@@ -573,17 +563,77 @@ export class Game {
       this.hud.setBannerSub(`bonus ${this.bonus}`);
     }
     if (this.stateTime >= CLEAR_TIME) {
-      saveHiScore(this.hiScore);
       this.round += 1;
       this.startRound(true);
     }
   }
 
   private gameOver(): void {
-    this.setState('gameover');
-    saveHiScore(this.hiScore);
     sfx.gameOver();
-    this.hud.showMessage('game over', `score ${formatScore(this.score)}pt · press space to play again`);
+    if (insertionIndex(this.board, this.score) !== null) {
+      this.initials = ['A', 'A', 'A'];
+      this.initialCursor = 0;
+      this.setState('initials');
+      this.hud.showInitials(this.initials, this.initialCursor, this.score);
+      return;
+    }
+    this.showGameOver(null);
+  }
+
+  /** Three-letter name entry. Up/down cycles a slot, left/right moves, typing fills it. */
+  private editInitials(): void {
+    let changed = false;
+    if (this.input.consume('ArrowLeft')) {
+      this.initialCursor = (this.initialCursor + 2) % 3;
+      changed = true;
+    } else if (this.input.consume('ArrowRight')) {
+      this.initialCursor = (this.initialCursor + 1) % 3;
+      changed = true;
+    }
+
+    if (this.input.consume('ArrowUp')) {
+      this.initials[this.initialCursor] = cycleLetter(this.initials[this.initialCursor], 1);
+      changed = true;
+    } else if (this.input.consume('ArrowDown')) {
+      this.initials[this.initialCursor] = cycleLetter(this.initials[this.initialCursor], -1);
+      changed = true;
+    }
+
+    for (const letter of this.input.consumeLetters()) {
+      this.initials[this.initialCursor] = letter;
+      if (this.initialCursor < 2) this.initialCursor += 1;
+      changed = true;
+    }
+
+    if (this.input.consume('Backspace') && this.initialCursor > 0) {
+      this.initialCursor -= 1;
+      changed = true;
+    }
+
+    if (this.input.consume('Space') || this.input.consume('Enter') || this.input.consume('NumpadEnter')) {
+      const placed = insertScore(this.board, this.initials.join(''), this.score);
+      if (placed) {
+        this.board = placed.board;
+        saveBoard(this.board);
+        this.hiScore = topScore(this.board);
+        this.hud.setHi(this.hiScore);
+        sfx.score();
+        this.showGameOver(placed.index);
+      } else {
+        this.showGameOver(null);
+      }
+      return;
+    }
+
+    if (changed) {
+      sfx.land();
+      this.hud.showInitials(this.initials, this.initialCursor, this.score);
+    }
+  }
+
+  private showGameOver(highlight: number | null): void {
+    this.setState('gameover');
+    this.hud.showGameOver(this.score, this.board, highlight);
   }
 
   private pause(): void {
@@ -609,7 +659,7 @@ export class Game {
     this.goal.rotation.y += dt * (this.state === 'clear' ? 12 : 1.6);
     this.goal.position.y = this.goalBase.y + Math.sin(this.clock * 2) * 0.15;
 
-    const showcase = this.state === 'title' || this.state === 'gameover';
+    const showcase = this.state === 'title' || this.state === 'gameover' || this.state === 'initials';
     if (showcase) {
       this.turn = null;
       this.viewAzimuth = showcaseAzimuth(this.clock);

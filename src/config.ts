@@ -105,4 +105,4 @@ export const CAMERA = {
   minHalfWidth: 11,
 } as const;
 
-export const HISCORE_KEY = 'donkeyboy.hiscore';
+export const HISCORE_KEY = 'popscotch.hiscore';

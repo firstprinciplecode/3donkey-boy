@@ -1,3 +1,4 @@
+import type { HiScoreEntry } from './hiscore';
 import { formatScore } from './utils';
 
 // Static markup only; all runtime values are written with textContent.
@@ -32,7 +33,7 @@ const MARKUP = `
 </div>
 <div class="overlay" data-overlay>
   <div class="overlay__panel">
-    <h1 class="title" data-title aria-label="Donkey Boy"></h1>
+    <h1 class="title" data-title aria-label="Popscotch"></h1>
     <h2 class="overlay__heading" data-heading></h2>
     <p class="overlay__sub" data-sub></p>
     <ul class="controls" data-controls>
@@ -42,10 +43,18 @@ const MARKUP = `
       <li><kbd>p</kbd> pause &middot; <kbd>m</kbd> mute</li>
     </ul>
     <p class="overlay__hint" data-hint>dodge the barrels &middot; jump them for points &middot; reach the 1-up at the top</p>
+    <div class="board-wrap" data-board-wrap hidden>
+      <p class="board__label">hi-score</p>
+      <ol class="board" data-board></ol>
+    </div>
+    <div class="initials" data-initials hidden>
+      <div class="initials__slots" data-slots></div>
+      <p class="overlay__hint">arrows or a letter key &middot; space saves</p>
+    </div>
   </div>
 </div>`;
 
-const TITLE = 'donkey boy';
+const TITLE = 'popscotch';
 const TITLE_COLORS = ['c-orange', 'c-green', 'c-teal', 'c-yellow', 'c-pink'];
 
 function query<T extends HTMLElement>(root: HTMLElement, selector: string): T {
@@ -72,6 +81,10 @@ export class Hud {
   private readonly sub: HTMLElement;
   private readonly controlsList: HTMLElement;
   private readonly hint: HTMLElement;
+  private readonly boardWrap: HTMLElement;
+  private readonly board: HTMLElement;
+  private readonly initialsEl: HTMLElement;
+  private readonly slots: HTMLElement;
   private bannerTimer = 0;
 
   constructor(root: HTMLElement) {
@@ -93,6 +106,10 @@ export class Hud {
     this.sub = query(root, '[data-sub]');
     this.controlsList = query(root, '[data-controls]');
     this.hint = query(root, '[data-hint]');
+    this.boardWrap = query(root, '[data-board-wrap]');
+    this.board = query(root, '[data-board]');
+    this.initialsEl = query(root, '[data-initials]');
+    this.slots = query(root, '[data-slots]');
 
     [...TITLE].forEach((ch, i) => {
       const span = document.createElement('span');
@@ -138,13 +155,48 @@ export class Hud {
     );
   }
 
-  showTitle(): void {
+  showTitle(board: HiScoreEntry[]): void {
     this.title.hidden = false;
     this.heading.hidden = true;
     this.sub.textContent = 'press space to start';
     this.controlsList.hidden = false;
     this.hint.hidden = false;
+    this.initialsEl.hidden = true;
+    this.renderBoard(board, null);
+    this.overlay.classList.add('overlay--visible', 'overlay--scores');
+  }
+
+  showInitials(letters: readonly string[], cursor: number, score: number): void {
+    this.title.hidden = true;
+    this.heading.hidden = false;
+    this.heading.textContent = 'enter your initials';
+    this.sub.textContent = `${formatScore(score)} pt`;
+    this.controlsList.hidden = true;
+    this.hint.hidden = true;
+    this.boardWrap.hidden = true;
+    this.initialsEl.hidden = false;
+    this.slots.replaceChildren(
+      ...letters.map((letter, i) => {
+        const slot = document.createElement('span');
+        slot.className = i === cursor ? 'initials__slot initials__slot--on' : 'initials__slot';
+        slot.textContent = letter;
+        return slot;
+      }),
+    );
     this.overlay.classList.add('overlay--visible');
+    this.overlay.classList.remove('overlay--scores');
+  }
+
+  showGameOver(score: number, board: HiScoreEntry[], highlight: number | null): void {
+    this.title.hidden = true;
+    this.heading.hidden = false;
+    this.heading.textContent = 'game over';
+    this.sub.textContent = `score ${formatScore(score)} pt · press space to play again`;
+    this.controlsList.hidden = true;
+    this.hint.hidden = true;
+    this.initialsEl.hidden = true;
+    this.renderBoard(board, highlight);
+    this.overlay.classList.add('overlay--visible', 'overlay--scores');
   }
 
   showMessage(heading: string, sub: string): void {
@@ -154,11 +206,41 @@ export class Hud {
     this.sub.textContent = sub;
     this.controlsList.hidden = true;
     this.hint.hidden = true;
+    this.boardWrap.hidden = true;
+    this.initialsEl.hidden = true;
     this.overlay.classList.add('overlay--visible');
+    this.overlay.classList.remove('overlay--scores');
   }
 
   hideOverlay(): void {
     this.overlay.classList.remove('overlay--visible');
+  }
+
+  private renderBoard(entries: HiScoreEntry[], highlight: number | null): void {
+    this.board.replaceChildren();
+    if (entries.length === 0) {
+      const empty = document.createElement('li');
+      empty.className = 'board__empty';
+      empty.textContent = 'no scores yet';
+      this.board.appendChild(empty);
+    } else {
+      entries.forEach((entry, i) => {
+        const row = document.createElement('li');
+        row.className = i === highlight ? 'board__row board__row--you' : 'board__row';
+        const rank = document.createElement('span');
+        rank.className = 'board__rank';
+        rank.textContent = String(i + 1);
+        const name = document.createElement('span');
+        name.className = 'board__name';
+        name.textContent = entry.name;
+        const score = document.createElement('span');
+        score.className = 'board__score';
+        score.textContent = formatScore(entry.score);
+        row.append(rank, name, score);
+        this.board.appendChild(row);
+      });
+    }
+    this.boardWrap.hidden = false;
   }
 
   banner(text: string, durationMs: number, sub = ''): void {

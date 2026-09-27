@@ -1,8 +1,11 @@
 {
-  "name": "donkey-boy",
+  "name": "popscotch",
   "version": "0.1.0",
   "private": true,
-  "description": "A voxel Donkey Kong-style platformer built with Three.js",
+  "description": "Popscotch, a voxel arcade climber played around stepped pyramids",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

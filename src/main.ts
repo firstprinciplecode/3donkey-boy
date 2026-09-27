@@ -29,7 +29,7 @@ function boot(): void {
     stage = new Stage(element('stage'));
   } catch (err) {
     console.error(err);
-    showFatal('Donkey Boy needs WebGL. Please try a recent version of Chrome, Safari, Firefox or Edge.');
+    showFatal('Popscotch needs WebGL. Please try a recent version of Chrome, Safari, Firefox or Edge.');
     return;
   }
 
