@@ -51,7 +51,7 @@ import { validateLevel } from './levels/validate';
 import { Obstacles } from './obstacles';
 import type { Stage } from './stage';
 import { LIGHTING, timeForRound, type TimeOfDay } from './timeOfDay';
-import { randRange, sphereHitsCylinder } from './utils';
+import { levelTitle, randRange, sphereHitsCylinder } from './utils';
 import { buildWorld, disposeWorld } from './world';
 
 type GameState = 'title' | 'ready' | 'playing' | 'paused' | 'dying' | 'clear' | 'initials' | 'gameover';
@@ -189,7 +189,7 @@ export class Game {
     this.hintClock = Math.max(0, this.hintClock - dt);
 
     if (this.input.consume('KeyM')) {
-      this.hud.banner(toggleMute() ? 'sound off' : 'sound on', 900);
+      this.hud.banner(toggleMute() ? 'Sound off' : 'Sound on', 900);
     }
 
     switch (this.state) {
@@ -201,7 +201,10 @@ export class Game {
           unlockAudio();
           this.startGame();
         } else if (import.meta.env.DEV) {
-          const pick = this.devLevelKey();
+          let pick = 0;
+          for (let n = 1; n <= Math.min(9, LEVELS.length); n++) {
+            if (this.input.consume(`Digit${n}`) || this.input.consume(`Numpad${n}`)) pick = n;
+          }
           if (pick) {
             unlockAudio();
             this.startGame(pick);
@@ -299,13 +302,6 @@ export class Game {
   }
 
   /** Dev builds only: number keys on the title screen start at that level. */
-  private devLevelKey(): number {
-    for (let n = 1; n <= Math.min(9, LEVELS.length); n++) {
-      if (this.input.consume(`Digit${n}`) || this.input.consume(`Numpad${n}`)) return n;
-    }
-    return 0;
-  }
-
   private startGame(startLevel = 1): void {
     this.practice = startLevel > 1;
     this.score = 0;
@@ -347,9 +343,13 @@ export class Game {
     this.spawnTotems();
     this.hud.setBonus(this.bonus);
     this.hud.setRound(this.round);
-    const when = this.time === 'day' ? '' : ` · ${this.time}`;
+    const when = this.time === 'day' ? '' : ` · ${this.time === 'dusk' ? 'Dusk' : 'Night'}`;
     const tip = def.tip && this.loop === 0 ? ` · ${def.tip}` : '';
-    this.hud.banner(`round-${this.round}`, READY_TIME * 1000 + (tip ? 900 : 0), `level ${this.levelIndex + 1} · ${def.name}${when}${tip}`);
+    this.hud.banner(
+      `Round ${this.round}`,
+      READY_TIME * 1000 + (tip ? 900 : 0),
+      `Level ${this.levelIndex + 1} · ${levelTitle(def.name)}${when}${tip}`,
+    );
     this.setState('ready');
   }
 
@@ -437,7 +437,7 @@ export class Game {
         this.obstacles.boing(this.player.ring, this.player.s);
       }
       if (result.blockedLadder >= 0) this.lockHint(result.blockedLadder);
-      if (result.hammerBlocked) this.hint("can't climb holding the hammer");
+      if (result.hammerBlocked) this.hint("Can't climb holding the hammer");
       if (result.fellInPit) {
         this.die(true);
         return;
@@ -459,7 +459,7 @@ export class Game {
       if (events.crumbled) sfx.crumble();
       if (events.switched) {
         sfx.switch();
-        this.popupAtPlayer('gate open!');
+        this.popupAtPlayer('Gate open!');
       }
       this.checkCollisions();
     }
@@ -513,10 +513,10 @@ export class Game {
     if (kind === 'relics') {
       const left = this.relicsLeft;
       const name = SKINS[this.level.def.skin].relic.name;
-      this.hint(`sealed · ${left} ${name}${left === 1 ? '' : 's'} to go!`);
+      this.hint(`Sealed · ${left} ${name}${left === 1 ? '' : 's'} to go!`);
       return;
     }
-    this.hint(kind === 'key' ? 'locked · find the key!' : 'gated · find the switch!');
+    this.hint(kind === 'key' ? 'Locked · Find the key!' : 'Gated · Find the switch!');
   }
 
   private popupAtPlayer(text: string): void {
@@ -683,7 +683,7 @@ export class Game {
       case 'oneup':
         this.lives = Math.min(GAME_RULES.maxLives, this.lives + 1);
         this.hud.setLives(this.lives);
-        this.popup('1-up!', c.x, c.y + 0.6, c.z);
+        this.popup('1-Up!', c.x, c.y + 0.6, c.z);
         this.particles.burst(c.x, c.y, c.z, [COLORS.grass, COLORS.cream, COLORS.grassDark], 16, 4);
         sfx.oneUp();
         break;
@@ -691,13 +691,13 @@ export class Game {
         this.hammerTime = HAMMER.duration;
         this.player.setHammer(true);
         music.setHammer(true);
-        this.popup('hammer!', c.x, c.y + 0.6, c.z);
+        this.popup('Hammer!', c.x, c.y + 0.6, c.z);
         this.particles.burst(c.x, c.y, c.z, [COLORS.charcoal, COLORS.yellow], 12, 4);
         sfx.hammer();
         break;
       case 'key':
         this.obstacles.unlockKeyDoors();
-        this.popup('door unlocked!', c.x, c.y + 0.6, c.z);
+        this.popup('Door unlocked!', c.x, c.y + 0.6, c.z);
         this.particles.burst(c.x, c.y, c.z, [COLORS.yellow, COLORS.cream], 16, 4);
         sfx.unlock();
         break;
@@ -707,10 +707,10 @@ export class Game {
         const left = this.relicsLeft;
         const total = this.items.filter((it) => it.type === 'relic').length;
         if (left === 0 && this.obstacles.unlockRelicDoors()) {
-          this.popup('summit unsealed!', c.x, c.y + 0.6, c.z);
+          this.popup('Summit unsealed!', c.x, c.y + 0.6, c.z);
           sfx.unlock();
         } else {
-          this.popup(`${SKINS[this.level.def.skin].relic.name} ${total - left}/${total}`, c.x, c.y + 0.6, c.z);
+          this.popup(`${levelTitle(SKINS[this.level.def.skin].relic.name)} ${total - left}/${total}`, c.x, c.y + 0.6, c.z);
           sfx.relic();
         }
         break;
@@ -757,7 +757,7 @@ export class Game {
     this.clearFires();
     this.particles.burst(this.goalBase.x, this.goalBase.y, this.goalBase.z, RAINBOW, 30, 7);
     sfx.clear();
-    this.hud.banner('round clear!', CLEAR_TIME * 1000, `bonus ${this.bonus}`);
+    this.hud.banner('Round clear!', CLEAR_TIME * 1000, `Bonus ${this.bonus}`);
   }
 
   private updateClear(dt: number): void {
@@ -766,7 +766,7 @@ export class Game {
       this.bonus -= chunk;
       this.addScore(chunk);
       this.hud.setBonus(this.bonus);
-      this.hud.setBannerSub(`bonus ${this.bonus}`);
+      this.hud.setBannerSub(`Bonus ${this.bonus}`);
     }
     if (this.stateTime >= CLEAR_TIME) {
       this.round += 1;
@@ -850,7 +850,7 @@ export class Game {
 
   private pause(): void {
     this.setState('paused');
-    this.hud.showMessage('paused', 'press p to resume');
+    this.hud.showMessage('Paused', 'Press P to resume');
   }
 
   private resume(): void {

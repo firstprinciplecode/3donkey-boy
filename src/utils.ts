@@ -40,6 +40,11 @@ export function sphereHitsCylinder(
   return horizontalGap ** 2 + verticalGap ** 2 < r * r;
 }
 
+/** Level names are stored lowercase. The HUD shows them as titles. */
+export function levelTitle(name: string): string {
+  return name.replace(/(^|\s)([a-z])/g, (_gap, lead: string, ch: string) => lead + ch.toUpperCase());
+}
+
 /** Poster-style score: 333-000 */
 export function formatScore(n: number): string {
   const safe = Math.max(0, Math.floor(n));

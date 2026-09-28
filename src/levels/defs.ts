@@ -199,7 +199,7 @@ const DESERT: LevelDef = {
 const HARVEST: LevelDef = {
   name: 'harvest woods',
   skin: 'autumn',
-  tip: 'springs clear wide pits · gather 3 pumpkins',
+  tip: 'Springs clear wide pits · Gather 3 pumpkins',
   rings: 5,
   terraceDepth: 3,
   tierHeight: 4,
@@ -277,7 +277,7 @@ const HARVEST: LevelDef = {
 const FROST: LevelDef = {
   name: 'frost peak',
   skin: 'winter',
-  tip: 'ice is slippery · icicles fall when you pass',
+  tip: 'Ice is slippery · Icicles fall when you pass',
   rings: 5,
   terraceDepth: 3,
   tierHeight: 3,
@@ -359,7 +359,7 @@ const FROST: LevelDef = {
 const TOMB: LevelDef = {
   name: 'serpent tomb',
   skin: 'tomb',
-  tip: 'snakes rear up · fire traps keep time · find 3 idols',
+  tip: 'Snakes rear up · Fire traps keep time · Find 3 idols',
   rings: 6,
   terraceDepth: 3,
   tierHeight: 3,
@@ -447,7 +447,7 @@ const TOMB: LevelDef = {
 const VOLCANO: LevelDef = {
   name: 'volcano isle',
   skin: 'volcano',
-  tip: 'lava jets erupt on a beat · ride the springs',
+  tip: 'Lava jets erupt on a beat · Ride the springs',
   rings: 6,
   terraceDepth: 3,
   tierHeight: 4,

@@ -1,30 +1,30 @@
 import type { HiScoreEntry } from './hiscore';
-import { formatScore } from './utils';
+import { formatScore, levelTitle } from './utils';
 
 // Static markup only; all runtime values are written with textContent.
 const MARKUP = `
 <header class="hud hud--top">
   <div class="hud__cell hud__left">
-    <span class="hud__label">player-1</span>
+    <span class="hud__label">Player 1</span>
     <div class="hud__lives" data-lives></div>
     <div class="hud__letters" data-letters aria-label="letters collected"><span>1</span><span>U</span><span>P</span></div>
   </div>
   <div class="hud__cell hud__center">
-    <span class="hud__label">score-</span><span class="hud__value" data-score>000-000</span><span class="hud__label">pt</span>
+    <span class="hud__label">Score</span><span class="hud__value" data-score>000-000</span><span class="hud__label">pt</span>
   </div>
   <div class="hud__cell hud__right">
-    <span class="hud__label">bonus</span><span class="hud__bonus" data-bonus>5000</span>
+    <span class="hud__label">Bonus</span><span class="hud__bonus" data-bonus>5000</span>
   </div>
 </header>
 <footer class="hud hud--bottom">
   <div class="hud__cell hud__left">
-    <span class="hud__label">level-</span><span class="hud__value hud__value--sm" data-level>1</span><span class="hud__level-name" data-level-name></span>
+    <span class="hud__label">Level</span><span class="hud__value hud__value--sm" data-level>1</span><span class="hud__level-name" data-level-name></span>
   </div>
   <div class="hud__cell hud__center">
-    <span class="hud__label">round-</span><span class="hud__value hud__value--sm" data-round>1</span>
+    <span class="hud__label">Round</span><span class="hud__value hud__value--sm" data-round>1</span>
   </div>
   <div class="hud__cell hud__right">
-    <span class="hud__label">hi-</span><span class="hud__value hud__value--sm" data-hi>000-000</span>
+    <span class="hud__label">Hi</span><span class="hud__value hud__value--sm" data-hi>000-000</span>
   </div>
 </footer>
 <div class="popups" data-popups></div>
@@ -35,17 +35,17 @@ const MARKUP = `
 <div class="overlay" data-overlay>
   <div class="overlay__panel">
     <h1 class="title" data-title aria-label="Popscotch"></h1>
+    <p class="overlay__teaser" data-hint>How high can you climb?</p>
     <h2 class="overlay__heading" data-heading></h2>
     <p class="overlay__sub" data-sub></p>
     <ul class="controls" data-controls>
-      <li><kbd>&larr;</kbd><kbd>&rarr;</kbd> run</li>
-      <li><kbd>&uarr;</kbd><kbd>&darr;</kbd> climb ladders</li>
-      <li><kbd>space</kbd> jump</li>
-      <li><kbd>p</kbd> pause &middot; <kbd>m</kbd> mute</li>
+      <li><kbd>&larr;</kbd><kbd>&rarr;</kbd> Run</li>
+      <li><kbd>&uarr;</kbd><kbd>&darr;</kbd> Climb ladders</li>
+      <li><kbd>space</kbd> Jump</li>
+      <li><kbd>p</kbd> Pause &middot; <kbd>m</kbd> Mute</li>
     </ul>
-    <p class="overlay__hint" data-hint>dodge the barrels &middot; jump them for points &middot; reach the 1-up at the top</p>
     <div class="board-wrap" data-board-wrap hidden>
-      <p class="board__label">hi-score</p>
+      <p class="board__label">Hi-score</p>
       <ol class="board" data-board></ol>
     </div>
     <div class="initials" data-initials hidden>
@@ -55,7 +55,7 @@ const MARKUP = `
   </div>
 </div>`;
 
-const TITLE = 'popscotch';
+const TITLE = 'POPSCOTCH';
 const TITLE_COLORS = ['c-orange', 'c-green', 'c-teal', 'c-yellow', 'c-pink'];
 
 function query<T extends HTMLElement>(root: HTMLElement, selector: string): T {
@@ -141,7 +141,7 @@ export class Hud {
 
   setLevel(n: number, name: string): void {
     this.level.textContent = String(n);
-    this.levelName.textContent = name;
+    this.levelName.textContent = levelTitle(name);
   }
 
   setBonus(n: number): void {
@@ -154,7 +154,7 @@ export class Hud {
       ...Array.from({ length: Math.max(0, n) }, () => {
         const badge = document.createElement('span');
         badge.className = 'life';
-        badge.textContent = '1-up';
+        badge.textContent = '1-Up';
         return badge;
       }),
     );
@@ -168,7 +168,7 @@ export class Hud {
   showTitle(board: HiScoreEntry[]): void {
     this.title.hidden = false;
     this.heading.hidden = true;
-    this.sub.textContent = 'press space to start';
+    this.sub.textContent = 'Press space to start';
     this.controlsList.hidden = false;
     this.hint.hidden = false;
     this.initialsEl.hidden = true;
@@ -180,11 +180,11 @@ export class Hud {
   showInitials(letters: readonly string[], cursor: number, score: number, returning = false): void {
     this.title.hidden = true;
     this.heading.hidden = false;
-    this.heading.textContent = returning ? 'new personal best!' : 'enter your initials';
+    this.heading.textContent = returning ? 'New personal best!' : 'Enter your initials';
     this.sub.textContent = `${formatScore(score)} pt`;
     this.initialsHint.textContent = returning
-      ? 'space keeps your initials · arrows or a letter key change them'
-      : 'arrows or a letter key · space saves';
+      ? 'Space keeps your initials · Arrows or a letter key change them'
+      : 'Arrows or a letter key · Space saves';
     this.controlsList.hidden = true;
     this.hint.hidden = true;
     this.boardWrap.hidden = true;
@@ -204,8 +204,8 @@ export class Hud {
   showGameOver(score: number, board: HiScoreEntry[], highlight: number | null): void {
     this.title.hidden = true;
     this.heading.hidden = false;
-    this.heading.textContent = 'game over';
-    this.sub.textContent = `score ${formatScore(score)} pt · press space to play again`;
+    this.heading.textContent = 'Game over';
+    this.sub.textContent = `Score ${formatScore(score)} pt · Press space to play again`;
     this.controlsList.hidden = true;
     this.hint.hidden = true;
     this.initialsEl.hidden = true;
@@ -235,7 +235,7 @@ export class Hud {
     if (entries.length === 0) {
       const empty = document.createElement('li');
       empty.className = 'board__empty';
-      empty.textContent = 'no scores yet';
+      empty.textContent = 'No scores yet';
       this.board.appendChild(empty);
     } else {
       entries.forEach((entry, i) => {
