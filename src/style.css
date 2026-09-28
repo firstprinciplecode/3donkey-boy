@@ -734,3 +734,93 @@ kbd {
     animation: none;
   }
 }
+
+html,
+body {
+  touch-action: manipulation;
+}
+
+/* Input-specific prompts: the body's data-input says which one the player last used. */
+body[data-input='touch'] .only-keys,
+body[data-input='pad'] .only-keys,
+body:not([data-input='touch']) .only-touch,
+body:not([data-input='pad']) .only-pad {
+  display: none;
+}
+
+/* On-screen controls, shown only in touch mode. Sit above the HUD so they stay tappable on menus. */
+.touch {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+body[data-input='touch'] .touch {
+  display: block;
+}
+.touch__pad,
+.touch__jump,
+.touch__small {
+  position: absolute;
+  pointer-events: auto;
+  touch-action: none;
+  border: 4px solid var(--ink);
+  background: color-mix(in srgb, var(--cream) 70%, transparent);
+  box-shadow: 0 4px 0 var(--ink);
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+.touch__pad {
+  left: calc(20px + env(safe-area-inset-left));
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+}
+.touch__arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 14px solid transparent;
+  opacity: 0.55;
+}
+.touch__arrow.on {
+  opacity: 1;
+}
+.touch__arrow--up { left: 60px; top: 6px; border-bottom: 20px solid var(--ink); border-top: 0; }
+.touch__arrow--down { left: 60px; bottom: 6px; border-top: 20px solid var(--ink); border-bottom: 0; }
+.touch__arrow--left { top: 60px; left: 6px; border-right: 20px solid var(--ink); border-left: 0; }
+.touch__arrow--right { top: 60px; right: 6px; border-left: 20px solid var(--ink); border-right: 0; }
+.touch__jump {
+  right: calc(24px + env(safe-area-inset-right));
+  bottom: calc(86px + env(safe-area-inset-bottom));
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--orange) 80%, transparent);
+  font-size: 20px;
+}
+.touch__menu {
+  position: absolute;
+  top: calc(68px + env(safe-area-inset-top));
+  right: calc(16px + env(safe-area-inset-right));
+  display: flex;
+  gap: 10px;
+}
+.touch__small {
+  position: static;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+.touch__jump.on,
+.touch__small.on {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--ink);
+}

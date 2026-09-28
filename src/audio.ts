@@ -2,8 +2,12 @@
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let sfxBus: GainNode | null = null;
+let musicBus: GainNode | null = null;
 let muted = false;
 const VOLUME = 0.5;
+/** Player volume settings, 0..1 each; applied on top of VOLUME. */
+const levels = { music: 1, sfx: 1 };
 
 /** Browsers require a user gesture before audio can start. */
 export function unlockAudio(): void {
@@ -13,23 +17,36 @@ export function unlockAudio(): void {
       master = ctx.createGain();
       master.gain.value = muted ? 0 : VOLUME;
       master.connect(ctx.destination);
+      sfxBus = ctx.createGain();
+      sfxBus.gain.value = levels.sfx;
+      sfxBus.connect(master);
+      musicBus = ctx.createGain();
+      musicBus.gain.value = levels.music;
+      musicBus.connect(master);
     }
     if (ctx.state === 'suspended') void ctx.resume();
   } catch {
     ctx = null;
-    master = null;
+    master = sfxBus = musicBus = null;
   }
 }
 
-/** The shared context and master bus (null until the first user gesture unlocks audio). */
-export function audioGraph(): { ctx: AudioContext; master: GainNode } | null {
-  return ctx && master ? { ctx, master } : null;
+/** The shared context and the music bus (null until the first user gesture unlocks audio). */
+export function audioGraph(): { ctx: AudioContext; music: GainNode } | null {
+  return ctx && musicBus ? { ctx, music: musicBus } : null;
 }
 
 export function toggleMute(): boolean {
   muted = !muted;
   if (master) master.gain.value = muted ? 0 : VOLUME;
   return muted;
+}
+
+export function setVolumes(music: number, sfx: number): void {
+  levels.music = music;
+  levels.sfx = sfx;
+  if (musicBus) musicBus.gain.value = music;
+  if (sfxBus) sfxBus.gain.value = sfx;
 }
 
 interface ToneOptions {
@@ -40,7 +57,7 @@ interface ToneOptions {
 }
 
 function tone(freq: number, duration: number, opts: ToneOptions = {}): void {
-  if (!ctx || !master) return;
+  if (!ctx || !sfxBus) return;
   const { type = 'square', volume = 0.12, slideTo, delay = 0 } = opts;
   const t0 = ctx.currentTime + delay;
   const osc = ctx.createOscillator();
@@ -50,7 +67,7 @@ function tone(freq: number, duration: number, opts: ToneOptions = {}): void {
   if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + duration);
   gain.gain.setValueAtTime(volume, t0);
   gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
-  osc.connect(gain).connect(master);
+  osc.connect(gain).connect(sfxBus);
   osc.start(t0);
   osc.stop(t0 + duration + 0.02);
 }
@@ -63,7 +80,11 @@ export const sfx = {
   land: () => tone(140, 0.05, { type: 'triangle', volume: 0.12 }),
   step: () => tone(90 + Math.random() * 30, 0.03, { type: 'triangle', volume: 0.1 }),
   climb: () => tone(420 + Math.random() * 80, 0.03, { volume: 0.03 }),
-  score: () => arpeggio([988, 1319], 0.07, 0.1),
+  /** `combo` lifts the chime a whole tone per step so a chain sounds like it's climbing. */
+  score: (combo = 1) => {
+    const lift = 2 ** ((2 * (combo - 1)) / 12);
+    arpeggio([988 * lift, 1319 * lift], 0.07, 0.1);
+  },
   pickup: () => arpeggio([660, 880, 1320], 0.06, 0.08),
   oneUp: () => arpeggio([523, 659, 784, 1047, 1319], 0.07, 0.12),
   throw: () => tone(180, 0.22, { type: 'triangle', slideTo: 70, volume: 0.2 }),

@@ -1,17 +1,18 @@
 import * as THREE from 'three';
-import { BARREL, COLORS, SNOWBALL } from '../config';
+import { BARREL, COLORS } from '../config';
+import type { Danger } from '../hazards';
 import { PIT_DEPTH, mod, sideYaw, type LadderPath, type Level } from '../level';
 import type { ProjectileLook } from '../levels/skins';
 import type { ObstacleEnv } from '../obstacles';
-import { makeBarrelCapTexture, makeBarrelSideTexture } from '../textures';
 import { dampAngle } from '../utils';
+import { PROJECTILES, createProjectilePile } from './projectiles';
+
+export { createBarrelMesh } from './projectiles';
 
 const R = BARREL.radius;
-const LENGTH = 0.8;
 const MAX_LIFETIME = 120;
 const SINK_TIME = 0.3;
-const MAX_SNOW_R = R * SNOWBALL.maxScale;
-const SNOW_GROWTH = (MAX_SNOW_R - R) / SNOWBALL.growDistance;
+const SCORCH_RADIUS = 0.45;
 
 export type BarrelState = 'roll' | 'transfer' | 'ladder' | 'sink';
 
@@ -19,8 +20,14 @@ export interface Barrel {
   root: THREE.Group;
   mesh: THREE.Mesh;
   look: ProjectileLook;
-  /** Rolling radius; snowballs grow from BARREL.radius as they roll. */
+  /** Rolling radius; some projectiles start bigger or grow as they roll. */
   radius: number;
+  /** Height of the current bounce above the floor (tumbleweeds); 0 for everything else. */
+  lift: number;
+  /** Bounce progress, in bounces. */
+  hop: number;
+  /** Halves from a split pumpkin don't split again. */
+  split: boolean;
   /** Bottom-centre of the barrel in world space. */
   pos: THREE.Vector3;
   state: BarrelState;
@@ -41,95 +48,49 @@ export interface Barrel {
   done: boolean;
 }
 
+/** Centre height of a barrel's hit sphere. */
+export function barrelCentreY(b: Barrel): number {
+  return b.pos.y + b.lift + b.radius;
+}
+
 function randomDir(): 1 | -1 {
   return Math.random() < 0.5 ? 1 : -1;
 }
 
-let assets: { geometry: THREE.CylinderGeometry; materials: THREE.Material[] } | null = null;
-
-function barrelAssets() {
-  if (!assets) {
-    const geometry = new THREE.CylinderGeometry(R, R, LENGTH, 16);
-    geometry.rotateX(Math.PI / 2);
-    const side = new THREE.MeshLambertMaterial({ map: makeBarrelSideTexture() });
-    const cap = new THREE.MeshLambertMaterial({ map: makeBarrelCapTexture() });
-    assets = { geometry, materials: [side, cap, cap] };
-  }
-  return assets;
-}
-
-export function createBarrelMesh(): THREE.Mesh {
-  const { geometry, materials } = barrelAssets();
-  const mesh = new THREE.Mesh(geometry, materials);
-  mesh.receiveShadow = true;
-  return mesh;
-}
-
-let snowAssets: { geometry: THREE.BufferGeometry; material: THREE.Material } | null = null;
-
-/** Faceted ball with a scatter of shaded faces, so the tumble reads even when it's small on screen. */
-function snowballAssets() {
-  if (!snowAssets) {
-    const geometry = new THREE.IcosahedronGeometry(R, 1).toNonIndexed();
-    const shades = [COLORS.snow, COLORS.snow, COLORS.ice, COLORS.iceDark];
-    const colors: number[] = [];
-    const c = new THREE.Color();
-    const faces = geometry.attributes.position.count / 3;
-    for (let f = 0; f < faces; f++) {
-      c.setHex(shades[(f * 7 + (f >> 2)) % shades.length]);
-      for (let v = 0; v < 3; v++) colors.push(c.r, c.g, c.b);
-    }
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-    snowAssets = { geometry, material };
-  }
-  return snowAssets;
-}
-
-export function createSnowballMesh(): THREE.Mesh {
-  const { geometry, material } = snowballAssets();
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.receiveShadow = true;
-  return mesh;
-}
-
-export function createProjectileMesh(look: ProjectileLook): THREE.Mesh {
-  return look === 'snowball' ? createSnowballMesh() : createBarrelMesh();
-}
-
-/** Ammo stacked beside the boss: upright barrels, or a pyramid of snowballs. */
+/** Ammo stacked beside the boss, matching what it throws. */
 export function createBarrelPile(x: number, y: number, z: number, look: ProjectileLook = 'barrel'): THREE.Group {
-  const pile = new THREE.Group();
-  const snow = look === 'snowball';
-  const spots: [number, number][] = snow
-    ? [
-        [-0.45, R],
-        [0.45, R],
-        [0, R * 2.5],
-      ]
-    : [
-        [-0.45, LENGTH / 2],
-        [0.45, LENGTH / 2],
-        [0, LENGTH * 1.5],
-      ];
-  for (const [dx, dy] of spots) {
-    const m = createProjectileMesh(look);
-    if (!snow) m.rotation.x = Math.PI / 2;
-    m.position.set(x + dx, y + dy, z);
-    pile.add(m);
-  }
-  return pile;
+  return createProjectilePile(x, y, z, look);
 }
+
+interface Scorch {
+  mesh: THREE.Group;
+  pos: THREE.Vector3;
+  life: number;
+  total: number;
+}
+
+const scorchMaterials = {
+  base: new THREE.MeshBasicMaterial({ color: COLORS.lava, transparent: true }),
+  core: new THREE.MeshBasicMaterial({ color: COLORS.yellow, transparent: true }),
+};
+const scorchBase = new THREE.BoxGeometry(0.9, 0.08, 0.9);
+const scorchCore = new THREE.BoxGeometry(0.45, 0.14, 0.45);
+
+type Parts = { root: THREE.Group; mesh: THREE.Mesh };
 
 /**
  * Barrels roll either way around a ring (re-rolling their direction on each landing), dropping
  * off each ring's chute onto the ring below until the drum on the ground ring. Rings are loops,
  * so every barrel reaches a chute whichever way it goes, unless it rolls into a pit first.
+ * The skin's projectile spec layers on size, speed, bouncing, splitting or scorching.
  */
 export class BarrelManager {
   readonly group = new THREE.Group();
   readonly barrels: Barrel[] = [];
-  private readonly pool: Record<ProjectileLook, { root: THREE.Group; mesh: THREE.Mesh }[]> = { barrel: [], snowball: [] };
+  /** Burning patches left by lava rocks, reported like hazard dangers. */
+  readonly dangers: Danger[] = [];
+  private readonly scorches: Scorch[] = [];
+  private readonly pool = new Map<ProjectileLook, Parts[]>();
   level: Level;
   look: ProjectileLook = 'barrel';
   env: ObstacleEnv | null = null;
@@ -137,6 +98,8 @@ export class BarrelManager {
   ladderChance: number = BARREL.ladderChance;
   onDrum: ((b: Barrel) => void) | null = null;
   onPit: ((b: Barrel) => void) | null = null;
+  onSplit: ((b: Barrel) => void) | null = null;
+  onScorch: ((at: THREE.Vector3) => void) | null = null;
 
   constructor(level: Level) {
     this.level = level;
@@ -150,33 +113,8 @@ export class BarrelManager {
   spawn(from: THREE.Vector3): void {
     const L = this.level;
     const spawn = L.def.barrelSpawn;
-    const look = this.look;
-    const parts = this.pool[look].pop() ?? this.createParts(look);
-    parts.root.rotation.set(0, sideYaw(spawn.side), 0);
-    this.group.add(parts.root);
-    const barrel: Barrel = {
-      ...parts,
-      look,
-      radius: R,
-      pos: from.clone(),
-      state: 'roll',
-      ring: spawn.ring,
-      s: L.spotS(spawn),
-      dir: randomDir(),
-      path: null,
-      d: 0,
-      from: new THREE.Vector3(),
-      toRing: 0,
-      toS: 0,
-      t: 0,
-      duration: 1,
-      arc: 0,
-      age: 0,
-      scored: false,
-      done: false,
-    };
+    const barrel = this.create(this.look, from, spawn.ring, L.spotS(spawn), randomDir());
     this.startTransfer(barrel, from, spawn.ring, L.spotS(spawn), 0.8, 1.8);
-    this.barrels.push(barrel);
     this.sync(barrel, 0);
   }
 
@@ -188,12 +126,19 @@ export class BarrelManager {
   clear(): void {
     for (const b of this.barrels) this.release(b);
     this.barrels.length = 0;
+    for (const s of this.scorches) this.group.remove(s.mesh);
+    this.scorches.length = 0;
+    this.dangers.length = 0;
   }
 
   update(dt: number): void {
-    const speed = BARREL.baseSpeed * this.speedMul;
-    for (const b of this.barrels) {
+    const base = BARREL.baseSpeed * this.speedMul;
+    // Splits add barrels mid-loop; they start moving next step.
+    const live = this.barrels.length;
+    for (let i = 0; i < live; i++) {
+      const b = this.barrels[i];
       if (b.done) continue;
+      const speed = base * PROJECTILES[b.look].speed;
       b.age += dt;
       if (b.state === 'roll') this.stepRoll(b, dt, speed);
       else if (b.state === 'transfer') this.stepTransfer(b, dt);
@@ -207,14 +152,57 @@ export class BarrelManager {
       this.release(this.barrels[i]);
       this.barrels.splice(i, 1);
     }
+    this.updateScorches(dt);
+  }
+
+  private create(look: ProjectileLook, at: THREE.Vector3, ring: number, s: number, dir: 1 | -1): Barrel {
+    const spec = PROJECTILES[look];
+    const parts = this.pool.get(look)?.pop() ?? this.createParts(look);
+    spec.respawn?.(parts.mesh);
+    parts.root.rotation.set(0, sideYaw(this.level.ringPoint(ring, s).side), 0);
+    this.group.add(parts.root);
+    const barrel: Barrel = {
+      ...parts,
+      look,
+      radius: R * spec.scale,
+      lift: 0,
+      hop: 0,
+      split: false,
+      pos: at.clone(),
+      state: 'roll',
+      ring,
+      s,
+      dir,
+      path: null,
+      d: 0,
+      from: new THREE.Vector3(),
+      toRing: 0,
+      toS: 0,
+      t: 0,
+      duration: 1,
+      arc: 0,
+      age: 0,
+      scored: false,
+      done: false,
+    };
+    this.barrels.push(barrel);
+    return barrel;
   }
 
   private stepRoll(b: Barrel, dt: number, speed: number): void {
     const L = this.level;
+    const spec = PROJECTILES[b.look];
     const delta = speed * dt;
     const prev = b.s;
     b.s = mod(b.s + b.dir * delta, L.ringLength(b.ring));
-    if (b.look === 'snowball') b.radius = Math.min(MAX_SNOW_R, b.radius + delta * SNOW_GROWTH);
+    if (spec.grow) {
+      const max = R * spec.grow.maxScale;
+      b.radius = Math.min(max, b.radius + (delta * (max - R * spec.scale)) / spec.grow.distance);
+    }
+    if (spec.hop) {
+      b.hop += delta / spec.hop.every;
+      b.lift = spec.hop.height * Math.abs(Math.sin(Math.PI * b.hop));
+    }
     b.mesh.rotation.z -= (b.dir * delta) / b.radius;
 
     for (const path of L.ladderPaths) {
@@ -224,6 +212,7 @@ export class BarrelManager {
         b.state = 'ladder';
         b.path = path;
         b.d = path.length;
+        b.lift = 0;
         return;
       }
     }
@@ -231,6 +220,7 @@ export class BarrelManager {
     const chute = L.chuteByRing[b.ring];
     if (chute && L.crossed(b.ring, prev, L.spotS(chute), delta, b.dir)) {
       const below = b.ring - 1;
+      b.lift = 0;
       this.startTransfer(b, b.pos, below, L.sOf(below, chute.side, chute.offset), 0.55, 0);
       return;
     }
@@ -286,6 +276,56 @@ export class BarrelManager {
       b.ring = b.toRing;
       b.s = b.toS;
       if (Math.random() < BARREL.flipChance) b.dir = -b.dir as 1 | -1;
+      // Only drops off a chute count as landings; the boss's lob onto the top ring doesn't.
+      if (b.arc === 0) this.land(b);
+    }
+  }
+
+  private land(b: Barrel): void {
+    const spec = PROJECTILES[b.look];
+    if (spec.splits && !b.split) {
+      b.split = true;
+      b.radius *= spec.splits.scale;
+      const twin = this.create(b.look, b.pos, b.ring, b.s, -b.dir as 1 | -1);
+      twin.split = true;
+      twin.radius = b.radius;
+      twin.mesh.rotation.z = b.mesh.rotation.z + Math.PI;
+      this.sync(twin, 0);
+      this.onSplit?.(b);
+    }
+    if (spec.scorch) {
+      this.addScorch(b.pos, spec.scorch.life);
+      this.onScorch?.(b.pos);
+    }
+  }
+
+  private addScorch(at: THREE.Vector3, life: number): void {
+    const mesh = new THREE.Group();
+    const base = new THREE.Mesh(scorchBase, scorchMaterials.base);
+    base.position.y = 0.04;
+    const core = new THREE.Mesh(scorchCore, scorchMaterials.core);
+    core.position.y = 0.08;
+    mesh.add(base, core);
+    mesh.position.copy(at);
+    this.group.add(mesh);
+    this.scorches.push({ mesh, pos: at.clone(), life, total: life });
+  }
+
+  private updateScorches(dt: number): void {
+    this.dangers.length = 0;
+    for (let i = this.scorches.length - 1; i >= 0; i--) {
+      const s = this.scorches[i];
+      s.life -= dt;
+      if (s.life <= 0) {
+        this.group.remove(s.mesh);
+        this.scorches.splice(i, 1);
+        continue;
+      }
+      // Flicker, then shrink away over the last half second so the end is readable.
+      const fade = Math.min(1, s.life / 0.5);
+      const flicker = 1 + Math.sin(s.life * 23) * 0.08;
+      s.mesh.scale.set(fade * flicker, 1, fade * flicker);
+      this.dangers.push({ x: s.pos.x, y: s.pos.y + 0.1, z: s.pos.z, r: SCORCH_RADIUS * fade });
     }
   }
 
@@ -311,7 +351,7 @@ export class BarrelManager {
 
   private sync(b: Barrel, dt: number): void {
     const L = this.level;
-    b.root.position.set(b.pos.x, b.pos.y + b.radius, b.pos.z);
+    b.root.position.set(b.pos.x, barrelCentreY(b), b.pos.z);
     b.mesh.scale.setScalar(b.radius / R);
     const side =
       b.state === 'ladder' && b.path
@@ -322,9 +362,9 @@ export class BarrelManager {
     b.root.rotation.y = dt > 0 ? dampAngle(b.root.rotation.y, yaw, 20, dt) : yaw;
   }
 
-  private createParts(look: ProjectileLook): { root: THREE.Group; mesh: THREE.Mesh } {
+  private createParts(look: ProjectileLook): Parts {
     const root = new THREE.Group();
-    const mesh = createProjectileMesh(look);
+    const mesh = PROJECTILES[look].mesh();
     root.add(mesh);
     return { root, mesh };
   }
@@ -333,6 +373,8 @@ export class BarrelManager {
     this.group.remove(b.root);
     b.mesh.rotation.set(0, 0, 0);
     b.mesh.scale.setScalar(1);
-    this.pool[b.look].push({ root: b.root, mesh: b.mesh });
+    let pool = this.pool.get(b.look);
+    if (!pool) this.pool.set(b.look, (pool = []));
+    pool.push({ root: b.root, mesh: b.mesh });
   }
 }

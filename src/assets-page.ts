@@ -2,7 +2,8 @@ import './assets-page.css';
 import * as THREE from 'three';
 import { SkyCritters } from './background';
 import { COLORS } from './config';
-import { createBarrelMesh, createSnowballMesh } from './entities/barrels';
+import { PROJECTILES } from './entities/projectiles';
+import type { ProjectileLook } from './levels/skins';
 import { Boss } from './entities/boss';
 import { Crawler } from './entities/crawler';
 import { Fire } from './entities/fire';
@@ -335,6 +336,24 @@ flame.group.children[0].scale.setScalar(1);
 
 type Entry = { name: string; object?: THREE.Object3D; image?: CanvasImageSource };
 
+const PROJECTILE_NAMES: Record<ProjectileLook, string> = {
+  barrel: 'barrel',
+  snowball: 'snowball',
+  tumbleweed: 'tumbleweed',
+  pumpkin: 'pumpkin',
+  lavarock: 'lava rock',
+  boulder: 'boulder',
+  gumball: 'gumball',
+};
+
+/** Shown at its starting size, so the boulder reads as big next to the others. */
+function projectile(look: ProjectileLook): THREE.Object3D {
+  const spec = PROJECTILES[look];
+  const mesh = spec.mesh();
+  mesh.scale.setScalar(spec.scale);
+  return mesh;
+}
+
 const sections: { title: string; cells: Entry[] }[] = [
   {
     title: 'Characters',
@@ -344,9 +363,11 @@ const sections: { title: string; cells: Entry[] }[] = [
       { name: 'ghost', object: new Ghost(level, level.def.patrols[0], 1).group },
       { name: 'flame', object: flame.group },
       { name: 'sky critter', object: skyCritter() },
-      { name: 'barrel', object: createBarrelMesh() },
-      { name: 'snowball', object: createSnowballMesh() },
     ],
+  },
+  {
+    title: 'Projectiles',
+    cells: (Object.keys(PROJECTILES) as ProjectileLook[]).map((look) => ({ name: PROJECTILE_NAMES[look], object: projectile(look) })),
   },
   {
     title: 'Ground monsters',

@@ -39,10 +39,14 @@ const MARKUP = `
     <h2 class="overlay__heading" data-heading></h2>
     <p class="overlay__sub" data-sub></p>
     <ul class="controls" data-controls>
-      <li><kbd>&larr;</kbd><kbd>&rarr;</kbd> Run</li>
-      <li><kbd>&uarr;</kbd><kbd>&darr;</kbd> Climb ladders</li>
-      <li><kbd>space</kbd> Jump</li>
-      <li><kbd>p</kbd> Pause &middot; <kbd>m</kbd> Mute</li>
+      <li class="only-keys"><kbd>&larr;</kbd><kbd>&rarr;</kbd> Run</li>
+      <li class="only-keys"><kbd>&uarr;</kbd><kbd>&darr;</kbd> Climb ladders</li>
+      <li class="only-keys"><kbd>space</kbd> Jump</li>
+      <li class="only-keys"><kbd>p</kbd> Pause &middot; <kbd>m</kbd> Mute</li>
+      <li class="only-touch">Left pad: run and climb</li>
+      <li class="only-touch">Right button: jump</li>
+      <li class="only-pad"><kbd>d-pad</kbd> or stick: run and climb</li>
+      <li class="only-pad"><kbd>A</kbd> Jump &middot; <kbd>start</kbd> Pause &middot; <kbd>back</kbd> Mute</li>
     </ul>
     <div class="board-wrap" data-board-wrap hidden>
       <p class="board__label">Hi-score</p>
@@ -57,6 +61,22 @@ const MARKUP = `
 
 const TITLE = 'POPSCOTCH';
 const TITLE_COLORS = ['c-orange', 'c-green', 'c-teal', 'c-yellow', 'c-pink'];
+
+/** One variant per input mode; CSS shows the one matching body[data-input]. */
+export function byInput(keys: string, touch: string, pad: string): DocumentFragment {
+  const out = document.createDocumentFragment();
+  for (const [mode, text] of [
+    ['keys', keys],
+    ['touch', touch],
+    ['pad', pad],
+  ]) {
+    const span = document.createElement('span');
+    span.className = `only-${mode}`;
+    span.textContent = text;
+    out.appendChild(span);
+  }
+  return out;
+}
 
 function query<T extends HTMLElement>(root: HTMLElement, selector: string): T {
   const el = root.querySelector<T>(selector);
@@ -168,7 +188,7 @@ export class Hud {
   showTitle(board: HiScoreEntry[]): void {
     this.title.hidden = false;
     this.heading.hidden = true;
-    this.sub.textContent = 'Press space to start';
+    this.sub.replaceChildren(byInput('Press space to start', 'Tap jump to start', 'Press A to start'));
     this.controlsList.hidden = false;
     this.hint.hidden = false;
     this.initialsEl.hidden = true;
@@ -182,9 +202,19 @@ export class Hud {
     this.heading.hidden = false;
     this.heading.textContent = returning ? 'New personal best!' : 'Enter your initials';
     this.sub.textContent = `${formatScore(score)} pt`;
-    this.initialsHint.textContent = returning
-      ? 'Space keeps your initials · Arrows or a letter key change them'
-      : 'Arrows or a letter key · Space saves';
+    this.initialsHint.replaceChildren(
+      returning
+        ? byInput(
+            'Space keeps your initials · Arrows or a letter key change them',
+            'Jump keeps your initials · The pad changes them',
+            'A keeps your initials · The d-pad changes them',
+          )
+        : byInput(
+            'Arrows or a letter key · Space saves',
+            'Up and down pick a letter, left and right move · Jump saves',
+            'D-pad picks letters · A saves',
+          ),
+    );
     this.controlsList.hidden = true;
     this.hint.hidden = true;
     this.boardWrap.hidden = true;
@@ -205,7 +235,10 @@ export class Hud {
     this.title.hidden = true;
     this.heading.hidden = false;
     this.heading.textContent = 'Game over';
-    this.sub.textContent = `Score ${formatScore(score)} pt · Press space to play again`;
+    this.sub.replaceChildren(
+      `Score ${formatScore(score)} pt · `,
+      byInput('Press space to play again', 'Tap jump to play again', 'Press A to play again'),
+    );
     this.controlsList.hidden = true;
     this.hint.hidden = true;
     this.initialsEl.hidden = true;
@@ -213,11 +246,11 @@ export class Hud {
     this.overlay.classList.add('overlay--visible', 'overlay--scores');
   }
 
-  showMessage(heading: string, sub: string): void {
+  showMessage(heading: string, sub: string | DocumentFragment): void {
     this.title.hidden = true;
     this.heading.hidden = false;
     this.heading.textContent = heading;
-    this.sub.textContent = sub;
+    this.sub.replaceChildren(sub);
     this.controlsList.hidden = true;
     this.hint.hidden = true;
     this.boardWrap.hidden = true;

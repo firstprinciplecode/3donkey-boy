@@ -13,6 +13,10 @@ export interface CameraGoal {
   distance: number;
 }
 
+const SHAKE_MAX = 0.35;
+const SHAKE_DECAY = 1.8;
+const SHAKE_FREQ = 38;
+
 /** Renderer, lights and an orthographic camera that orbits the pyramid. */
 export class Stage {
   readonly renderer: THREE.WebGLRenderer;
@@ -29,6 +33,12 @@ export class Stage {
   private height = 1;
   private readonly hemi = new THREE.HemisphereLight();
   private readonly sun = new THREE.DirectionalLight();
+  private readonly right = new THREE.Vector3();
+  private readonly up = new THREE.Vector3();
+  private trauma = 0;
+  private shakeClock = 0;
+  /** 0 disables screen shake (reduced motion). */
+  shakeScale = 1;
 
   constructor(container: HTMLElement) {
     const dpr = window.devicePixelRatio || 1;
@@ -103,6 +113,18 @@ export class Stage {
     this.polar = damp(this.polar, goal.polar, 3, dt);
     this.zoom = damp(this.zoom, goal.zoom, 3, dt);
     this.distance = damp(this.distance, goal.distance, 3, dt);
+    this.settle(dt);
+  }
+
+  /** Adds screen shake; `amount` stacks up to 1. */
+  shake(amount: number): void {
+    this.trauma = Math.min(1, this.trauma + amount);
+  }
+
+  /** Decays the shake and re-places the camera without moving its goal (used during hit-stop too). */
+  settle(dt: number): void {
+    this.shakeClock += dt;
+    this.trauma = Math.max(0, this.trauma - dt * SHAKE_DECAY);
     this.applyCamera();
   }
 
@@ -122,6 +144,17 @@ export class Stage {
     this.offset.setFromSphericalCoords(this.distance, this.polar, this.azimuth);
     this.camera.position.copy(this.focus).add(this.offset);
     this.camera.lookAt(this.focus);
+    const jolt = this.trauma * this.trauma * this.shakeScale * SHAKE_MAX;
+    if (jolt > 1e-4) {
+      // Slide within the view plane only, so the orthographic framing never tilts.
+      const t = this.shakeClock * SHAKE_FREQ;
+      this.camera.updateMatrixWorld();
+      this.right.setFromMatrixColumn(this.camera.matrixWorld, 0);
+      this.up.setFromMatrixColumn(this.camera.matrixWorld, 1);
+      this.camera.position
+        .addScaledVector(this.right, jolt * Math.sin(t * 1.3 + 0.7) * Math.cos(t * 0.6))
+        .addScaledVector(this.up, jolt * Math.sin(t * 1.7) * Math.cos(t * 0.9 + 1.1));
+    }
     if (this.camera.zoom !== this.zoom) {
       this.camera.zoom = this.zoom;
       this.camera.updateProjectionMatrix();

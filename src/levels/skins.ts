@@ -28,7 +28,7 @@ export type DecorKind =
 export type CrawlerLook = 'hedgehog' | 'penguin' | 'snake' | 'scorpion';
 export type DropLook = 'acorn' | 'icicle' | 'spike' | 'lavarock';
 export type RelicLook = 'pumpkin' | 'idol' | 'present';
-export type ProjectileLook = 'barrel' | 'snowball';
+export type ProjectileLook = 'barrel' | 'snowball' | 'tumbleweed' | 'pumpkin' | 'lavarock' | 'boulder' | 'gumball';
 
 export interface TierStyle {
   /** Alternating colours for the terrace top (rainbow styles cycle through all of them). */
@@ -113,7 +113,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.pink, COLORS.purple, COLORS.cyan],
     crawler: 'hedgehog',
     drop: 'acorn',
-    projectile: 'barrel',
+    projectile: 'gumball',
     relic: { look: 'present', name: 'present' },
   },
   desert: {
@@ -132,7 +132,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.red, COLORS.orange, COLORS.blue],
     crawler: 'snake',
     drop: 'spike',
-    projectile: 'barrel',
+    projectile: 'tumbleweed',
     relic: { look: 'idol', name: 'idol' },
   },
   autumn: {
@@ -151,7 +151,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.maple, COLORS.yellow, COLORS.teal],
     crawler: 'hedgehog',
     drop: 'acorn',
-    projectile: 'barrel',
+    projectile: 'pumpkin',
     relic: { look: 'pumpkin', name: 'pumpkin' },
   },
   winter: {
@@ -189,7 +189,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.gold, COLORS.teal, COLORS.red],
     crawler: 'snake',
     drop: 'spike',
-    projectile: 'barrel',
+    projectile: 'boulder',
     relic: { look: 'idol', name: 'idol' },
   },
   volcano: {
@@ -208,7 +208,7 @@ export const SKINS: Record<SkinName, Skin> = {
     balloons: [COLORS.lava, COLORS.yellow, COLORS.teal],
     crawler: 'scorpion',
     drop: 'lavarock',
-    projectile: 'barrel',
+    projectile: 'lavarock',
     relic: { look: 'idol', name: 'idol' },
   },
 };

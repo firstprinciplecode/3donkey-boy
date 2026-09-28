@@ -186,7 +186,7 @@ class Music {
   start(): void {
     const graph = audioGraph();
     if (!graph || this.timer) return;
-    this.nodes ??= buildNodes(graph.ctx, graph.master);
+    this.nodes ??= buildNodes(graph.ctx, graph.music);
     this.nodes.echo.delayTime.value = this.stepDuration * 3;
     this.nextTime = graph.ctx.currentTime + 0.05;
     this.timer = setInterval(() => this.schedule(graph.ctx), TICK_MS);

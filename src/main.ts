@@ -4,6 +4,7 @@ import { Game } from './game';
 import { Hud } from './hud';
 import { Input } from './input';
 import { Stage } from './stage';
+import { mountTouchControls } from './touch';
 
 const MAX_FRAME_DT = 1 / 20;
 
@@ -33,13 +34,22 @@ function boot(): void {
     return;
   }
 
-  const game = new Game(stage, new Hud(element('hud')), new Input());
-  if (import.meta.env.DEV) Object.assign(window, { __game: game });
+  const input = new Input();
+  input.onModeChange = (mode) => {
+    document.body.dataset.input = mode;
+  };
+  if (window.matchMedia('(pointer: coarse)').matches) input.setMode('touch');
+  document.body.dataset.input = input.mode;
+  mountTouchControls(input);
+
+  const game = new Game(stage, new Hud(element('hud')), input);
+  if (import.meta.env.DEV) Object.assign(window, { __game: game, __input: input });
 
   let last = performance.now();
   const frame = (now: number) => {
     const dt = Math.min((now - last) / 1000, MAX_FRAME_DT);
     last = now;
+    input.poll();
     game.update(dt);
     stage.render();
     requestAnimationFrame(frame);

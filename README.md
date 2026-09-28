@@ -37,13 +37,17 @@ octave while you hold the hammer.
 
 ### Controls
 
-| Key | Action |
-| --- | --- |
-| ← → | run |
-| ↑ ↓ | climb ladders |
-| Space | jump, start, or save initials |
-| P / Esc | pause |
-| M | mute |
+| Keyboard | Gamepad | Touch | Action |
+| --- | --- | --- | --- |
+| ← → | d-pad or left stick | left pad | run |
+| ↑ ↓ | d-pad or left stick | left pad | climb ladders |
+| Space | A or B | Jump button | jump, start, or save initials |
+| P / Esc | Start | II | pause |
+| M | Back | ♫ | mute |
+
+The prompts and on-screen hints follow whatever you used last. Touch screens start in touch
+mode with the on-screen pad; touching it, pressing a key, or pressing a gamepad button switches
+modes. Any standard-layout gamepad works in browsers that support the Gamepad API.
 
 ### High scores
 
@@ -72,7 +76,7 @@ bring lower light, stars, and glowing windows, lanterns, and balloons.
 | candy hills | 5 tiers | spirals left | crumbling floors, moving platform, pits, key door |
 | desert arcade | 6 short tiers | zig-zags each ring | everything, 3 flames |
 | harvest woods | 5 tiers, autumn | spirals right | spring pads, falling acorns, hedgehogs, 3 pumpkins unseal the summit |
-| frost peak | 5 short tiers, winter | zig-zags each ring | snowballs instead of barrels (they grow as they roll and pay up to 200 to jump), ice, icicles, belly-sliding penguins, switch gate, key door |
+| frost peak | 5 short tiers, winter | zig-zags each ring | growing snowballs, ice, icicles, belly-sliding penguins, switch gate, key door |
 | serpent tomb | 6 short tiers, desert | spirals left | snakes that rear up, fire traps, stalactites, 3 golden idols |
 | volcano isle | 6 tiers, summer | zig-zags each ring | lava jets, lava rocks, scorpions, springs, switch gate, key door |
 
@@ -93,6 +97,29 @@ bring lower light, stars, and glowing windows, lanterns, and balloons.
 - **Ground monsters.** Hedgehogs, penguins, snakes, and scorpions pace the rings. Jump them for 200. Snakes and scorpions rear up; penguins and hedgehogs dash.
 - **Spike totems.** Horned black monsters from the poster. They're too tall to jump, but every couple of seconds they crouch and hop straight up. Run underneath mid-hop for 300, or smash one with the hammer for 800.
 - **Relic seals.** Some summits stay sealed until every pumpkin or idol on the level is collected.
+
+### What the boss throws
+
+Each level has its own projectile. They all roll the same routes as barrels; the differences are below.
+Jumping one pays 100, and more for bigger ones.
+
+| Level | Projectile | Twist |
+| --- | --- | --- |
+| meadow | barrel | the original |
+| candy hills | gumball | a random colour each throw |
+| desert arcade | tumbleweed | bounces as it rolls, so time your jump for a low bounce |
+| harvest woods | pumpkin | splits into two smaller pumpkins rolling opposite ways when it drops a ring |
+| frost peak | snowball | grows as it rolls, up to 1.85x (pays 200 at full size) |
+| serpent tomb | boulder | starts big (1.45x) and rolls a little slower |
+| volcano isle | lava rock | leaves a burning patch for 3 seconds where it lands below a chute |
+
+Sizes are capped so every projectile can still be jumped. `SNOWBALL` in `src/config.ts` and
+`PROJECTILES` in `src/entities/projectiles.ts` hold the numbers.
+
+### Game feel
+
+- **Combo.** Jumping barrels, monsters, or under totems within 2.5 seconds of each other multiplies the points: x2, x3, up to x5. The chime climbs with it.
+- **Hit-stop and shake.** Smashes and deaths freeze the world for a split second and shake the camera.
 
 ## Develop
 

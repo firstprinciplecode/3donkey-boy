@@ -18,9 +18,11 @@ import {
   TOTEM,
 } from './config';
 import { Cascades } from './cascades';
+import { Combo } from './combo';
 import { orbSpots } from './levels/orbs';
 import { Totem } from './entities/totem';
-import { BarrelManager, createBarrelPile } from './entities/barrels';
+import { BarrelManager, barrelCentreY, createBarrelPile } from './entities/barrels';
+import { PROJECTILES } from './entities/projectiles';
 import { Boss } from './entities/boss';
 import { Crawler } from './entities/crawler';
 import { Fire } from './entities/fire';
@@ -42,7 +44,7 @@ import {
   topScore,
 } from './hiscore';
 import { Hazards, type HazardEvents } from './hazards';
-import type { Hud } from './hud';
+import { byInput, type Hud } from './hud';
 import type { Input } from './input';
 import { BOSS_POS, Level, sideYaw, squareCoords } from './level';
 import { LEVELS } from './levels/defs';
@@ -80,6 +82,9 @@ export class Game {
   private bossClock = 0;
   private footstepClock = 0;
   private hammerTime = 0;
+  /** Hit-stop: seconds left with the world frozen. Input is kept, so presses made now still land. */
+  private freeze = 0;
+  private readonly combo = new Combo();
   private hintClock = 0;
   /** Started from a later level (dev level select), so the score stays off the hi-score table. */
   private practice = false;
@@ -165,6 +170,16 @@ export class Game {
     this.barrels.onPit = (b) => {
       this.particles.burst(b.pos.x, b.pos.y + 0.4, b.pos.z, RAINBOW, 8, 3);
     };
+    this.barrels.onSplit = (b) => {
+      if (this.state !== 'playing') return;
+      this.particles.burst(b.pos.x, barrelCentreY(b), b.pos.z, PROJECTILES[b.look].burst, 10, 3);
+      sfx.crumble();
+    };
+    this.barrels.onScorch = (at) => {
+      if (this.state !== 'playing') return;
+      this.particles.burst(at.x, at.y + 0.3, at.z, [COLORS.lava, COLORS.orange, COLORS.yellow], 8, 3);
+      if (at.distanceTo(this.player.position) < 10) sfx.fire();
+    };
 
     this.board = loadBoard();
     this.hiScore = topScore(this.board);
@@ -184,6 +199,11 @@ export class Game {
   }
 
   update(dt: number): void {
+    if (this.freeze > 0) {
+      this.freeze = Math.max(0, this.freeze - dt);
+      this.stage.settle(dt);
+      return;
+    }
     this.stateTime += dt;
     this.clock += dt;
     this.hintClock = Math.max(0, this.hintClock - dt);
@@ -249,6 +269,7 @@ export class Game {
   private setState(state: GameState): void {
     this.state = state;
     this.stateTime = 0;
+    this.input.textEntry = state === 'initials';
     if (state === 'playing') music.start();
     else if (state === 'paused') music.pause();
     else music.stop();
@@ -323,6 +344,7 @@ export class Game {
     const def = this.level.def;
     this.speedMul = Math.min(GAME_RULES.maxSpeedMul, 1 + 0.2 * this.loop + 0.06 * this.levelIndex);
     this.barrels.clear();
+    this.combo.reset();
     this.barrels.speedMul = this.speedMul;
     this.barrels.ladderChance = Math.min(0.5, BARREL.ladderChance + 0.05 * this.loop);
     this.particles.clear();
@@ -421,6 +443,7 @@ export class Game {
       return;
     }
 
+    this.combo.update(dt);
     const controls = this.input.controls();
     const env = this.obstacles;
     let jump = controls.jump;
@@ -529,9 +552,10 @@ export class Game {
     return sphereHitsCylinder(x, y, z, r, p.x, p.y, p.z, PLAYER_SIZE.halfWidth, PLAYER_SIZE.height);
   }
 
-  private smash(x: number, y: number, z: number, points: number, colors: number[] = SPLINTERS): void {
+  private smash(x: number, y: number, z: number, points: number, colors: readonly number[] = SPLINTERS): void {
     this.particles.burst(x, y, z, colors, 14, 5);
     this.addScore(points, new THREE.Vector3(x, y, z), 0.8);
+    this.hitStop(0.06, 0.35);
     sfx.smash();
   }
 
@@ -544,10 +568,11 @@ export class Game {
     for (const b of this.barrels.barrels) {
       if (b.done || b.state === 'sink') continue;
       const br = b.radius;
-      if (this.hitsPlayer(b.pos.x, b.pos.y + br, b.pos.z, br * 0.8)) {
+      const cy = barrelCentreY(b);
+      if (this.hitsPlayer(b.pos.x, cy, b.pos.z, br * 0.8)) {
         if (!armed) return this.die();
         this.barrels.smash(b);
-        this.smash(b.pos.x, b.pos.y + br, b.pos.z, SCORE.smashBarrel, b.look === 'snowball' ? SNOW_BURST : SPLINTERS);
+        this.smash(b.pos.x, cy, b.pos.z, SCORE.smashBarrel, PROJECTILES[b.look].burst);
         continue;
       }
       const clearedAbove =
@@ -555,14 +580,17 @@ export class Game {
         b.state === 'roll' &&
         b.ring === p.ring &&
         Math.hypot(pp.x - b.pos.x, pp.z - b.pos.z) < 0.7 &&
-        pp.y > b.pos.y + br * 2 - 0.1 &&
+        pp.y > cy + br - 0.1 &&
         pp.y - b.pos.y < 2.4;
       if (!b.scored && clearedAbove) {
         b.scored = true;
-        // Bigger snowballs are riskier to clear, so they pay more: 100 up to 200 at full size.
-        this.addScore(Math.round((SCORE.jumpBarrel * (br / R)) / 50) * 50, b.pos, 1.4);
-        sfx.score();
+        // Bigger projectiles are riskier to clear, so they pay more: a full-size snowball pays 200.
+        this.addJumpScore(Math.round((SCORE.jumpBarrel * (br / R)) / 50) * 50, b.pos, 1.4);
       }
+    }
+
+    for (const d of this.barrels.dangers) {
+      if (this.hitsPlayer(d.x, d.y, d.z, d.r)) return this.die();
     }
 
     for (let i = this.fires.length - 1; i >= 0; i--) {
@@ -599,8 +627,7 @@ export class Game {
         p.state === 'air' && c.ring === p.ring && Math.hypot(pp.x - cp.x, pp.z - cp.z) < 0.8 && pp.y > floor + c.height - 0.1;
       if (!c.scored && clearedAbove) {
         c.scored = true;
-        this.addScore(SCORE.jumpCrawler, cp, 1.2);
-        sfx.score();
+        this.addJumpScore(SCORE.jumpCrawler, cp, 1.2);
       }
     }
 
@@ -619,8 +646,7 @@ export class Game {
         t.airborne && t.ring === p.ring && Math.hypot(pp.x - tp.x, pp.z - tp.z) < 0.5 && pp.y + PLAYER_SIZE.height < floor + t.clearance;
       if (!t.scored && passedUnder) {
         t.scored = true;
-        this.addScore(SCORE.underTotem, pp, 2);
-        sfx.score();
+        this.addJumpScore(SCORE.underTotem, pp, 2);
       }
     }
 
@@ -637,7 +663,11 @@ export class Game {
   private onTotemLanded(t: Totem): void {
     const g = t.group.position;
     this.particles.burst(g.x, g.y + 0.1, g.z, [COLORS.cream, COLORS.creamDark, COLORS.charcoal], 8, 3);
-    if (t.group.position.distanceTo(this.player.position) < 10) sfx.stomp();
+    const near = t.group.position.distanceTo(this.player.position);
+    if (near < 10) {
+      sfx.stomp();
+      if (this.state === 'playing') this.stage.shake(0.25 * (1 - near / 10));
+    }
   }
 
   private collectLetter(item: Item): void {
@@ -728,6 +758,20 @@ export class Game {
     if (at) this.popup(`${points}-pt`, at.x, at.y + lift, at.z);
   }
 
+  /** Jump-overs chain into a combo: each one within the window multiplies its points. */
+  private addJumpScore(base: number, at: THREE.Vector3, lift: number): void {
+    const mult = this.combo.hit();
+    const points = base * mult;
+    this.addScore(points);
+    this.popup(mult > 1 ? `${points}-pt x${mult}` : `${points}-pt`, at.x, at.y + lift, at.z);
+    sfx.score(mult);
+  }
+
+  private hitStop(seconds: number, shake: number): void {
+    this.freeze = Math.max(this.freeze, seconds);
+    this.stage.shake(shake);
+  }
+
   private popup(text: string, x: number, y: number, z: number): void {
     const s = this.stage.toScreen(x, y, z);
     this.hud.popup(text, s.x, s.y);
@@ -740,6 +784,8 @@ export class Game {
     this.player.setHammer(false);
     music.setHammer(false);
     this.hammerTime = 0;
+    this.combo.reset();
+    this.hitStop(0.12, 0.6);
     this.lives -= 1;
     this.hud.setLives(this.lives);
     const pp = this.player.position;
@@ -850,7 +896,7 @@ export class Game {
 
   private pause(): void {
     this.setState('paused');
-    this.hud.showMessage('Paused', 'Press P to resume');
+    this.hud.showMessage('Paused', byInput('Press P to resume', 'Tap II to resume', 'Press start to resume'));
   }
 
   private resume(): void {
@@ -930,7 +976,6 @@ const SHOWCASE_POLAR = THREE.MathUtils.degToRad(CAMERA.showcasePolarDeg);
 const YAW_BIAS = THREE.MathUtils.degToRad(CAMERA.yawBiasDeg);
 const SHOWCASE_TURN_TIME = 0.8;
 const SPLINTERS = [COLORS.cream, COLORS.yellow, COLORS.orange];
-const SNOW_BURST = [COLORS.snow, COLORS.snowShade, COLORS.ice];
 
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
