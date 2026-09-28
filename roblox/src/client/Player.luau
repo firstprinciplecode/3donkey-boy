@@ -70,8 +70,18 @@ function Player:isClimbing(): boolean
 	return self.moving and self.state == "ladder" and self:onVerticalPart()
 end
 
-function Player:step(dt: number, controls)
-	local result = { jumped = false, landed = false, reachedSummit = false, fellInPit = false, hammerBlocked = false }
+-- `env` is the level's obstacles: `carry(ring, s)` (nil over a gap) and `isLadderOpen(index)`.
+function Player:step(dt: number, controls, env)
+	local result = {
+		jumped = false,
+		landed = false,
+		reachedSummit = false,
+		fellInPit = false,
+		hammerBlocked = false,
+		-- Index of a locked ladder the player tried to climb.
+		blockedLadder = nil :: number?,
+	}
+	self.env = env
 	if self.state == "ground" then
 		self:_stepGround(dt, controls, result)
 	elseif self.state == "air" then
@@ -85,6 +95,10 @@ end
 
 -- The hammer takes both hands, so ladders are off while holding it.
 function Player:_tryLadder(path, d: number, result): boolean
+	if not self.env:isLadderOpen(path.index) then
+		result.blockedLadder = path.index
+		return false
+	end
 	if self.hasHammer then
 		result.hammerBlocked = true
 		return false
@@ -125,15 +139,17 @@ function Player:_stepGround(dt: number, c, result)
 	self.vs = dir * PHYSICS.moveSpeed
 	self.moving = dir ~= 0
 
+	local carry = self.env:carry(self.ring, self.s) or 0
 	if c.jump then
-		-- Air control is locked at take-off, as in the arcade original.
+		-- Air control is locked at take-off, as in the arcade original (you keep the floor's momentum).
 		self.state = "air"
+		self.vs += carry
 		self.vy = PHYSICS.jumpVelocity
 		result.jumped = true
 		return
 	end
-	self.s = (self.s + self.vs * dt) % L:ringLength(self.ring)
-	if L:overGap(self.ring, self.s) then
+	self.s = (self.s + (self.vs + carry) * dt) % L:ringLength(self.ring)
+	if self.env:carry(self.ring, self.s) == nil then
 		self.state = "air"
 		self.vy = 0
 	end
@@ -148,7 +164,7 @@ function Player:_stepAir(dt: number, result)
 	end
 	self.y += self.vy * dt
 
-	local overGap = L:overGap(self.ring, self.s)
+	local overGap = self.env:carry(self.ring, self.s) == nil
 	if overGap and self.y < top - 0.05 then
 		self.inPit = true
 	end

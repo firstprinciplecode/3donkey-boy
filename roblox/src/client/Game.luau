@@ -13,23 +13,30 @@ local Backdrop = require(script.Parent.Backdrop)
 local Barrels = require(script.Parent.Barrels)
 local Boss = require(script.Parent.Boss)
 local CameraRig = require(script.Parent.CameraRig)
+local Combo = require(script.Parent.Combo)
 local Fire = require(script.Parent.Fire)
 local Ghost = require(script.Parent.Ghost)
 local Hud = require(script.Parent.Hud)
 local Items = require(script.Parent.Items)
+local Obstacles = require(script.Parent.Obstacles)
+local Particles = require(script.Parent.Particles)
 local Player = require(script.Parent.Player)
 local Rig = require(script.Parent.Rig)
+local Totem = require(script.Parent.Totem)
 
 local BARREL = Config.BARREL
+local C = Config.COLORS
 local FIRE = Config.FIRE
 local GAME_RULES = Config.GAME_RULES
 local GHOST = Config.GHOST
 local HAMMER = Config.HAMMER
 local ITEM_RADIUS = Config.ITEM_RADIUS
 local PLAYER_SIZE = Config.PLAYER_SIZE
+local RAINBOW = Config.RAINBOW
 local SCORE = Config.SCORE
 local STUD = Config.STUD
 local SUBSTEP = Config.PHYSICS.substep
+local TOTEM = Config.TOTEM
 
 local READY_TIME = 1.6
 local DEATH_TIME = 2.2
@@ -38,8 +45,8 @@ local JUMP_BUFFER = 0.12
 -- Ignore Space for a moment on the game over screen so a held jump doesn't skip it.
 local GAMEOVER_LOCK = 1
 local HINT_COOLDOWN = 1.4
--- The world pauses this long when the hammer lands a hit, so the smash reads.
-local SMASH_FREEZE = 0.06
+-- Smash splinters for barrels, fires and ghosts (the web's SPLINTERS and the barrel's burst).
+local SPLINTERS = { C.cream, C.yellow, C.orange }
 
 -- Sphere vs upright cylinder standing at (px, py, pz).
 local function sphereHitsCylinder(cx: number, cy: number, cz: number, r: number, px: number, py: number, pz: number, radius: number, height: number): boolean
@@ -62,15 +69,26 @@ function Game.new(playerGui: Instance)
 	self.barrels = Barrels.new(self.level, workspace)
 	self.backdrop = Backdrop.new(self.level, Skins[self.level.def.skin], workspace)
 	self.items = Items.new(self.level, workspace)
+	self.obstacles = Obstacles.new(self.level, workspace)
+	self.particles = Particles.new(workspace)
+	self.combo = Combo.new()
 	self.enemies = Instance.new("Folder")
 	self.enemies.Name = "Enemies"
 	self.enemies.Parent = workspace
 	self.fires = {}
 	self.ghosts = {}
-	self.barrels.onDrum = function()
-		if self.state == "playing" and #self.fires < self.level.def.fires then
+	self.totems = {}
+	self.barrels.onDrum = function(b)
+		if self.state ~= "playing" then
+			return
+		end
+		self.particles:burst(b.pos + Vector3.yAxis * 1.4, { C.orange, C.yellow, C.red }, 10, 3)
+		if #self.fires < self.level.def.fires then
 			table.insert(self.fires, Fire.new(self.level, self.enemies))
 		end
+	end
+	self.barrels.onPit = function(b)
+		self.particles:burst(b.pos + Vector3.yAxis * 0.4, RAINBOW, 8, 3)
 	end
 
 	local summitY = self.level:tierTop(self.level.summitTier)
@@ -142,6 +160,23 @@ function Game:_spawnGhosts()
 	end
 end
 
+function Game:_spawnTotems()
+	for _, totem in self.totems do
+		totem:destroy()
+	end
+	table.clear(self.totems)
+	for _, patrol in self.level.def.totems or {} do
+		table.insert(self.totems, Totem.new(self.level, patrol, TOTEM.speed, self.enemies))
+	end
+end
+
+function Game:_lockHint(ladder: number)
+	local kind = self.obstacles:lockKind(ladder)
+	if kind == "switch" then
+		self:_hint("Gated · Find the switch!")
+	end
+end
+
 function Game:_hitsPlayer(at: Vector3, r: number): boolean
 	local p = self.player
 	return sphereHitsCylinder(at.X, at.Y, at.Z, r, p.px, p.py, p.pz, PLAYER_SIZE.halfWidth, PLAYER_SIZE.height)
@@ -153,12 +188,16 @@ function Game:_startRound(fresh: boolean)
 	self.barrels:clear()
 	self:_clearFires()
 	self:_spawnGhosts()
+	self:_spawnTotems()
+	self.obstacles:reset(fresh)
 	if fresh then
 		self.items:spawn()
 		self.hud:setLetters(self.items:lettersHeld())
 	end
 	self.hammerTime = 0
 	self.freeze = 0
+	self.combo:reset()
+	self.particles:clear()
 	self.player:reset(def.playerStart)
 	self.rig:snap(self.player)
 	self.cameraRig:snapTo(def.playerStart.side, self:_focus())
@@ -183,6 +222,20 @@ function Game:_addScore(points: number, at: Vector3?)
 	end
 end
 
+-- Jump-overs chain into a combo: each one within the window multiplies its points.
+function Game:_addJumpScore(base: number, at: Vector3)
+	local mult = self.combo:hit()
+	local points = base * mult
+	self:_addScore(points)
+	self:_popup(if mult > 1 then `{points}-pt x{mult}` else `{points}-pt`, at)
+end
+
+-- A brief world freeze plus screen shake, so hits land.
+function Game:_hitStop(seconds: number, shake: number)
+	self.freeze = math.max(self.freeze, seconds)
+	self.cameraRig:shake(shake)
+end
+
 function Game:_hint(text: string)
 	if self.hintClock > 0 then
 		return
@@ -198,12 +251,23 @@ function Game:_addLife()
 end
 
 function Game:_smash(at: Vector3, points: number)
+	self.particles:burst(at, SPLINTERS, 14, 5)
 	self:_addScore(points, at + Vector3.yAxis * 0.8)
-	self.freeze = math.max(self.freeze, SMASH_FREEZE)
+	self:_hitStop(0.06, 0.35)
+end
+
+function Game:_onTotemLanded(totem)
+	self.particles:burst(totem.base + Vector3.yAxis * 0.1, { C.cream, C.creamDark, C.charcoal }, 8, 3)
+	local p = self.player
+	local near = (totem.base - Vector3.new(p.px, p.py, p.pz)).Magnitude
+	if near < 10 and self.state == "playing" then
+		self.cameraRig:shake(0.25 * (1 - near / 10))
+	end
 end
 
 function Game:_collectLetter(item)
 	local at = item.position
+	self.particles:burst(at, { C.yellow, C.orange, C.cream }, 14, 4)
 	local held = self.items:lettersHeld()
 	self.hud:setLetters(held)
 	local count = 0
@@ -216,6 +280,7 @@ function Game:_collectLetter(item)
 		self:_addLife()
 		self:_addScore(SCORE.spelled)
 		self:_popup("1-U-P! extra life", at + Vector3.yAxis * 0.8)
+		self.particles:burst(at, RAINBOW, 30, 6)
 		return
 	end
 	self:_addScore(SCORE.letter)
@@ -230,19 +295,25 @@ function Game:_collect(item)
 		return
 	end
 	local kind = item.type
+	local burst = self.particles
 	if kind == "orb" then
 		self:_addScore(SCORE.orb, at + Vector3.yAxis * 0.4)
+		burst:burst(at, { C.cream, C.cyan, C.pink }, 10, 3)
 	elseif kind == "gem" then
 		self:_addScore(SCORE.gem, at + Vector3.yAxis * 0.6)
+		burst:burst(at, RAINBOW, 10, 3)
 	elseif kind == "hotdog" then
 		self:_addScore(SCORE.hotdog, at + Vector3.yAxis * 0.6)
+		burst:burst(at, { C.red, C.tan, C.yellow }, 12, 4)
 	elseif kind == "oneup" then
 		self:_addLife()
 		self:_popup("1-Up!", at + Vector3.yAxis * 0.6)
+		burst:burst(at, { C.grass, C.cream, C.grassDark }, 16, 4)
 	elseif kind == "hammer" then
 		self.hammerTime = HAMMER.duration
 		self.player:setHammer(true)
 		self:_popup("Hammer!", at + Vector3.yAxis * 0.6)
+		burst:burst(at, { C.charcoal, C.yellow }, 12, 4)
 	end
 end
 
@@ -254,6 +325,10 @@ function Game:_die(heading: string, sub: string)
 	self.player:die()
 	self.player:setHammer(false)
 	self.hammerTime = 0
+	self.combo:reset()
+	self:_hitStop(0.12, 0.6)
+	local p = self.player
+	self.particles:burst(Vector3.new(p.px, p.py + 0.8, p.pz), { C.orange, C.cyan, C.yellow }, 18, 5)
 	self.lives -= 1
 	self.hud:setLives(self.lives)
 	self.hud:show(heading, if self.lives > 0 then sub else "Last life lost")
@@ -268,6 +343,12 @@ end
 
 function Game:_clearRound()
 	self:_setState("clear")
+	for _, b in self.barrels.list do
+		self.particles:burst(b.pos + Vector3.yAxis * b.radius, RAINBOW, 8, 4)
+	end
+	if self.goal then
+		self.particles:burst(self.goal.Position / STUD, RAINBOW, 30, 7)
+	end
 	self.barrels:clear()
 	self:_clearFires()
 	local bonus = self.bonus
@@ -301,7 +382,7 @@ function Game:_checkCollisions(): boolean
 				and p.py - pos.Y < 2.4
 			if not b.scored and clearedAbove then
 				b.scored = true
-				self:_addScore(SCORE.jumpBarrel, pos + Vector3.yAxis * 1.4)
+				self:_addJumpScore(SCORE.jumpBarrel, pos + Vector3.yAxis * 1.4)
 			end
 		end
 	end
@@ -334,6 +415,30 @@ function Game:_checkCollisions(): boolean
 		end
 	end
 
+	for i = #self.totems, 1, -1 do
+		local totem = self.totems[i]
+		if self:_hitsPlayer(totem.position, totem.radius) or self:_hitsPlayer(totem.head, totem.radius) then
+			if not armed then
+				self:_die("Stomped!", "Run under the totem while it hops")
+				return true
+			end
+			local at = totem.position
+			totem:destroy()
+			table.remove(self.totems, i)
+			self:_smash(at, SCORE.smashTotem)
+		else
+			local floor = self.level:tierTop(totem.ring)
+			local passedUnder = totem:isAirborne()
+				and totem.ring == p.ring
+				and math.sqrt((p.px - totem.position.X) ^ 2 + (p.pz - totem.position.Z) ^ 2) < 0.5
+				and p.py + PLAYER_SIZE.height < floor + totem.clearance
+			if not totem.scored and passedUnder then
+				totem.scored = true
+				self:_addJumpScore(SCORE.underTotem, Vector3.new(p.px, p.py + 2, p.pz))
+			end
+		end
+	end
+
 	for _, item in self.items.list do
 		if not item.collected and self:_hitsPlayer(item.position, ITEM_RADIUS) then
 			self:_collect(item)
@@ -344,10 +449,7 @@ end
 
 function Game:_stepPlaying(dt: number)
 	local p = self.player
-	if self.freeze > 0 then
-		self.freeze -= dt
-		return
-	end
+	self.combo:update(dt)
 	self.accumulator += dt
 	while self.accumulator >= SUBSTEP do
 		self.accumulator -= SUBSTEP
@@ -362,7 +464,7 @@ function Game:_stepPlaying(dt: number)
 			up = held.up,
 			down = held.down,
 			jump = jump,
-		})
+		}, self.obstacles)
 		if result.fellInPit then
 			self:_die("Ouch!", "Jump the spike pits")
 			return
@@ -371,10 +473,22 @@ function Game:_stepPlaying(dt: number)
 			self:_clearRound()
 			return
 		end
-		if result.hammerBlocked then
+		if result.blockedLadder then
+			self:_lockHint(result.blockedLadder)
+		elseif result.hammerBlocked then
 			self:_hint("Can't climb holding the hammer")
 		end
+		local events = self.obstacles:update(SUBSTEP, { ring = p.ring, s = p.s, grounded = p.state == "ground" })
+		if events.switched then
+			self:_popup("Gate open!", Vector3.new(p.px, p.py + 2.2, p.pz))
+		end
 		self.barrels:update(SUBSTEP)
+		for _, totem in self.totems do
+			totem:update(SUBSTEP, self.obstacles)
+			if totem.landed then
+				self:_onTotemLanded(totem)
+			end
+		end
 		for _, ghost in self.ghosts do
 			ghost:update(SUBSTEP)
 		end
@@ -419,6 +533,12 @@ end
 -- `held` is the live table of held directions, owned by the input code.
 function Game:update(dt: number, held)
 	self.held = held
+	-- Hit-stop: everything holds still while the camera keeps shaking.
+	if self.freeze > 0 then
+		self.freeze = math.max(0, self.freeze - dt)
+		self.cameraRig:settle(dt)
+		return
+	end
 	self.stateT += dt
 	self.jumpBuffer = math.max(0, self.jumpBuffer - dt)
 	self.hintClock = math.max(0, self.hintClock - dt)
@@ -453,6 +573,11 @@ function Game:update(dt: number, held)
 	for _, fire in self.fires do
 		fire:render()
 	end
+	for _, totem in self.totems do
+		totem:render()
+	end
+	self.obstacles:render(dt)
+	self.particles:update(dt)
 	self.items:update(dt)
 	self.rig:update(dt, self.player)
 	self.cameraRig:update(dt, self:_focus())

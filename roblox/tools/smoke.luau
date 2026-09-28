@@ -19,7 +19,7 @@ Vec.__mul = function(a, b)
 	return vec(a.X * b.X, a.Y * b.Y, a.Z * b.Z)
 end
 Vec.__div = function(a, b) return vec(a.X / b, a.Y / b, a.Z / b) end
-Vector3 = { new = vec, zero = vec(0,0,0), yAxis = vec(0,1,0), xAxis = vec(1,0,0), zAxis = vec(0,0,1) }
+Vector3 = { new = vec, zero = vec(0,0,0), one = vec(1,1,1), yAxis = vec(0,1,0), xAxis = vec(1,0,0), zAxis = vec(0,0,1) }
 Vector2 = { new = function(x, y) return { X = x, Y = y } end }
 local CF = {}
 CF.__mul = function(a, b) return setmetatable({}, CF) end
@@ -100,4 +100,63 @@ end
 items:take(items.list[10])
 local held = items:lettersHeld()
 assert(held[1] and not held[2] and not held[3], "letter-1 should count as held")
+local Obstacles = require({ __module = "client/Obstacles" })
+local Totem = require({ __module = "client/Totem" })
+local Player = require({ __module = "client/Player" })
+local obstacles = Obstacles.new(level, workspace)
+local conveyor = level.def.conveyors[1]
+assert(obstacles:carry(conveyor.ring, level:spotS(conveyor)) == conveyor.dir * 2.6, "conveyor should carry")
+assert(obstacles:carry(0, level:spotS(level.def.pits[1])) == nil, "pit should be a gap")
+local gated = level.def.locks[1]
+assert(not obstacles:isLadderOpen(gated.ladder), "gate starts closed")
+local switchS = level:spotS(gated.switchAt)
+local events = obstacles:update(1 / 120, { ring = gated.switchAt.ring, s = switchS, grounded = true })
+assert(events.switched and obstacles:isLadderOpen(gated.ladder), "standing on the switch opens the gate")
+for _ = 1, 120 do
+	obstacles:update(1 / 120, { ring = 0, s = 0, grounded = true })
+	obstacles:render(1 / 120)
+end
+obstacles:reset(true)
+assert(not obstacles:isLadderOpen(gated.ladder), "a fresh round relocks the gate")
+
+local totem = Totem.new(level, level.def.totems[1], 1.4, workspace)
+local hopped = false
+for _ = 1, 120 * 6 do
+	totem:update(1 / 120, obstacles)
+	hopped = hopped or totem:isAirborne()
+end
+totem:render()
+assert(hopped, "totem should hop within six seconds")
+
+-- Standing still on the belt drifts the player along it.
+local player = Player.new(level)
+player:reset({ ring = conveyor.ring, side = conveyor.side, offset = conveyor.offset })
+local s0 = player.s
+for _ = 1, 30 do
+	player:step(1 / 120, {}, obstacles)
+end
+local drift = level:ringDistance(conveyor.ring, player.s, s0)
+assert(math.abs(drift - 2.6 * 30 / 120) < 1e-6, `belt drift was {drift}`)
+print("obstacles, totem and player checks passed")
+
+local Particles = require({ __module = "client/Particles" })
+local particles = Particles.new(workspace)
+particles:burst(vec(0, 5, 0), { Color3.fromRGB(255, 0, 0) }, 30, 6)
+particles:update(1 / 60)
+assert(#particles.live == 30, "burst should spawn 30")
+for _ = 1, 120 do
+	particles:update(1 / 60)
+end
+assert(#particles.live == 0 and #particles.pool == 30, "particles should expire back into the pool")
+for _ = 1, 20 do
+	particles:burst(vec(0, 5, 0), { Color3.fromRGB(255, 0, 0) }, 14, 5)
+end
+assert(#particles.live <= 160, "live particles are capped")
+
+local Combo = require({ __module = "client/Combo" })
+local combo = Combo.new()
+assert(combo:hit() == 1 and combo:hit() == 2, "chained jumps multiply")
+combo:update(3)
+assert(combo:hit() == 1, "the chain resets after the window")
+print("particles and combo checks passed")
 print("total Part instances:", counts.Part)

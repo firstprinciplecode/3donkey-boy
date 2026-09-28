@@ -97,6 +97,8 @@ Config.SCORE = {
 	smashBarrel = 300,
 	smashFire = 500,
 	smashGhost = 500,
+	underTotem = 300,
+	smashTotem = 800,
 	letter = 100,
 	spelled = 3000,
 	orb = 100,
@@ -114,8 +116,20 @@ Config.PHYSICS = {
 }
 
 Config.OBSTACLES = {
+	conveyorSpeed = 2.6,
 	-- You only fall once your centre is this far past the lip of a pit.
 	pitMargin = 0.2,
+	switchReach = 0.6,
+}
+
+Config.TOTEM = {
+	speed = 1.4,
+	radius = 0.6,
+	-- Jump apex is ~1.7, so the 2.3-tall body can't be cleared from the ground; you run under a hop.
+	hopEvery = 2.2,
+	crouchTime = 0.3,
+	hopTime = 0.9,
+	hopHeight = 2.2,
 }
 
 Config.CAMERA = {

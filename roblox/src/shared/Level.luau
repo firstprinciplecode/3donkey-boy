@@ -110,6 +110,15 @@ function Level:ringDistance(ring: number, a: number, b: number): number
 	return math.min(d, len - d)
 end
 
+-- A stretch of ring from level data ({ ring, side, offset, width }).
+function Level:span(def)
+	return { ring = def.ring, center = self:spotS(def), half = def.width / 2, def = def }
+end
+
+function Level:inSpan(span, ring: number, s: number, margin: number?): boolean
+	return span.ring == ring and self:ringDistance(ring, s, span.center) < span.half - (margin or 0)
+end
+
 -- True if moving `delta` from `prev` in direction `dir` (+1 = increasing s) passes `target`.
 function Level:crossed(ring: number, prev: number, target: number, delta: number, dir: number): boolean
 	return (dir * (target - prev)) % self:ringLength(ring) < delta

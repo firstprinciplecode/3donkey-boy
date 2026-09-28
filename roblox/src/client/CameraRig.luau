@@ -12,6 +12,10 @@ local STUD = Config.STUD
 local POLAR = math.rad(CAMERA.polarDeg)
 local YAW_BIAS = math.rad(CAMERA.yawBiasDeg)
 local FOLLOW = 4
+-- Screen shake (src/stage.ts): trauma stacks to 1 and decays; the jolt grows with its square.
+local SHAKE_MAX = 0.35
+local SHAKE_DECAY = 1.8
+local SHAKE_FREQ = 38
 
 local CameraRig = {}
 CameraRig.__index = CameraRig
@@ -26,7 +30,14 @@ function CameraRig.new()
 	self.viewSide = 0
 	self.azimuth = sideAzimuth(0)
 	self.turn = nil
+	self.trauma = 0
+	self.shakeClock = 0
 	return self
+end
+
+-- Adds screen shake; `amount` stacks up to 1.
+function CameraRig:shake(amount: number)
+	self.trauma = math.min(1, self.trauma + amount)
 end
 
 function CameraRig:snapTo(side: number, focus: Vector3)
@@ -55,7 +66,18 @@ function CameraRig:watch(x: number, z: number)
 	end
 end
 
-function CameraRig:update(dt: number, target: Vector3)
+-- Decays the shake and re-places the camera without following the target (used during hit-stop).
+function CameraRig:settle(dt: number)
+	self:update(dt, nil)
+end
+
+function CameraRig:update(dt: number, target: Vector3?)
+	self.shakeClock += dt
+	self.trauma = math.max(0, self.trauma - dt * SHAKE_DECAY)
+	if not target then
+		self:_apply()
+		return
+	end
 	local turn = self.turn
 	if turn then
 		turn.t = math.min(1, turn.t + dt / CAMERA.turnDuration)
@@ -71,7 +93,10 @@ function CameraRig:update(dt: number, target: Vector3)
 		Util.damp(f.Y, target.Y, FOLLOW, dt),
 		Util.damp(f.Z, target.Z, FOLLOW, dt)
 	)
+	self:_apply()
+end
 
+function CameraRig:_apply()
 	-- Roblox can swap the Camera object after the player joins, so never cache it.
 	local camera = workspace.CurrentCamera
 	if not camera then
@@ -86,7 +111,14 @@ function CameraRig:update(dt: number, target: Vector3)
 	local ring = math.sin(POLAR)
 	local dir = Vector3.new(ring * math.sin(self.azimuth), math.cos(POLAR), ring * math.cos(self.azimuth))
 	local focus = self.focus * STUD
-	camera.CFrame = CFrame.lookAt(focus + dir * CAMERA.distance, focus)
+	local view = CFrame.lookAt(focus + dir * CAMERA.distance, focus)
+	local jolt = self.trauma * self.trauma * SHAKE_MAX * STUD
+	if jolt > 1e-4 then
+		-- Slide within the view plane only, so the framing never tilts.
+		local t = self.shakeClock * SHAKE_FREQ
+		view *= CFrame.new(jolt * math.sin(t * 1.3 + 0.7) * math.cos(t * 0.6), jolt * math.sin(t * 1.7) * math.cos(t * 0.9 + 1.1), 0)
+	end
+	camera.CFrame = view
 end
 
 return CameraRig
