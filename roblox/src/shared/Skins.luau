@@ -1,4 +1,4 @@
--- Level looks, ported from src/levels/skins.ts. Meadow and candy so far; the others come with their levels.
+-- Level looks, ported from src/levels/skins.ts. Meadow, candy, desert and autumn so far; the others come with their levels.
 
 local Config = require(script.Parent.Config)
 
@@ -13,6 +13,11 @@ local STYLE = {
 	rainbow = { top = Config.RAINBOW, side = { C.charcoal, C.grey } },
 	candy = { top = { C.cream, C.pink }, side = { hex(0xffb3cf), C.cream } },
 	mint = { top = { C.cyan, C.cream }, side = { C.purple, hex(0xb48ef0) } },
+	sand = { top = { C.sand, hex(0xcbb788) }, side = { C.tan, C.orange } },
+	brick = { top = { C.creamDark, C.sand }, side = { hex(0xc4553a), hex(0xa8432c) } },
+	leaves = { top = { C.orange, C.maple }, side = { C.brown, hex(0x5e3920) } },
+	harvest = { top = { C.yellow, C.tan }, side = { C.rust, C.maple } },
+	moss = { top = { C.grassDark, C.leaf }, side = { C.stone, C.stoneDark } },
 }
 
 return {
@@ -47,6 +52,10 @@ return {
 		goal = C.grass,
 		-- What the boss throws; only the look changes, the physics and hitbox stay the same.
 		projectile = "barrel",
+		-- The ground monster, what drops from the ledges, and what the relic seal wants.
+		crawler = "hedgehog",
+		drop = "acorn",
+		relic = { look = "idol", name = "idol" },
 	},
 	candy = {
 		tiers = { STYLE.candy, STYLE.mint, STYLE.checker, STYLE.candy, STYLE.mint, STYLE.rainbow },
@@ -73,5 +82,65 @@ return {
 		sky = { hex(0xfde8f3), hex(0xf3cfe6), hex(0xd9b6e3) },
 		goal = C.grass,
 		projectile = "gumball",
+		crawler = "hedgehog",
+		drop = "acorn",
+		relic = { look = "present", name = "present" },
+	},
+	desert = {
+		tiers = { STYLE.sand, STYLE.brick, STYLE.tile, STYLE.sand, STYLE.brick, STYLE.checker, STYLE.rainbow },
+		baseBands = { C.orange, C.tan, C.sand, hex(0xc4553a) },
+		windowColor = C.teal,
+		decor = {
+			{ "cactus", 4 },
+			{ "palm", 2 },
+			{ "pot", 1 },
+			{ "arcade", 1 },
+			{ "cart", 1 },
+			{ "pottree", 2 },
+		},
+		clouds = { hex(0xfff1dc), C.white },
+		towers = {
+			{ C.creamDark, C.sand },
+			{ C.black, C.charcoal },
+			{ C.tan, C.orange },
+		},
+		towerWindow = C.teal,
+		island = { top = C.sand, bands = { C.orange, C.tan, hex(0xc4553a) } },
+		balloons = { C.red, C.orange, C.blue },
+		sky = { hex(0xfff1d6), hex(0xfbd9a8), hex(0xf0b88a) },
+		goal = C.grass,
+		projectile = "tumbleweed",
+		crawler = "snake",
+		drop = "spike",
+		relic = { look = "idol", name = "idol" },
+	},
+	autumn = {
+		tiers = { STYLE.moss, STYLE.leaves, STYLE.harvest, STYLE.leaves, STYLE.checker, STYLE.rainbow },
+		baseBands = { C.maple, C.orange, C.yellow, C.brown },
+		windowColor = C.yellow,
+		decor = {
+			{ "maple", 4 },
+			{ "pumpkin", 3 },
+			{ "haystack", 2 },
+			{ "mushroom", 2 },
+			{ "pine", 1 },
+			{ "cart", 1 },
+			{ "shrub", 1 },
+		},
+		clouds = { hex(0xfff0dc), C.white },
+		towers = {
+			{ C.cream, C.creamDark },
+			{ C.rust, C.maple },
+			{ C.black, C.charcoal },
+		},
+		towerWindow = C.yellow,
+		island = { top = C.orange, bands = { C.brown, C.maple, C.yellow } },
+		balloons = { C.maple, C.yellow, C.teal },
+		sky = { hex(0xfff0d8), hex(0xf8d3a4), hex(0xe9a878) },
+		goal = C.grass,
+		projectile = "pumpkin",
+		crawler = "hedgehog",
+		drop = "acorn",
+		relic = { look = "pumpkin", name = "pumpkin" },
 	},
 }

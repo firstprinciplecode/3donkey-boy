@@ -5,6 +5,7 @@
 local Config = require(script.Parent.Config)
 local Decor = require(script.Parent.Decor)
 local Level = require(script.Parent.Level)
+local Projectiles = require(script.Parent.Projectiles)
 local Rand = require(script.Parent.Rand)
 local Skins = require(script.Parent.Skins)
 local VoxelBuilder = require(script.Parent.VoxelBuilder)
@@ -14,6 +15,7 @@ local Frame = VoxelBuilder.Frame
 local PIT_DEPTH = Level.PIT_DEPTH
 local BASE_BOTTOM = -Level.BASE_DEPTH
 local BOSS_POS = Config.BOSS_POS
+local STUD = Config.STUD
 
 type Rand = () -> number
 
@@ -389,13 +391,17 @@ end
 -- Ammo stacked beside the boss: three upright barrels, or a pyramid of balls.
 local function buildPile(vb, x: number, y: number, z: number, look: string)
 	local R = Config.BARREL.radius
-	local LENGTH = 0.8
-	if look ~= "barrel" then
-		-- The web colours each ball at random; a fixed set keeps the build the same every run.
-		local colors = Config.PROJECTILES[look].colors
-		for i, spot in { { -R * 1.07, R }, { R * 1.07, R }, { 0, R * 2.5 } } do
-			local ball = vb:box(x + spot[1], y + spot[2], z, R * 2, R * 2, R * 2, colors[i])
-			ball.Shape = Enum.PartType.Ball
+	local LENGTH = Projectiles.LENGTH
+	if not Projectiles.upright(look) then
+		local r = R * math.min(Config.PROJECTILES[look].scale, 1.2)
+		for i, spot in { { -r * 1.07, r }, { r * 1.07, r }, { 0, r * 2.5 } } do
+			local centre = CFrame.new(Vector3.new(x + spot[1], y + spot[2], z) * STUD)
+			-- The web colours each gumball at random; one per spot keeps the build the same every run.
+			for _, p in Projectiles.pieces(look, i) do
+				local part = vb:box(0, 0, 0, p.size.X, p.size.Y, p.size.Z, p.color)
+				Projectiles.dress(part, p)
+				part.CFrame = centre * (p.at.Rotation + p.at.Position * STUD)
+			end
 		end
 		return
 	end

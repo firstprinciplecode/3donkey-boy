@@ -25,6 +25,10 @@ local KEYS = {
 	[Enum.KeyCode.Space] = "jump",
 	[Enum.KeyCode.M] = "mute",
 }
+-- Testing aid: skip ahead a level. Only bound in Studio, never in a published game.
+if RunService:IsStudio() then
+	KEYS[Enum.KeyCode.N] = "nextLevel"
+end
 
 local popscotch = Game.new(Players.LocalPlayer:WaitForChild("PlayerGui"))
 local held = { left = false, right = false, up = false, down = false }
@@ -43,6 +47,8 @@ local function onKey(_, inputState: Enum.UserInputState, input: InputObject)
 			popscotch:pressJump()
 		elseif name == "mute" then
 			popscotch:toggleMute()
+		elseif name == "nextLevel" then
+			popscotch:skipLevel()
 		else
 			held[name] = true
 		end

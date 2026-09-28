@@ -1,6 +1,6 @@
 -- Dynamic level pieces, ported from src/obstacles.ts: crumbling tiles, moving platforms, conveyor
--- belts, and ladders locked behind a switch gate or a key door. Ice, springs and relic doors join
--- when the levels that use them are ported.
+-- belts, spring pads, and ladders locked behind a switch gate, a key door or a relic seal. Ice joins
+-- with the level that uses it.
 --
 -- `carry` answers what's under a spot on a ring: nil for an open gap (you fall), otherwise the speed
 -- along s the floor carries you at (0 for plain floor).
@@ -22,7 +22,7 @@ local GATE_SINK = 2.2
 -- Key doors float up and shrink away instead of sinking.
 local DOOR_RISE = 2.5
 local DOOR_SHRINK = 0.9
-local LOCK_COLORS = { switch = C.red, key = C.pink }
+local LOCK_COLORS = { switch = C.red, key = C.pink, relics = C.teal }
 local CRUMBLE_JITTER = 0.08
 local CRUMBLE_DROP = 6
 local CRUMBLE_COLORS = { Config.hex(0xc98f4e), C.tan }
@@ -45,6 +45,7 @@ function Obstacles.new(level, parent: Instance)
 	self.folder.Name = "Obstacles"
 	self.crumbles = {}
 	self.platforms = {}
+	self.springs = {}
 	self.conveyors = {}
 	self.locks = {}
 	self.lockByLadder = {}
@@ -60,6 +61,9 @@ function Obstacles.new(level, parent: Instance)
 	end
 	for _, c in def.conveyors do
 		self:_addConveyor(c)
+	end
+	for _, spot in def.springs or {} do
+		self:_addSpring(spot)
 	end
 	for _, l in def.locks do
 		self:_addLock(l)
@@ -143,6 +147,41 @@ function Obstacles:_movePlatform(p, t: number)
 	p.vel = p.amp * w * math.cos(w * t)
 end
 
+-- A base plate and a coil that squashes and wobbles when it fires.
+function Obstacles:_addSpring(spot)
+	local frame = self:_anchor(spot.ring, spot.side, spot.offset)
+	self:_box(frame, 0.9, 0.08, 0.9, C.charcoal, 0, 0.04, 0)
+	local coil = {}
+	local function add(sx, sy, sz, color, y)
+		local part = self:_box(frame, sx, sy, sz, color, 0, y, 0)
+		table.insert(coil, { part = part, size = part.Size, y = y })
+	end
+	for i = 0, 2 do
+		add(0.5, 0.08, 0.5, if i % 2 == 1 then C.cream else C.grey, 0.12 + i * 0.12)
+	end
+	add(0.8, 0.12, 0.8, C.red, 0.46)
+	add(0.5, 0.04, 0.5, C.yellow, 0.53)
+	table.insert(self.springs, { ring = spot.ring, s = self.level:spotS(spot), frame = frame, coil = coil, t = 1, squash = 1 })
+end
+
+function Obstacles:spring(ring: number, s: number): boolean
+	for _, sp in self.springs do
+		if sp.ring == ring and self.level:ringDistance(ring, s, sp.s) < OBSTACLES.springReach then
+			return true
+		end
+	end
+	return false
+end
+
+-- Plays the squash animation on the pad under this spot.
+function Obstacles:boing(ring: number, s: number)
+	for _, sp in self.springs do
+		if sp.ring == ring and self.level:ringDistance(ring, s, sp.s) < OBSTACLES.springReach then
+			sp.t = 0
+		end
+	end
+end
+
 function Obstacles:_addConveyor(c)
 	local depth = self.level.def.terraceDepth - 0.5
 	local frame = self:_anchor(c.ring, c.side, c.offset)
@@ -210,12 +249,29 @@ function Obstacles:_addLock(def)
 		lock.flag = self:_box(sw, 0.5, 0.32, 0.04, C.red, 0.27, 1.6, -0.9)
 		lock.switchS = L:spotS(at)
 		lock.switchFrame = sw
-	else
+	elseif def.kind == "key" then
 		-- A candy door with a keyhole.
 		add(1.4, 2.2, 0.26, color, 0, 1.1, 0)
 		add(1.56, 0.16, 0.34, C.cream, 0, 2.2, 0)
 		add(0.3, 0.3, 0.1, C.yellow, 0, 1.2, 0.16)
 		add(0.12, 0.3, 0.1, C.yellow, 0, 0.95, 0.16)
+	else
+		-- A gold-framed seal with an empty socket for each relic on the level.
+		add(1.5, 2.3, 0.3, color, 0, 1.15, 0)
+		add(1.7, 0.2, 0.4, C.gold, 0, 2.35, 0)
+		add(0.2, 2.3, 0.36, C.gold, -0.75, 1.15, 0)
+		add(0.2, 2.3, 0.36, C.gold, 0.75, 1.15, 0)
+		local relics = 0
+		for _, item in L.def.items do
+			if item.type == "relic" then
+				relics += 1
+			end
+		end
+		for i = 0, relics - 1 do
+			local x = (i - (relics - 1) / 2) * 0.38
+			add(0.24, 0.24, 0.06, C.black, x, 1.5, 0.17)
+			add(0.12, 0.12, 0.08, C.gold, x, 1.5, 0.18)
+		end
 	end
 	table.insert(self.locks, lock)
 	self.lockByLadder[def.ladder] = lock
@@ -278,16 +334,25 @@ function Obstacles:_openLock(lock)
 	self:_setSwitch(lock, true)
 end
 
--- Opens every key door; returns true if any was closed.
-function Obstacles:unlockKeyDoors(): boolean
+function Obstacles:_unlock(kind: string): boolean
 	local any = false
 	for _, lock in self.locks do
-		if lock.def.kind == "key" and not lock.open then
+		if lock.def.kind == kind and not lock.open then
 			self:_openLock(lock)
 			any = true
 		end
 	end
 	return any
+end
+
+-- Opens every key door; returns true if any was closed.
+function Obstacles:unlockKeyDoors(): boolean
+	return self:_unlock("key")
+end
+
+-- Opens the relic seals once the last relic has been collected.
+function Obstacles:unlockRelicDoors(): boolean
+	return self:_unlock("relics")
 end
 
 -- `player` is { ring, s, grounded }. Returns { crumbled = a tile started to give way,
@@ -312,6 +377,11 @@ function Obstacles:update(dt: number, player)
 	end
 	for _, p in self.platforms do
 		self:_movePlatform(p, self.clock)
+	end
+	for _, sp in self.springs do
+		sp.t += dt
+		local k = math.max(0, 1 - sp.t / 0.45)
+		sp.squash = 1 - 0.45 * k * math.cos(sp.t * 28)
 	end
 
 	for _, lock in self.locks do
@@ -347,6 +417,17 @@ function Obstacles:_placeMovers()
 				table.insert(frames, unitFrame(0, -CRUMBLE_DROP * c.t * c.t, 0) * cell.base)
 			else
 				table.insert(frames, cell.base)
+			end
+		end
+	end
+	for _, sp in self.springs do
+		if sp.drawn ~= sp.squash then
+			sp.drawn = sp.squash
+			local k = sp.squash
+			for _, piece in sp.coil do
+				piece.part.Size = Vector3.new(piece.size.X, piece.size.Y * k, piece.size.Z)
+				table.insert(parts, piece.part)
+				table.insert(frames, sp.frame * unitFrame(0, piece.y * k, 0))
 			end
 		end
 	end

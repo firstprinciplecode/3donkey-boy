@@ -133,6 +133,48 @@ end
 totem:render()
 assert(hopped, "totem should hop within six seconds")
 
+-- A hedgehog paces its stretch, curling into a ball now and then.
+local Crawler = require({ __module = "client/Crawler" })
+local hog = Crawler.new(level, { ring = 1, from = { 0, -6 }, to = { 0, 6 } }, "hedgehog", 2.1, workspace)
+local curled, turned, dir0 = false, false, hog.dir
+for _ = 1, 120 * 8 do
+	hog:update(1 / 120, obstacles)
+	hog:render()
+	curled = curled or hog.special > 0
+	turned = turned or hog.dir ~= dir0
+	assert(hog.progress >= 0 and hog.progress <= hog.length, "the hedgehog stays on its stretch")
+end
+assert(curled and turned, "the hedgehog should curl and turn back within eight seconds")
+assert(#hog.parts == 23, `hedgehog parts: {#hog.parts}`)
+hog:destroy()
+
+-- An acorn grows in, shakes loose when you walk under it, falls, shatters and grows back.
+local Hazards = require({ __module = "client/Hazards" })
+local acornDef = table.clone(level.def)
+acornDef.drops = { { ring = 0, side = 0, offset = 2 } }
+local acornLevel = Level.new(acornDef)
+local hazards = Hazards.new(acornLevel, "acorn", workspace)
+local under = { ring = 0, s = acornLevel:sOf(0, 0, 2) }
+local cracked, fell, shattered = false, false, nil
+for step = 1, 120 * 3 do
+	local ev = hazards:update(1 / 120, under)
+	hazards:render()
+	if ev.cracked then
+		assert(step >= 60, "a drop can't trigger while it's still growing")
+		cracked = true
+	end
+	fell = fell or #hazards.dangers > 0
+	shattered = shattered or ev.shattered[1]
+end
+assert(cracked and fell and shattered, "the acorn should crack, fall and shatter")
+assert(math.abs(shattered.at.Y - (acornLevel:tierTop(0) + 0.35 / 2)) < 0.5, "it shatters on the walkway")
+assert(hazards.drops[1].state == "gone", "the acorn is gone after it shatters")
+for _ = 1, 120 * 4 do
+	hazards:update(1 / 120, { ring = 3, s = 0 })
+end
+assert(hazards.drops[1].state == "hang", "the acorn grows back")
+hazards:destroy()
+
 -- Standing still on the belt drifts the player along it.
 local player = Player.new(level)
 player:reset({ ring = conveyor.ring, side = conveyor.side, offset = conveyor.offset })
@@ -202,6 +244,44 @@ for _ = 1, 600 do
 end
 barrels:render(1 / 60)
 assert(barrels:burst()[1] == require({ __module = "shared/Config" }).COLORS.pink, "gumball burst")
+
+-- Tumbleweeds are bigger and bounce as they roll.
+local desert = Level.new(Levels[3])
+before = counts.Part
+World.build(desert, workspace)
+print("desert world parts:", counts.Part - before)
+barrels:setLevel(desert, Obstacles.new(desert, workspace), "tumbleweed")
+barrels:spawn(vec(0, 20, 0))
+local weed = barrels.list[1]
+assert(math.abs(weed.radius - 0.42 * 1.1) < 1e-9 and #weed.parts == 28, "a tumbleweed is 28 twigs at 1.1x")
+local hopped = 0
+for _ = 1, 240 do
+	barrels:update(1 / 120)
+	if weed.state == "roll" then hopped = math.max(hopped, weed.lift) end
+end
+barrels:render(1 / 60)
+assert(hopped > 0.3, `tumbleweed should hop (max lift {hopped})`)
+
+-- Pumpkins split into two smaller halves on their first chute landing.
+barrels:setLevel(level, obstacles, "pumpkin")
+barrels.ladderChance = 0
+local splits = 0
+barrels.onSplit = function()
+	splits += 1
+end
+barrels:spawn(vec(0, 20, 0))
+for _ = 1, 120 * 20 do
+	barrels:update(1 / 120)
+	barrels:render(1 / 120)
+	if splits > 0 then break end
+end
+assert(splits == 1 and barrels:count() == 2, `the pumpkin should split in two ({splits} splits, {barrels:count()} alive)`)
+local half = barrels.list[1]
+assert(math.abs(half.radius - 0.42 * 1.15 * 0.75) < 1e-9 and half.split, "halves are 0.75x and don't split again")
+local halfParts = half.parts
+barrels:clear()
+assert(math.abs(halfParts[1].Size.X - 0.42 * 1.15 * 2 * 2) < 1e-6, "pooled halves are restored to full size")
+barrels.onSplit = nil
 print("candy obstacle, item and barrel checks passed")
 
 local Particles = require({ __module = "client/Particles" })
@@ -279,17 +359,36 @@ for frame = 1, 60 * 20 do
 	if frame % 90 == 0 then popscotch:pressJump() end
 end
 print("game ran 20 s, state:", popscotch.state, "score:", popscotch.score)
--- Clearing round 1 moves on to candy; clearing the last level loops back to the meadow.
-popscotch.round = 2
-popscotch:_startRound(true)
-assert(popscotch.level.def.name == "candy hills" and popscotch.barrels.look == "gumball", "round 2 is candy")
-assert(math.abs(popscotch.barrels.speedMul - 1.06) < 1e-9, "candy is 6% quicker")
-for frame = 1, 60 * 20 do
-	popscotch:update(1 / 60, keys)
-	if frame % 90 == 0 then popscotch:pressJump() end
+-- Each cleared round moves on a level, each 6% quicker; after the last it loops back to the meadow.
+for i = 2, #Levels do
+	popscotch.round = i
+	popscotch.lives = 99
+	popscotch:_startRound(true)
+	local def = popscotch.level.def
+	assert(def == Levels[i], `round {i} is level {i}`)
+	assert(popscotch.barrels.look == Skins[def.skin].projectile, `{def.name} throws its own projectile`)
+	assert(math.abs(popscotch.barrels.speedMul - (1 + 0.06 * (i - 1))) < 1e-9, `{def.name} speed`)
+	for frame = 1, 60 * 20 do
+		popscotch:update(1 / 60, keys)
+		if frame % 90 == 0 then popscotch:pressJump() end
+	end
+	assert(popscotch.level.def == def, `still on {def.name}`)
+	print(`{def.name} ran 20 s, state:`, popscotch.state, "score:", popscotch.score, "lives lost:", 99 - popscotch.lives)
 end
-print("candy ran 20 s, state:", popscotch.state, "score:", popscotch.score)
-popscotch.round = 3
+-- Harvest woods: hedgehogs, acorns, pumpkins, and a summit sealed until 3 pumpkin relics are in.
+popscotch.round = 4
+popscotch:_startRound(true)
+assert(popscotch.level.def.name == "harvest woods", "level 4 is harvest woods")
+assert(#popscotch.crawlers == 3 and #popscotch.hazards.drops == 3 and #popscotch.ghosts == 1, "harvest spawns its critters and acorns")
+assert(popscotch.obstacles:lockKind(7) == "relics" and select(2, popscotch.items:relicsLeft()) == 3, "3 pumpkins unseal the summit")
+assert(popscotch.barrels.look == "pumpkin", "harvest throws pumpkins")
+popscotch.round = #Levels + 4
+popscotch:_startRound(true)
+assert(#popscotch.ghosts == 2, "each lap adds a ghost")
+
+popscotch.round = #Levels + 1
 popscotch:_startRound(true)
 assert(popscotch.levelIndex == 1 and math.abs(popscotch.barrels.speedMul - 1.2) < 1e-9, "the second lap is back on the meadow, quicker")
+popscotch:skipLevel()
+assert(popscotch.levelIndex == 2 and popscotch.state == "ready", "the Studio skip key moves on a level")
 print("total Part instances:", counts.Part)

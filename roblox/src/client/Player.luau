@@ -70,7 +70,8 @@ function Player:isClimbing(): boolean
 	return self.moving and self.state == "ladder" and self:onVerticalPart()
 end
 
--- `env` is the level's obstacles: `carry(ring, s)` (nil over a gap) and `isLadderOpen(index)`.
+-- `env` is the level's obstacles: `carry(ring, s)` (nil over a gap), `isLadderOpen(index)` and
+-- `spring(ring, s)`.
 function Player:step(dt: number, controls, env)
 	local result = {
 		jumped = false,
@@ -78,6 +79,8 @@ function Player:step(dt: number, controls, env)
 		reachedSummit = false,
 		fellInPit = false,
 		hammerBlocked = false,
+		-- Launched off a spring pad.
+		bounced = false,
 		-- Index of a locked ladder the player tried to climb.
 		blockedLadder = nil :: number?,
 	}
@@ -152,7 +155,20 @@ function Player:_stepGround(dt: number, c, result)
 	if self.env:carry(self.ring, self.s) == nil then
 		self.state = "air"
 		self.vy = 0
+	elseif self:_onSpring() then
+		self:_launch(result)
 	end
+end
+
+-- Pads only fire when you run onto them, so you can stand on one without bouncing forever.
+function Player:_onSpring(): boolean
+	return math.abs(self.vs) > 0.5 and self.env:spring(self.ring, self.s)
+end
+
+function Player:_launch(result)
+	self.state = "air"
+	self.vy = Config.OBSTACLES.springVelocity
+	result.bounced = true
 end
 
 function Player:_stepAir(dt: number, result)
@@ -179,6 +195,10 @@ function Player:_stepAir(dt: number, result)
 	if not overGap and self.y <= top then
 		self.y = top
 		self.vy = 0
+		if self:_onSpring() then
+			self:_launch(result)
+			return
+		end
 		self.state = "ground"
 		result.landed = true
 	end

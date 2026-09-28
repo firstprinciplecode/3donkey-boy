@@ -1,5 +1,5 @@
--- Pickups, ported from src/entities/items.ts: gems, hotdogs, the hammer, the door key, the 1-up coin,
--- the 1-U-P letters and the bonus orbs. Each is a handful of parts that bob and spin around a resting centre;
+-- Pickups, ported from src/entities/items.ts: gems, hotdogs, the hammer, the door key, relics, the
+-- 1-up coin, the 1-U-P letters and the bonus orbs. Each is a handful of parts that bob and spin around a resting centre;
 -- `position` (game units) is that centre, which is what the player has to touch.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,6 +8,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Orbs = require(Shared.Orbs)
 local PixelFont = require(Shared.PixelFont)
+local Skins = require(Shared.Skins)
 
 local Voxel = require(script.Parent.Voxel)
 
@@ -57,6 +58,36 @@ local function key(): { Piece }
 		piece(0.1, 0.5, 0.1, C.yellow, 0, -0.18, 0, true),
 		piece(0.18, 0.08, 0.1, C.yellow, 0.1, -0.3, 0, true),
 		piece(0.14, 0.08, 0.1, C.yellow, 0.08, -0.14, 0, true),
+	}
+end
+
+-- Collect every one on a level to open its relic seal. The look comes from the skin.
+local function relic(look: string): { Piece }
+	if look == "pumpkin" then
+		return {
+			piece(0.6, 0.46, 0.5, C.orange, 0, 0, 0, true),
+			piece(0.42, 0.42, 0.6, C.maple, 0, 0, 0),
+			piece(0.1, 0.16, 0.1, C.leafDark, 0, 0.3, 0),
+			piece(0.1, 0.08, 0.04, C.yellow, -0.12, 0.06, 0.31, true),
+			piece(0.1, 0.08, 0.04, C.yellow, 0.12, 0.06, 0.31, true),
+			piece(0.26, 0.06, 0.04, C.yellow, 0, -0.1, 0.31, true),
+		}
+	elseif look == "present" then
+		return {
+			piece(0.5, 0.44, 0.5, C.red, 0, 0, 0, true),
+			piece(0.1, 0.46, 0.52, C.yellow, 0, 0, 0),
+			piece(0.52, 0.46, 0.1, C.yellow, 0, 0, 0),
+			piece(0.3, 0.12, 0.12, C.yellow, -0.1, 0.28, 0),
+			piece(0.3, 0.12, 0.12, C.yellow, 0.1, 0.28, 0),
+		}
+	end
+	return {
+		piece(0.44, 0.1, 0.34, C.gold, 0, -0.3, 0, true),
+		piece(0.3, 0.42, 0.26, C.gold, 0, -0.04, 0, true),
+		piece(0.36, 0.26, 0.3, C.gold, 0, 0.3, 0, true),
+		piece(0.08, 0.08, 0.04, C.teal, -0.08, 0.32, 0.16),
+		piece(0.08, 0.08, 0.04, C.teal, 0.08, 0.32, 0.16),
+		piece(0.12, 0.08, 0.3, C.teal, 0, 0.47, 0),
 	}
 end
 
@@ -129,10 +160,13 @@ local function decorateCoin(rim: Part)
 	end
 end
 
-local function makePieces(kind: string, colorIndex: number): { Piece }
+local function makePieces(kind: string, colorIndex: number, relicLook: string?): { Piece }
 	local ch = LETTER_CHARS[kind]
 	if ch then
 		return letter(ch)
+	elseif kind == "relic" then
+		assert(relicLook, "This level's skin has no relic")
+		return relic(relicLook)
 	elseif kind == "orb" then
 		return orb(colorIndex)
 	elseif kind == "gem" then
@@ -178,7 +212,8 @@ function Items:_add(kind: string, spot, colorIndex: number)
 		offsets = {},
 	}
 	item.yaw = item.baseYaw
-	for _, p in makePieces(kind, colorIndex) do
+	local relicDef = Skins[L.def.skin].relic
+	for _, p in makePieces(kind, colorIndex, relicDef and relicDef.look) do
 		local part = Voxel.part(self.folder, p.size, p.color, 0, p.shape)
 		if p.glow then
 			part.Material = Enum.Material.Neon
@@ -232,6 +267,20 @@ function Items:lettersHeld(): { boolean }
 		end
 	end
 	return held
+end
+
+-- Relics still to find, and how many the level has.
+function Items:relicsLeft(): (number, number)
+	local left, total = 0, 0
+	for _, item in self.list do
+		if item.type == "relic" then
+			total += 1
+			if not item.collected then
+				left += 1
+			end
+		end
+	end
+	return left, total
 end
 
 function Items.isLetter(item): boolean

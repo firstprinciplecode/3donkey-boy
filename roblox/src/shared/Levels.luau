@@ -119,4 +119,161 @@ local CANDY = {
 	locks = { { kind = "key", ladder = 7 } },
 }
 
-return { MEADOW, CANDY }
+-- Tall 6-tier pyramid with short tiers; the route zig-zags direction every ring and uses everything.
+local DESERT = {
+	name = "desert arcade",
+	skin = "desert",
+	rings = 6,
+	terraceDepth = 3,
+	tierHeight = 3,
+	summitHalf = 3,
+	ladders = {
+		{ ring = 0, side = 1, offset = -12 },
+		{ ring = 0, side = 3, offset = 8 },
+		{ ring = 1, side = 0, offset = 6 },
+		{ ring = 2, side = 1, offset = -2 },
+		{ ring = 3, side = 0, offset = 3 },
+		{ ring = 3, side = 2, offset = 0 },
+		{ ring = 4, side = 1, offset = 0 },
+		{ ring = 5, side = 0, offset = 0 },
+	},
+	chutes = {
+		{ ring = 1, side = 2, offset = 5 },
+		{ ring = 2, side = 3, offset = -5 },
+		{ ring = 3, side = 2, offset = -6 },
+		{ ring = 4, side = 3, offset = 3 },
+		{ ring = 5, side = 2, offset = 0 },
+	},
+	playerStart = { ring = 0, side = 0, offset = -12 },
+	drum = { ring = 0, side = 0, offset = -17 },
+	barrelSpawn = { ring = 5, side = 1, offset = 1 },
+	items = {
+		{ type = "gem", spot = { ring = 0, side = 0, offset = -4 } },
+		{ type = "gem", spot = { ring = 0, side = 0, offset = 14.5 } },
+		{ type = "hotdog", spot = { ring = 0, side = 1, offset = -16 } },
+		{ type = "gem", spot = { ring = 1, side = 0, offset = 12 } },
+		{ type = "hammer", spot = { ring = 2, side = 3, offset = 0 } },
+		{ type = "gem", spot = { ring = 2, side = 1, offset = -8 } },
+		{ type = "oneup", spot = { ring = 3, side = 2, offset = 4 } },
+		{ type = "gem", spot = { ring = 3, side = 0, offset = 7.5 } },
+		{ type = "key", spot = { ring = 4, side = 3, offset = 0 } },
+		{ type = "hotdog", spot = { ring = 4, side = 0, offset = -5 } },
+		{ type = "gem", spot = { ring = 5, side = 0, offset = -3 } },
+		{ type = "letter-1", spot = { ring = 0, side = 3, offset = 14 } },
+		{ type = "letter-u", spot = { ring = 1, side = 1, offset = -4 } },
+		{ type = "letter-p", spot = { ring = 4, side = 2, offset = -4 } },
+	},
+	totems = { { ring = 2, from = { 0, -3 }, to = { 0, 3 } } },
+	patrols = {
+		{ ring = 1, from = { 0, -10 }, to = { 0, 4 } },
+		{ ring = 3, from = { 3, -8 }, to = { 0, -2 } },
+		{ ring = 0, from = { 1, -8 }, to = { 1, 8 } },
+		{ ring = 4, from = { 2, -6 }, to = { 3, 6 } },
+		{ ring = 2, from = { 2, -10 }, to = { 3, -10 } },
+	},
+	ghosts = 2,
+	fires = 3,
+	pits = {
+		{ ring = 0, side = 0, offset = -4, width = 2 },
+		{ ring = 2, side = 0, offset = 10, width = 2 },
+	},
+	crumbles = {
+		{ ring = 0, side = 0, offset = 14.5, width = 3 },
+		{ ring = 3, side = 1, offset = -6.5, width = 3 },
+		{ ring = 3, side = 0, offset = 7.5, width = 3 },
+	},
+	conveyors = {
+		{ ring = 0, side = 0, offset = 6, width = 6, dir = 1 },
+		{ ring = 2, side = 1, offset = -8, width = 4, dir = -1 },
+	},
+	platforms = {
+		{ ring = 1, side = 0, offset = 12, width = 6, platformWidth = 2, period = 3.6 },
+		{ ring = 4, side = 1, offset = -4, width = 4, platformWidth = 1.6, period = 3 },
+	},
+	-- Ladders 3 and 7 in the web build.
+	locks = {
+		{ kind = "switch", ladder = 4, switchAt = { ring = 2, side = 0, offset = -6 } },
+		{ kind = "key", ladder = 8 },
+	},
+}
+
+-- Autumn: spring pads launch you over wide pits, acorns drop from the branches, 3 pumpkins unseal the summit.
+local HARVEST = {
+	name = "harvest woods",
+	skin = "autumn",
+	tip = "Springs clear wide pits · Gather 3 pumpkins",
+	rings = 5,
+	terraceDepth = 3,
+	tierHeight = 4,
+	summitHalf = 3,
+	ladders = {
+		{ ring = 0, side = 1, offset = -4 },
+		{ ring = 0, side = 3, offset = 6 },
+		{ ring = 1, side = 2, offset = 3 },
+		{ ring = 2, side = 3, offset = 2 },
+		{ ring = 2, side = 1, offset = 0 },
+		{ ring = 3, side = 0, offset = -2 },
+		{ ring = 4, side = 3, offset = 0 },
+	},
+	chutes = {
+		{ ring = 1, side = 0, offset = -6 },
+		{ ring = 2, side = 0, offset = 0 },
+		{ ring = 3, side = 1, offset = 3 },
+		{ ring = 4, side = 2, offset = 0 },
+	},
+	playerStart = { ring = 0, side = 0, offset = -11 },
+	drum = { ring = 0, side = 0, offset = -15 },
+	barrelSpawn = { ring = 4, side = 1, offset = 1 },
+	items = {
+		{ type = "gem", spot = { ring = 0, side = 0, offset = -6 } },
+		{ type = "relic", spot = { ring = 0, side = 0, offset = 11 } },
+		{ type = "hotdog", spot = { ring = 0, side = 1, offset = -12 } },
+		{ type = "hammer", spot = { ring = 0, side = 2, offset = 0 } },
+		{ type = "gem", spot = { ring = 1, side = 1, offset = -1 } },
+		{ type = "relic", spot = { ring = 1, side = 1, offset = 6 } },
+		{ type = "oneup", spot = { ring = 2, side = 2, offset = -5 } },
+		{ type = "relic", spot = { ring = 2, side = 2, offset = 8 } },
+		{ type = "gem", spot = { ring = 2, side = 3, offset = 0 } },
+		{ type = "hotdog", spot = { ring = 3, side = 3, offset = 4 } },
+		{ type = "gem", spot = { ring = 3, side = 0, offset = -5 } },
+		{ type = "gem", spot = { ring = 4, side = 0, offset = -3 } },
+		{ type = "letter-1", spot = { ring = 0, side = 3, offset = 12 } },
+		{ type = "letter-u", spot = { ring = 2, side = 2, offset = -9 } },
+		{ type = "letter-p", spot = { ring = 3, side = 2, offset = 3 } },
+	},
+	totems = { { ring = 0, from = { 0, 10.5 }, to = { 0, 15 } } },
+	patrols = {
+		{ ring = 1, from = { 2, -10 }, to = { 2, 10 } },
+		{ ring = 3, from = { 0, -6 }, to = { 1, 6 } },
+		{ ring = 2, from = { 3, -8 }, to = { 0, 8 } },
+		{ ring = 0, from = { 3, -12 }, to = { 0, -12 } },
+	},
+	ghosts = 1,
+	fires = 2,
+	pits = {
+		{ ring = 0, side = 0, offset = 4.5, width = 5 },
+		{ ring = 1, side = 1, offset = 9, width = 2 },
+		{ ring = 2, side = 3, offset = -4.5, width = 5 },
+	},
+	crumbles = { { ring = 1, side = 2, offset = -6.5, width = 3 } },
+	conveyors = {},
+	platforms = {},
+	-- Ladder 6 in the web build.
+	locks = { { kind = "relics", ladder = 7 } },
+	springs = {
+		{ ring = 0, side = 0, offset = 0.8 },
+		{ ring = 2, side = 3, offset = -7.8 },
+	},
+	drops = {
+		{ ring = 1, side = 1, offset = 2 },
+		{ ring = 2, side = 2, offset = 6 },
+		{ ring = 3, side = 3, offset = 5 },
+	},
+	crawlers = {
+		{ ring = 0, from = { 1, -14 }, to = { 1, -6 } },
+		{ ring = 2, from = { 2, 4 }, to = { 2, 9 } },
+		{ ring = 3, from = { 3, 3 }, to = { 0, -4 } },
+	},
+}
+
+return { MEADOW, CANDY, DESERT, HARVEST }

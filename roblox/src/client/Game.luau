@@ -16,6 +16,8 @@ local Barrels = require(script.Parent.Barrels)
 local Boss = require(script.Parent.Boss)
 local CameraRig = require(script.Parent.CameraRig)
 local Combo = require(script.Parent.Combo)
+local Crawler = require(script.Parent.Crawler)
+local Hazards = require(script.Parent.Hazards)
 local Fire = require(script.Parent.Fire)
 local Ghost = require(script.Parent.Ghost)
 local Hud = require(script.Parent.Hud)
@@ -28,6 +30,7 @@ local Totem = require(script.Parent.Totem)
 
 local BARREL = Config.BARREL
 local C = Config.COLORS
+local CRAWLER = Config.CRAWLER
 local FIRE = Config.FIRE
 local GAME_RULES = Config.GAME_RULES
 local GHOST = Config.GHOST
@@ -83,6 +86,7 @@ function Game.new(playerGui: Instance)
 	self.fires = {}
 	self.ghosts = {}
 	self.totems = {}
+	self.crawlers = {}
 	self.barrels.onDrum = function(b)
 		if self.state ~= "playing" then
 			return
@@ -96,6 +100,13 @@ function Game.new(playerGui: Instance)
 	end
 	self.barrels.onPit = function(b)
 		self.particles:burst(b.pos + Vector3.yAxis * 0.4, RAINBOW, 8, 3)
+	end
+	self.barrels.onSplit = function(b)
+		if self.state ~= "playing" then
+			return
+		end
+		self.particles:burst(Barrels.centre(b), self.barrels:burst(), 10, 3)
+		self.audio:play("crumble")
 	end
 
 	self.levelIndex = 0
@@ -134,6 +145,7 @@ function Game:_loadLevel(index: number)
 		self.backdrop:destroy()
 		self.items:destroy()
 		self.obstacles:destroy()
+		self.hazards:destroy()
 	end
 
 	local started = os.clock()
@@ -144,6 +156,7 @@ function Game:_loadLevel(index: number)
 	self.backdrop = Backdrop.new(level, skin, workspace)
 	self.items = Items.new(level, workspace)
 	self.obstacles = Obstacles.new(level, workspace)
+	self.hazards = Hazards.new(level, skin.drop, workspace)
 	self.player.level = level
 	self.boss:setLevel(level)
 	self.barrels:setLevel(level, self.obstacles, skin.projectile)
@@ -191,6 +204,15 @@ function Game:_setState(state: string)
 	end
 end
 
+-- Studio testing aid (bound in init.client): straight to the next round's level, keeping score and lives.
+function Game:skipLevel()
+	if self.state == "gameover" then
+		return
+	end
+	self.round += 1
+	self:_startRound(true)
+end
+
 function Game:toggleMute()
 	local muted = self.audio:toggleMute()
 	local p = self.player
@@ -214,14 +236,16 @@ function Game:_clearFires()
 	table.clear(self.fires)
 end
 
-function Game:_spawnGhosts()
+-- Each lap through the levels adds a ghost, up to one per patrol route.
+function Game:_spawnGhosts(loop: number)
 	for _, ghost in self.ghosts do
 		ghost:destroy()
 	end
 	table.clear(self.ghosts)
 	local def = self.level.def
-	for i = 1, math.min(def.ghosts, #def.patrols) do
-		table.insert(self.ghosts, Ghost.new(self.level, def.patrols[i], GHOST.speed, self.enemies))
+	local speed = GHOST.speed * self.barrels.speedMul
+	for i = 1, math.min(def.ghosts + loop, #def.patrols) do
+		table.insert(self.ghosts, Ghost.new(self.level, def.patrols[i], speed, self.enemies))
 	end
 end
 
@@ -230,14 +254,31 @@ function Game:_spawnTotems()
 		totem:destroy()
 	end
 	table.clear(self.totems)
+	local speed = TOTEM.speed * self.barrels.speedMul
 	for _, patrol in self.level.def.totems or {} do
-		table.insert(self.totems, Totem.new(self.level, patrol, TOTEM.speed, self.enemies))
+		table.insert(self.totems, Totem.new(self.level, patrol, speed, self.enemies))
+	end
+end
+
+function Game:_spawnCrawlers()
+	for _, crawler in self.crawlers do
+		crawler:destroy()
+	end
+	table.clear(self.crawlers)
+	local look = Skins[self.level.def.skin].crawler
+	local speed = CRAWLER.speed * self.barrels.speedMul
+	for _, patrol in self.level.def.crawlers or {} do
+		table.insert(self.crawlers, Crawler.new(self.level, patrol, look, speed, self.enemies))
 	end
 end
 
 function Game:_lockHint(ladder: number)
 	local kind = self.obstacles:lockKind(ladder)
-	if kind then
+	if kind == "relics" then
+		local left = self.items:relicsLeft()
+		local name = Skins[self.level.def.skin].relic.name
+		self:_hint(`Sealed · {left} {name}{if left == 1 then "" else "s"} to go!`)
+	elseif kind then
 		self:_hint(if kind == "key" then "Locked · Find the key!" else "Gated · Find the switch!")
 	end
 end
@@ -259,9 +300,11 @@ function Game:_startRound(fresh: boolean)
 	self.barrels.ladderChance = math.min(0.5, BARREL.ladderChance + 0.05 * loop)
 	self.barrels:clear()
 	self:_clearFires()
-	self:_spawnGhosts()
+	self:_spawnGhosts(loop)
 	self:_spawnTotems()
+	self:_spawnCrawlers()
 	self.obstacles:reset(fresh)
+	self.hazards:reset()
 	if fresh then
 		self.items:spawn()
 		self.hud:setLetters(self.items:lettersHeld())
@@ -325,6 +368,16 @@ end
 function Game:_addLife()
 	self.lives = math.min(GAME_RULES.maxLives, self.lives + 1)
 	self.hud:setLives(self.lives)
+end
+
+function Game:_onHazards(events)
+	if events.cracked then
+		self.audio:play("crack")
+	end
+	for _, s in events.shattered do
+		self.particles:burst(s.at, s.colors, 10, 3)
+		self.audio:play("shatter")
+	end
 end
 
 function Game:_smash(at: Vector3, points: number, colors: { Color3 }?)
@@ -407,6 +460,18 @@ function Game:_collect(item)
 		self:_popup("Door unlocked!", at + Vector3.yAxis * 0.6)
 		burst:burst(at, { C.yellow, C.cream }, 16, 4)
 		self.audio:play("unlock")
+	elseif kind == "relic" then
+		self:_addScore(SCORE.relic)
+		burst:burst(at, { C.gold, C.yellow, C.cream }, 16, 4)
+		local left, total = self.items:relicsLeft()
+		if left == 0 and self.obstacles:unlockRelicDoors() then
+			self:_popup("Summit unsealed!", at + Vector3.yAxis * 0.6)
+			self.audio:play("unlock")
+		else
+			local name = Skins[self.level.def.skin].relic.name
+			self:_popup(`{Hud.levelTitle(name)} {total - left}/{total}`, at + Vector3.yAxis * 0.6)
+			self.audio:play("relic")
+		end
 	end
 end
 
@@ -460,7 +525,7 @@ function Game:_checkCollisions(): boolean
 		if not b.done and b.state ~= "sink" then
 			local br = b.radius
 			local pos = b.pos
-			local centre = pos + Vector3.yAxis * br
+			local centre = Barrels.centre(b)
 			if self:_hitsPlayer(centre, br * 0.8) then
 				if not armed then
 					self:_die("Bonk!", "Jump the barrels with Space")
@@ -474,11 +539,13 @@ function Game:_checkCollisions(): boolean
 				and b.state == "roll"
 				and b.ring == p.ring
 				and math.sqrt((p.px - pos.X) ^ 2 + (p.pz - pos.Z) ^ 2) < 0.7
-				and p.py > pos.Y + br * 2 - 0.1
+				and p.py > centre.Y + br - 0.1
 				and p.py - pos.Y < 2.4
 			if not b.scored and clearedAbove then
 				b.scored = true
-				self:_addJumpScore(SCORE.jumpBarrel, pos + Vector3.yAxis * 1.4)
+				-- Bigger projectiles are riskier to clear, so they pay more (in steps of 50).
+				local points = math.round(SCORE.jumpBarrel * (br / BARREL.radius) / 50) * 50
+				self:_addJumpScore(points, pos + Vector3.yAxis * 1.4)
 			end
 		end
 	end
@@ -511,6 +578,32 @@ function Game:_checkCollisions(): boolean
 		end
 	end
 
+	for i = #self.crawlers, 1, -1 do
+		local crawler = self.crawlers[i]
+		local cp = crawler.position
+		if self:_hitsPlayer(cp, crawler.radius) then
+			if not armed then
+				self:_die("Ouch!", "Jump the critters on the path")
+				return true
+			end
+			crawler:destroy()
+			table.remove(self.crawlers, i)
+			self:_smash(cp, SCORE.smashCrawler)
+			continue
+		end
+		if p.state == "ground" then
+			crawler.scored = false
+		end
+		local clearedAbove = p.state == "air"
+			and crawler.ring == p.ring
+			and math.sqrt((p.px - cp.X) ^ 2 + (p.pz - cp.Z) ^ 2) < 0.8
+			and p.py > crawler.base.Y + crawler.height - 0.1
+		if not crawler.scored and clearedAbove then
+			crawler.scored = true
+			self:_addJumpScore(SCORE.jumpCrawler, cp + Vector3.yAxis * 1.2)
+		end
+	end
+
 	for i = #self.totems, 1, -1 do
 		local totem = self.totems[i]
 		if self:_hitsPlayer(totem.position, totem.radius) or self:_hitsPlayer(totem.head, totem.radius) then
@@ -532,6 +625,13 @@ function Game:_checkCollisions(): boolean
 				totem.scored = true
 				self:_addJumpScore(SCORE.underTotem, Vector3.new(p.px, p.py + 2, p.pz))
 			end
+		end
+	end
+
+	for _, danger in self.hazards.dangers do
+		if self:_hitsPlayer(danger.at, danger.r) then
+			self:_die("Bonk!", "Look up: things fall when you walk under them")
+			return true
 		end
 	end
 
@@ -567,6 +667,10 @@ function Game:_stepPlaying(dt: number)
 		if result.landed then
 			self.audio:play("land")
 		end
+		if result.bounced then
+			self.audio:play("spring")
+			self.obstacles:boing(p.ring, p.s)
+		end
 		if result.fellInPit then
 			self:_die("Ouch!", "Jump the spike pits", true)
 			return
@@ -588,6 +692,7 @@ function Game:_stepPlaying(dt: number)
 			self.audio:play("switch")
 			self:_popup("Gate open!", Vector3.new(p.px, p.py + 2.2, p.pz))
 		end
+		self:_onHazards(self.hazards:update(SUBSTEP, p))
 		self.barrels:update(SUBSTEP)
 		for _, totem in self.totems do
 			totem:update(SUBSTEP, self.obstacles)
@@ -597,6 +702,9 @@ function Game:_stepPlaying(dt: number)
 		end
 		for _, ghost in self.ghosts do
 			ghost:update(SUBSTEP)
+		end
+		for _, crawler in self.crawlers do
+			crawler:update(SUBSTEP, self.obstacles)
 		end
 		for _, fire in self.fires do
 			fire:update(SUBSTEP, self.obstacles, self.barrels.speedMul)
@@ -698,7 +806,11 @@ function Game:update(dt: number, held)
 	for _, totem in self.totems do
 		totem:render()
 	end
+	for _, crawler in self.crawlers do
+		crawler:render()
+	end
 	self.obstacles:render(dt)
+	self.hazards:render()
 	self.particles:update(dt)
 	self.items:update(dt)
 	self.rig:update(dt, self.player)

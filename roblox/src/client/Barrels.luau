@@ -4,12 +4,14 @@
 -- each ring's chute onto the ring below until the drum on the ground ring. Rings are loops, so every
 -- barrel reaches a chute whichever way it goes, unless it rolls into a pit or takes a ladder first.
 -- Positions are in game units with `pos` at the barrel's bottom; `render` draws them once a frame.
+-- Each skin throws its own look (see Projectiles), which can change the size, speed and bounce.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Level = require(Shared.Level)
+local Projectiles = require(Shared.Projectiles)
 local Util = require(Shared.Util)
 
 local Voxel = require(script.Parent.Voxel)
@@ -17,53 +19,31 @@ local Voxel = require(script.Parent.Voxel)
 local BARREL = Config.BARREL
 local STUD = Config.STUD
 local R = BARREL.radius
-local LENGTH = 0.8
 local MAX_LIFETIME = 120
 local SINK_TIME = 0.3
-local STAVES = #Config.RAINBOW
 
--- Every piece is laid out in a frame whose Z axis is the barrel's axle. Roblox cylinders run along X.
-local AXLE = CFrame.Angles(0, math.pi / 2, 0)
-local PIECES = { AXLE }
-for _, z in { -LENGTH / 2 + 0.05, LENGTH / 2 - 0.05 } do
-	table.insert(PIECES, CFrame.new(0, 0, z * STUD) * AXLE)
-end
-for i = 1, STAVES do
-	local angle = (i - 1) / STAVES * 2 * math.pi
-	table.insert(PIECES, CFrame.Angles(0, 0, angle) * CFrame.new(0, (R - 0.03) * STUD, 0))
+-- Piece offsets and sizes per look, in studs, matching the order of the parts `_acquire` builds.
+type Layout = { offsets: { CFrame }, sizes: { Vector3 } }
+local layoutByLook: { [string]: Layout } = {}
+local function layoutFor(look: string): Layout
+	local layout = layoutByLook[look]
+	if not layout then
+		layout = { offsets = {}, sizes = {} }
+		for i, p in Projectiles.pieces(look) do
+			layout.offsets[i] = p.at.Rotation + p.at.Position * STUD
+			layout.sizes[i] = p.size * STUD
+		end
+		layoutByLook[look] = layout
+	end
+	return layout
 end
 
--- Each look builds one barrel's parts and lays them out (PIECES[i] goes with part i).
-local LOOKS = {
-	barrel = {
-		pieces = PIECES,
-		build = function(folder: Instance): { Part }
-			local C = Config.COLORS
-			local parts = {
-				Voxel.part(folder, Vector3.new(LENGTH, R * 2 - 0.06, R * 2 - 0.06), C.charcoal, 0, Enum.PartType.Cylinder),
-			}
-			for _ = 1, 2 do
-				table.insert(parts, Voxel.part(folder, Vector3.new(0.1, R * 2 + 0.04, R * 2 + 0.04), C.black, 0, Enum.PartType.Cylinder))
-			end
-			-- Rainbow staves around the barrel so the roll is readable.
-			local width = 2 * math.pi * R / STAVES - 0.02
-			for i = 1, STAVES do
-				table.insert(parts, Voxel.part(folder, Vector3.new(width, 0.06, LENGTH * 0.86), Config.RAINBOW[i]))
-			end
-			return parts
-		end,
-	},
-	gumball = {
-		pieces = { CFrame.identity },
-		build = function(folder: Instance): { Part }
-			return { Voxel.part(folder, Vector3.one * R * 2, Config.COLORS.pink, 0, Enum.PartType.Ball) }
-		end,
-		respawn = function(parts: { Part })
-			local colors = Config.PROJECTILES.gumball.colors
-			parts[1].Color = colors[math.random(#colors)]
-		end,
-	},
-}
+-- Split halves are drawn smaller; `scale` is their size relative to a whole one.
+local function resize(parts: { Part }, look: string, scale: number)
+	for i, size in layoutFor(look).sizes do
+		parts[i].Size = size * scale
+	end
+end
 
 local Barrels = {}
 Barrels.__index = Barrels
@@ -83,6 +63,7 @@ function Barrels.new(level, parent: Instance)
 	self.ladderChance = BARREL.ladderChance
 	self.onDrum = nil :: ((any) -> ())?
 	self.onPit = nil :: ((any) -> ())?
+	self.onSplit = nil :: ((any) -> ())?
 	self.folder = Instance.new("Folder")
 	self.folder.Name = "Barrels"
 	self.folder.Parent = parent
@@ -119,16 +100,32 @@ function Barrels:burst(): { Color3 }
 	return Config.PROJECTILES[self.look].burst
 end
 
+-- Centre of a barrel's hit sphere, including any hop.
+function Barrels.centre(b): Vector3
+	return b.pos + Vector3.yAxis * (b.lift + b.radius)
+end
+
 function Barrels:_acquire(): { Part }
-	local look = LOOKS[self.look]
-	local parts = table.remove(self.pool) or look.build(self.folder)
-	if look.respawn then
-		look.respawn(parts)
+	local parts = table.remove(self.pool)
+	if not parts then
+		parts = {}
+		for i, p in Projectiles.pieces(self.look) do
+			parts[i] = Voxel.part(self.folder, p.size, p.color)
+			Projectiles.dress(parts[i], p)
+		end
+	end
+	-- Gumballs come out a different colour each throw.
+	local colors = Config.PROJECTILES[self.look].colors
+	if colors then
+		parts[1].Color = colors[math.random(#colors)]
 	end
 	return parts
 end
 
 function Barrels:_release(b)
+	if b.scale ~= 1 then
+		resize(b.parts, self.look, 1)
+	end
 	for _, part in b.parts do
 		table.insert(self.moveParts, part)
 		table.insert(self.moveFrames, Voxel.HIDDEN)
@@ -136,18 +133,22 @@ function Barrels:_release(b)
 	table.insert(self.pool, b.parts)
 end
 
--- Launch a barrel from `from` (the boss's hand) onto the top ring.
-function Barrels:spawn(from: Vector3)
-	local L = self.level
-	local spawn = L.def.barrelSpawn
+function Barrels:_create(from: Vector3, ring: number, s: number, dir: number, yaw: number)
 	local b = {
 		parts = self:_acquire(),
-		radius = R,
+		radius = R * Config.PROJECTILES[self.look].scale,
+		-- Drawn size relative to a whole one, and whether it has split already (halves don't split again).
+		scale = 1,
+		shownScale = 1,
+		split = false,
+		-- Height above the walkway while hopping, and how far through the current hop it is.
+		lift = 0,
+		hop = 0,
 		pos = from,
 		state = "roll",
-		ring = spawn.ring,
-		s = L:spotS(spawn),
-		dir = randomDir(),
+		ring = ring,
+		s = s,
+		dir = dir,
 		path = nil,
 		d = 0,
 		from = from,
@@ -158,12 +159,39 @@ function Barrels:spawn(from: Vector3)
 		arc = 0,
 		age = 0,
 		spin = 0,
-		yaw = spawn.side * math.pi / 2,
+		yaw = yaw,
 		scored = false,
 		done = false,
 	}
-	self:_startTransfer(b, from, spawn.ring, L:spotS(spawn), 0.8, 1.8)
 	table.insert(self.list, b)
+	return b
+end
+
+-- Launch a barrel from `from` (the boss's hand) onto the top ring.
+function Barrels:spawn(from: Vector3)
+	local L = self.level
+	local spawn = L.def.barrelSpawn
+	local b = self:_create(from, spawn.ring, L:spotS(spawn), randomDir(), spawn.side * math.pi / 2)
+	self:_startTransfer(b, from, spawn.ring, L:spotS(spawn), 0.8, 1.8)
+end
+
+-- A landing off a chute: pumpkins split into two smaller halves rolling opposite ways.
+function Barrels:_land(b)
+	local splits = Config.PROJECTILES[self.look].splits
+	if splits and not b.split then
+		b.split = true
+		b.scale *= splits.scale
+		b.radius *= splits.scale
+		local twin = self:_create(b.pos, b.ring, b.s, -b.dir, b.yaw)
+		twin.split = true
+		twin.scale = b.scale
+		twin.radius = b.radius
+		twin.spin = b.spin + math.pi
+		twin.age = b.age
+		if self.onSplit then
+			self.onSplit(b)
+		end
+	end
 end
 
 -- Knocked out by the hammer; it's put back in the pool on the next update.
@@ -179,8 +207,10 @@ function Barrels:clear()
 end
 
 function Barrels:update(dt: number)
-	local speed = BARREL.baseSpeed * self.speedMul
-	for _, b in self.list do
+	local speed = BARREL.baseSpeed * self.speedMul * Config.PROJECTILES[self.look].speed
+	-- Splits add barrels mid-loop; they start moving next step.
+	for i = 1, #self.list do
+		local b = self.list[i]
 		if not b.done then
 			b.age += dt
 			if b.state == "roll" then
@@ -211,6 +241,11 @@ function Barrels:_stepRoll(b, dt: number, speed: number)
 	local delta = speed * dt
 	local prev = b.s
 	b.s = (b.s + b.dir * delta) % L:ringLength(b.ring)
+	local hop = Config.PROJECTILES[self.look].hop
+	if hop then
+		b.hop += delta / hop.every
+		b.lift = hop.height * math.abs(math.sin(math.pi * b.hop))
+	end
 	b.spin -= b.dir * delta / b.radius
 
 	local env = self.env
@@ -222,6 +257,7 @@ function Barrels:_stepRoll(b, dt: number, speed: number)
 			b.state = "ladder"
 			b.path = path
 			b.d = path.length
+			b.lift = 0
 			return
 		end
 	end
@@ -229,6 +265,7 @@ function Barrels:_stepRoll(b, dt: number, speed: number)
 	local chute = L.chuteByRing[b.ring]
 	if chute and L:crossed(b.ring, prev, L:spotS(chute), delta, b.dir) then
 		local below = b.ring - 1
+		b.lift = 0
 		self:_startTransfer(b, b.pos, below, L:sOf(below, chute.side, chute.offset), 0.55, 0)
 		return
 	end
@@ -292,6 +329,10 @@ function Barrels:_stepTransfer(b, dt: number)
 		if math.random() < BARREL.flipChance then
 			b.dir = -b.dir
 		end
+		-- Only drops off a chute count as landings; the boss's lob onto the top ring doesn't.
+		if b.arc == 0 then
+			self:_land(b)
+		end
 	end
 end
 
@@ -320,8 +361,12 @@ end
 function Barrels:render(dt: number)
 	local L = self.level
 	local parts, frames = self.moveParts, self.moveFrames
-	local pieces = LOOKS[self.look].pieces
+	local pieces = layoutFor(self.look).offsets
 	for _, b in self.list do
+		if b.shownScale ~= b.scale then
+			b.shownScale = b.scale
+			resize(b.parts, self.look, b.scale)
+		end
 		local side
 		if b.state == "ladder" and b.path then
 			side = b.path.ladder.side
@@ -333,11 +378,13 @@ function Barrels:render(dt: number)
 		-- Axle along the outward normal so it rolls along the ring; along the wall when on a ladder.
 		local yaw = side * math.pi / 2 + (if b.state == "ladder" then math.pi / 2 else 0)
 		b.yaw = Util.dampAngle(b.yaw, yaw, 20, dt)
-		local center = (b.pos + Vector3.yAxis * b.radius) * STUD
+		local center = Barrels.centre(b) * STUD
 		local root = CFrame.new(center) * CFrame.Angles(0, b.yaw, 0) * CFrame.Angles(0, 0, b.spin)
+		local scale = b.scale
 		for i, part in b.parts do
 			table.insert(parts, part)
-			table.insert(frames, root * pieces[i])
+			local offset = pieces[i]
+			table.insert(frames, root * (if scale == 1 then offset else offset.Rotation + offset.Position * scale))
 		end
 	end
 	if #parts > 0 then

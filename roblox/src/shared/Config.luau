@@ -72,13 +72,20 @@ Config.BARREL = {
 	maxAlive = 9,
 }
 
--- What the boss throws, per skin. The physics are the barrel's; only the look and smash burst change.
+-- What the boss throws, per skin (shapes are in Projectiles). Chutes, ladders and pits work the same
+-- for all; `scale` is the radius as a multiple of BARREL.radius, `speed` multiplies the roll, and
+-- `hop` bounces it (arc height, and ring distance covered per bounce).
 Config.PROJECTILES = {
-	barrel = { burst = { C.cream, C.yellow, C.orange } },
+	barrel = { scale = 1, speed = 1, burst = { C.cream, C.yellow, C.orange } },
 	gumball = {
+		scale = 1,
+		speed = 1,
 		burst = { C.pink, C.cyan, C.yellow },
 		colors = { C.pink, C.cyan, C.yellow, C.purple, C.red, C.teal },
 	},
+	tumbleweed = { scale = 1.1, speed = 1.05, hop = { height = 0.55, every = 2.8 }, burst = { C.tan, C.sand, C.brown } },
+	-- Splits in two (each this much smaller, rolling opposite ways) the first time it drops off a chute.
+	pumpkin = { scale = 1.15, speed = 0.95, splits = { scale = 0.75 }, burst = { C.orange, C.maple, C.yellow } },
 }
 
 Config.GHOST = { speed = 1.8, radius = 0.45 }
@@ -112,6 +119,9 @@ Config.SCORE = {
 	letter = 100,
 	spelled = 3000,
 	orb = 100,
+	relic = 500,
+	jumpCrawler = 200,
+	smashCrawler = 500,
 }
 
 Config.BOSS_POS = { x = -1, z = 0 }
@@ -133,7 +143,26 @@ Config.OBSTACLES = {
 	-- You only fall once your centre is this far past the lip of a pit.
 	pitMargin = 0.2,
 	switchReach = 0.6,
+	-- Launch speed off a spring pad; clears a 5-wide pit at full run.
+	springVelocity = 17,
+	springReach = 0.45,
 }
+
+Config.HAZARDS = {
+	-- A jet rumbles for this long before it erupts, then stays up this long.
+	jetWarn = 0.6,
+	jetBurst = 1.1,
+	jetHeight = 2.6,
+	-- Drops let go when you come this close along the ring, after a short shake.
+	dropTrigger = 2.4,
+	dropShake = 0.45,
+	dropGravity = -26,
+	dropRespawn = 3.5,
+	dropRadius = 0.35,
+}
+
+-- Ground monsters: every `rearEvery` seconds or so they do their special move for `rearTime`.
+Config.CRAWLER = { speed = 2.1, radius = 0.42, rearEvery = 3.2, rearTime = 1.1 }
 
 Config.TOTEM = {
 	speed = 1.4,
