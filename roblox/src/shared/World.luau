@@ -386,10 +386,19 @@ local function buildDrum(vb, level)
 	f:block(vb, 0.04, y + 1.2, 0.25, 0.18, 0.28, 0.18, C.red)
 end
 
--- Ammo stacked beside the boss: three upright barrels.
-local function buildBarrelPile(vb, x: number, y: number, z: number)
+-- Ammo stacked beside the boss: three upright barrels, or a pyramid of balls.
+local function buildPile(vb, x: number, y: number, z: number, look: string)
 	local R = Config.BARREL.radius
 	local LENGTH = 0.8
+	if look ~= "barrel" then
+		-- The web colours each ball at random; a fixed set keeps the build the same every run.
+		local colors = Config.PROJECTILES[look].colors
+		for i, spot in { { -R * 1.07, R }, { R * 1.07, R }, { 0, R * 2.5 } } do
+			local ball = vb:box(x + spot[1], y + spot[2], z, R * 2, R * 2, R * 2, colors[i])
+			ball.Shape = Enum.PartType.Ball
+		end
+		return
+	end
 	for i, spot in { { -0.45, LENGTH / 2 }, { 0.45, LENGTH / 2 }, { 0, LENGTH * 1.5 } } do
 		local cx, cy = x + spot[1], y + spot[2]
 		local barrel = vb:box(cx, cy, z, LENGTH, R * 2, R * 2, Config.RAINBOW[i * 2 - 1])
@@ -488,7 +497,7 @@ function World.build(level, parent: Instance): Model
 	buildFences(vb, level, gaps, cascades, rand)
 	buildSummit(vb, level)
 	buildDrum(vb, level)
-	buildBarrelPile(vb, BOSS_POS.x - 0.4, level:tierTop(level.summitTier), 2.1)
+	buildPile(vb, BOSS_POS.x - 0.4, level:tierTop(level.summitTier), 2.1, skin.projectile)
 
 	vb:into(folder(model, "Base")):castShadows(false)
 	buildBaseSpikes(vb, level, rand)

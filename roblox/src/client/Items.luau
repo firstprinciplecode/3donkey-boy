@@ -1,5 +1,5 @@
--- Pickups, ported from src/entities/items.ts: gems, hotdogs, the hammer, the 1-up coin, the 1-U-P
--- letters and the bonus orbs. Each is a handful of parts that bob and spin around a resting centre;
+-- Pickups, ported from src/entities/items.ts: gems, hotdogs, the hammer, the door key, the 1-up coin,
+-- the 1-U-P letters and the bonus orbs. Each is a handful of parts that bob and spin around a resting centre;
 -- `position` (game units) is that centre, which is what the player has to touch.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -48,6 +48,16 @@ local function hammer(): { Piece }
 	handle.at = tilt * handle.at
 	head.at = tilt * head.at
 	return { handle, head }
+end
+
+local function key(): { Piece }
+	return {
+		piece(0.36, 0.36, 0.1, C.yellow, 0, 0.22, 0, true),
+		piece(0.14, 0.14, 0.12, C.black, 0, 0.22, 0),
+		piece(0.1, 0.5, 0.1, C.yellow, 0, -0.18, 0, true),
+		piece(0.18, 0.08, 0.1, C.yellow, 0.1, -0.3, 0, true),
+		piece(0.14, 0.08, 0.1, C.yellow, 0.08, -0.14, 0, true),
+	}
 end
 
 -- Chunky yellow block letter with an orange extruded back, like the poster's 1-U-P.
@@ -131,7 +141,10 @@ local function makePieces(kind: string, colorIndex: number): { Piece }
 		return hotdog()
 	elseif kind == "hammer" then
 		return hammer()
+	elseif kind == "key" then
+		return key()
 	end
+	assert(kind == "oneup", `Item type "{kind}" isn't ported yet`)
 	return coin()
 end
 
@@ -177,6 +190,10 @@ function Items:_add(kind: string, spot, colorIndex: number)
 		decorateCoin(item.parts[1])
 	end
 	table.insert(self.list, item)
+end
+
+function Items:destroy()
+	self.folder:Destroy()
 end
 
 function Items:clear()

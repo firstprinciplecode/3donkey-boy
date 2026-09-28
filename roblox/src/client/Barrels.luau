@@ -33,6 +33,38 @@ for i = 1, STAVES do
 	table.insert(PIECES, CFrame.Angles(0, 0, angle) * CFrame.new(0, (R - 0.03) * STUD, 0))
 end
 
+-- Each look builds one barrel's parts and lays them out (PIECES[i] goes with part i).
+local LOOKS = {
+	barrel = {
+		pieces = PIECES,
+		build = function(folder: Instance): { Part }
+			local C = Config.COLORS
+			local parts = {
+				Voxel.part(folder, Vector3.new(LENGTH, R * 2 - 0.06, R * 2 - 0.06), C.charcoal, 0, Enum.PartType.Cylinder),
+			}
+			for _ = 1, 2 do
+				table.insert(parts, Voxel.part(folder, Vector3.new(0.1, R * 2 + 0.04, R * 2 + 0.04), C.black, 0, Enum.PartType.Cylinder))
+			end
+			-- Rainbow staves around the barrel so the roll is readable.
+			local width = 2 * math.pi * R / STAVES - 0.02
+			for i = 1, STAVES do
+				table.insert(parts, Voxel.part(folder, Vector3.new(width, 0.06, LENGTH * 0.86), Config.RAINBOW[i]))
+			end
+			return parts
+		end,
+	},
+	gumball = {
+		pieces = { CFrame.identity },
+		build = function(folder: Instance): { Part }
+			return { Voxel.part(folder, Vector3.one * R * 2, Config.COLORS.pink, 0, Enum.PartType.Ball) }
+		end,
+		respawn = function(parts: { Part })
+			local colors = Config.PROJECTILES.gumball.colors
+			parts[1].Color = colors[math.random(#colors)]
+		end,
+	},
+}
+
 local Barrels = {}
 Barrels.__index = Barrels
 
@@ -43,6 +75,8 @@ end
 function Barrels.new(level, parent: Instance)
 	local self = setmetatable({}, Barrels)
 	self.level = level
+	self.env = nil
+	self.look = "barrel"
 	self.list = {}
 	self.pool = {}
 	self.speedMul = 1
@@ -61,22 +95,35 @@ function Barrels:count(): number
 	return #self.list
 end
 
+-- Switch to another level. `env` is its Obstacles (gaps, carriers and locked ladders); `look` is a
+-- Config.PROJECTILES key.
+function Barrels:setLevel(level, env, look: string)
+	self:clear()
+	self.level = level
+	self.env = env
+	if look ~= self.look then
+		for _, parts in self.pool do
+			for _, part in parts do
+				part:Destroy()
+			end
+		end
+		table.clear(self.pool)
+		table.clear(self.moveParts)
+		table.clear(self.moveFrames)
+		self.look = look
+	end
+end
+
+-- The smash burst colours for the current look.
+function Barrels:burst(): { Color3 }
+	return Config.PROJECTILES[self.look].burst
+end
+
 function Barrels:_acquire(): { Part }
-	local parts = table.remove(self.pool)
-	if parts then
-		return parts
-	end
-	local C = Config.COLORS
-	parts = {
-		Voxel.part(self.folder, Vector3.new(LENGTH, R * 2 - 0.06, R * 2 - 0.06), C.charcoal, 0, Enum.PartType.Cylinder),
-	}
-	for _ = 1, 2 do
-		table.insert(parts, Voxel.part(self.folder, Vector3.new(0.1, R * 2 + 0.04, R * 2 + 0.04), C.black, 0, Enum.PartType.Cylinder))
-	end
-	-- Rainbow staves around the barrel so the roll is readable.
-	local width = 2 * math.pi * R / STAVES - 0.02
-	for i = 1, STAVES do
-		table.insert(parts, Voxel.part(self.folder, Vector3.new(width, 0.06, LENGTH * 0.86), Config.RAINBOW[i]))
+	local look = LOOKS[self.look]
+	local parts = table.remove(self.pool) or look.build(self.folder)
+	if look.respawn then
+		look.respawn(parts)
 	end
 	return parts
 end
@@ -166,7 +213,11 @@ function Barrels:_stepRoll(b, dt: number, speed: number)
 	b.s = (b.s + b.dir * delta) % L:ringLength(b.ring)
 	b.spin -= b.dir * delta / b.radius
 
+	local env = self.env
 	for _, path in L.ladderPaths do
+		if env and not env:isLadderOpen(path.index) then
+			continue
+		end
 		if path.topS ~= nil and path.ladder.ring + 1 == b.ring and L:crossed(b.ring, prev, path.topS, delta, b.dir) and math.random() < self.ladderChance then
 			b.state = "ladder"
 			b.path = path
@@ -194,7 +245,9 @@ function Barrels:_stepRoll(b, dt: number, speed: number)
 	local x, z = L:ringPoint(b.ring, b.s)
 	b.pos = Vector3.new(x, L:tierTop(b.ring), z)
 
-	if L:overGap(b.ring, b.s) then
+	-- Obstacles know about crumbled tiles and moving platforms too, not just pits.
+	local overGap = if env then env:carry(b.ring, b.s) == nil else L:overGap(b.ring, b.s)
+	if overGap then
 		b.state = "sink"
 		b.t = 0
 	end
@@ -267,6 +320,7 @@ end
 function Barrels:render(dt: number)
 	local L = self.level
 	local parts, frames = self.moveParts, self.moveFrames
+	local pieces = LOOKS[self.look].pieces
 	for _, b in self.list do
 		local side
 		if b.state == "ladder" and b.path then
@@ -283,7 +337,7 @@ function Barrels:render(dt: number)
 		local root = CFrame.new(center) * CFrame.Angles(0, b.yaw, 0) * CFrame.Angles(0, 0, b.spin)
 		for i, part in b.parts do
 			table.insert(parts, part)
-			table.insert(frames, root * PIECES[i])
+			table.insert(frames, root * pieces[i])
 		end
 	end
 	if #parts > 0 then

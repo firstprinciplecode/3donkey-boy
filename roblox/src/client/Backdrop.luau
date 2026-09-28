@@ -390,6 +390,14 @@ function Backdrop:_buildSky(colors)
 	self.sky = panel
 end
 
+function Backdrop:destroy()
+	-- Hidden sectors are unparented, so they wouldn't go with the model.
+	for _, sector in self.sectors do
+		sector:Destroy()
+	end
+	self.model:Destroy()
+end
+
 -- `azimuth` is the camera's direction from the focus (see CameraRig).
 function Backdrop:update(dt: number, azimuth: number, focus: Vector3)
 	self.t += dt

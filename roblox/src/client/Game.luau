@@ -8,7 +8,9 @@ local Config = require(Shared.Config)
 local Level = require(Shared.Level)
 local Levels = require(Shared.Levels)
 local Skins = require(Shared.Skins)
+local World = require(Shared.World)
 
+local Audio = require(script.Parent.Audio)
 local Backdrop = require(script.Parent.Backdrop)
 local Barrels = require(script.Parent.Barrels)
 local Boss = require(script.Parent.Boss)
@@ -45,8 +47,12 @@ local JUMP_BUFFER = 0.12
 -- Ignore Space for a moment on the game over screen so a held jump doesn't skip it.
 local GAMEOVER_LOCK = 1
 local HINT_COOLDOWN = 1.4
--- Smash splinters for barrels, fires and ghosts (the web's SPLINTERS and the barrel's burst).
+-- Smash splinters for fires, ghosts and totems; thrown things use their own look's burst.
 local SPLINTERS = { C.cream, C.yellow, C.orange }
+local FOOTSTEP_EVERY = 0.16
+-- The web picks footstep pitches at random: steps 90-120 Hz, rungs 420-500 Hz over the rendered low note.
+local STEP_PITCH_RANGE = 30 / 90
+local CLIMB_PITCH_RANGE = 80 / 420
 
 -- Sphere vs upright cylinder standing at (px, py, pz).
 local function sphereHitsCylinder(cx: number, cy: number, cz: number, r: number, px: number, py: number, pz: number, radius: number, height: number): boolean
@@ -60,18 +66,17 @@ Game.__index = Game
 
 function Game.new(playerGui: Instance)
 	local self = setmetatable({}, Game)
-	self.level = Level.new(Levels[1])
-	self.hud = Hud.new(playerGui, self.level.def.name)
-	self.player = Player.new(self.level)
+	-- Only until _loadLevel below builds the first level for real.
+	local first = Level.new(Levels[1])
+	self.hud = Hud.new(playerGui, first.def.name)
+	self.player = Player.new(first)
 	self.rig = Rig.new(workspace)
 	self.cameraRig = CameraRig.new()
-	self.boss = Boss.new(workspace, self.level)
-	self.barrels = Barrels.new(self.level, workspace)
-	self.backdrop = Backdrop.new(self.level, Skins[self.level.def.skin], workspace)
-	self.items = Items.new(self.level, workspace)
-	self.obstacles = Obstacles.new(self.level, workspace)
+	self.boss = Boss.new(workspace, first)
+	self.barrels = Barrels.new(first, workspace)
 	self.particles = Particles.new(workspace)
 	self.combo = Combo.new()
+	self.audio = Audio.tryNew()
 	self.enemies = Instance.new("Folder")
 	self.enemies.Name = "Enemies"
 	self.enemies.Parent = workspace
@@ -83,16 +88,21 @@ function Game.new(playerGui: Instance)
 			return
 		end
 		self.particles:burst(b.pos + Vector3.yAxis * 1.4, { C.orange, C.yellow, C.red }, 10, 3)
+		self.audio:play("drum")
 		if #self.fires < self.level.def.fires then
 			table.insert(self.fires, Fire.new(self.level, self.enemies))
+			self.audio:play("fire")
 		end
 	end
 	self.barrels.onPit = function(b)
 		self.particles:burst(b.pos + Vector3.yAxis * 0.4, RAINBOW, 8, 3)
 	end
 
-	local summitY = self.level:tierTop(self.level.summitTier)
-	self.throwOrigin = Vector3.new(Config.BOSS_POS.x + 1.3, summitY + 2.4, Config.BOSS_POS.z - 0.6)
+	self.levelIndex = 0
+	self.world = nil :: Model?
+	self.goal = nil :: BasePart?
+	self.goalSpin = 0
+	self:_loadLevel(1)
 
 	self.state = "ready"
 	self.stateT = 0
@@ -107,9 +117,48 @@ function Game.new(playerGui: Instance)
 	self.hammerTime = 0
 	self.freeze = 0
 	self.hintClock = 0
-	self.goal = nil :: BasePart?
-	self.goalSpin = 0
+	self.footstepClock = 0
 	return self
+end
+
+-- Swaps in another level (1-based index into Levels): the pyramid, scenery, pickups and obstacles
+-- are rebuilt, and everything that walks the rings is pointed at the new layout. Built on the client
+-- because nothing else needs it yet; a shared multiplayer world would move this to the server.
+function Game:_loadLevel(index: number)
+	if index == self.levelIndex then
+		return
+	end
+	self.levelIndex = index
+	if self.world then
+		self.world:Destroy()
+		self.backdrop:destroy()
+		self.items:destroy()
+		self.obstacles:destroy()
+	end
+
+	local started = os.clock()
+	local level = Level.new(Levels[index])
+	local skin = Skins[level.def.skin]
+	self.level = level
+	self.world = World.build(level, workspace)
+	self.backdrop = Backdrop.new(level, skin, workspace)
+	self.items = Items.new(level, workspace)
+	self.obstacles = Obstacles.new(level, workspace)
+	self.player.level = level
+	self.boss:setLevel(level)
+	self.barrels:setLevel(level, self.obstacles, skin.projectile)
+
+	local summitY = level:tierTop(level.summitTier)
+	self.throwOrigin = Vector3.new(Config.BOSS_POS.x + 1.3, summitY + 2.4, Config.BOSS_POS.z - 0.6)
+	self.goal = self.world:FindFirstChild("Goal") :: BasePart?
+	self.goalSpin = 0
+	self.hud:setLevel(level.def.name)
+	print(`[popscotch] level {index} built: {self.world:GetAttribute("PartCount")} parts in {math.round((os.clock() - started) * 1000)} ms`)
+end
+
+-- How many times the player has gone through every level.
+function Game:_loop(): number
+	return (self.round - 1) // #Levels
 end
 
 function Game:pressJump()
@@ -135,6 +184,22 @@ function Game:_setState(state: string)
 	self.state = state
 	self.stateT = 0
 	self.accumulator = 0
+	if state == "playing" then
+		self.audio:startMusic()
+	else
+		self.audio:stopMusic()
+	end
+end
+
+function Game:toggleMute()
+	local muted = self.audio:toggleMute()
+	local p = self.player
+	self:_popup(if muted then "Sound off" else "Sound on", Vector3.new(p.px, p.py + 2.2, p.pz))
+end
+
+function Game:_setHammer(on: boolean)
+	self.player:setHammer(on)
+	self.audio:setHammer(on)
 end
 
 function Game:_focus(): Vector3
@@ -172,8 +237,8 @@ end
 
 function Game:_lockHint(ladder: number)
 	local kind = self.obstacles:lockKind(ladder)
-	if kind == "switch" then
-		self:_hint("Gated · Find the switch!")
+	if kind then
+		self:_hint(if kind == "key" then "Locked · Find the key!" else "Gated · Find the switch!")
 	end
 end
 
@@ -184,7 +249,14 @@ end
 
 -- A fresh round lays the pickups out again; retrying after a death keeps what's been collected.
 function Game:_startRound(fresh: boolean)
+	if fresh then
+		self:_loadLevel((self.round - 1) % #Levels + 1)
+	end
 	local def = self.level.def
+	local loop = self:_loop()
+	-- Every level and every lap through them makes the barrels (and fires) a little quicker.
+	self.barrels.speedMul = math.min(GAME_RULES.maxSpeedMul, 1 + 0.2 * loop + 0.06 * (self.levelIndex - 1))
+	self.barrels.ladderChance = math.min(0.5, BARREL.ladderChance + 0.05 * loop)
 	self.barrels:clear()
 	self:_clearFires()
 	self:_spawnGhosts()
@@ -195,6 +267,7 @@ function Game:_startRound(fresh: boolean)
 		self.hud:setLetters(self.items:lettersHeld())
 	end
 	self.hammerTime = 0
+	self.audio:setHammer(false)
 	self.freeze = 0
 	self.combo:reset()
 	self.particles:clear()
@@ -207,7 +280,8 @@ function Game:_startRound(fresh: boolean)
 	self.bossClock = 1.2
 	self.hud:setBonus(self.bonus)
 	self:_setState("ready")
-	self.hud:show(`ROUND {self.round}`, "Jump the barrels · climb to the green coin")
+	local tip = if def.tip and loop == 0 then ` · {def.tip}` else ""
+	self.hud:show(`ROUND {self.round}`, `Level {self.levelIndex} · {Hud.levelTitle(def.name)}{tip}`)
 end
 
 function Game:_popup(text: string, at: Vector3)
@@ -228,6 +302,8 @@ function Game:_addJumpScore(base: number, at: Vector3)
 	local points = base * mult
 	self:_addScore(points)
 	self:_popup(if mult > 1 then `{points}-pt x{mult}` else `{points}-pt`, at)
+	-- Each link lifts the chime a whole tone, so a chain sounds like it's climbing.
+	self.audio:play("score", 2 ^ (2 * (mult - 1) / 12))
 end
 
 -- A brief world freeze plus screen shake, so hits land.
@@ -241,6 +317,7 @@ function Game:_hint(text: string)
 		return
 	end
 	self.hintClock = HINT_COOLDOWN
+	self.audio:play("locked")
 	local p = self.player
 	self:_popup(text, Vector3.new(p.px, p.py + 2.2, p.pz))
 end
@@ -250,18 +327,22 @@ function Game:_addLife()
 	self.hud:setLives(self.lives)
 end
 
-function Game:_smash(at: Vector3, points: number)
-	self.particles:burst(at, SPLINTERS, 14, 5)
+function Game:_smash(at: Vector3, points: number, colors: { Color3 }?)
+	self.particles:burst(at, colors or SPLINTERS, 14, 5)
 	self:_addScore(points, at + Vector3.yAxis * 0.8)
 	self:_hitStop(0.06, 0.35)
+	self.audio:play("smash")
 end
 
 function Game:_onTotemLanded(totem)
 	self.particles:burst(totem.base + Vector3.yAxis * 0.1, { C.cream, C.creamDark, C.charcoal }, 8, 3)
 	local p = self.player
 	local near = (totem.base - Vector3.new(p.px, p.py, p.pz)).Magnitude
-	if near < 10 and self.state == "playing" then
-		self.cameraRig:shake(0.25 * (1 - near / 10))
+	if near < 10 then
+		self.audio:play("stomp")
+		if self.state == "playing" then
+			self.cameraRig:shake(0.25 * (1 - near / 10))
+		end
 	end
 end
 
@@ -281,10 +362,12 @@ function Game:_collectLetter(item)
 		self:_addScore(SCORE.spelled)
 		self:_popup("1-U-P! extra life", at + Vector3.yAxis * 0.8)
 		self.particles:burst(at, RAINBOW, 30, 6)
+		self.audio:play("spelled")
 		return
 	end
 	self:_addScore(SCORE.letter)
 	self:_popup(`{Items.letterChar(item)} · {count}/{#held}`, at + Vector3.yAxis * 0.6)
+	self.audio:play("letter")
 end
 
 function Game:_collect(item)
@@ -299,32 +382,43 @@ function Game:_collect(item)
 	if kind == "orb" then
 		self:_addScore(SCORE.orb, at + Vector3.yAxis * 0.4)
 		burst:burst(at, { C.cream, C.cyan, C.pink }, 10, 3)
+		self.audio:play("orb")
 	elseif kind == "gem" then
 		self:_addScore(SCORE.gem, at + Vector3.yAxis * 0.6)
 		burst:burst(at, RAINBOW, 10, 3)
+		self.audio:play("pickup")
 	elseif kind == "hotdog" then
 		self:_addScore(SCORE.hotdog, at + Vector3.yAxis * 0.6)
 		burst:burst(at, { C.red, C.tan, C.yellow }, 12, 4)
+		self.audio:play("pickup")
 	elseif kind == "oneup" then
 		self:_addLife()
 		self:_popup("1-Up!", at + Vector3.yAxis * 0.6)
 		burst:burst(at, { C.grass, C.cream, C.grassDark }, 16, 4)
+		self.audio:play("oneUp")
 	elseif kind == "hammer" then
 		self.hammerTime = HAMMER.duration
-		self.player:setHammer(true)
+		self:_setHammer(true)
 		self:_popup("Hammer!", at + Vector3.yAxis * 0.6)
 		burst:burst(at, { C.charcoal, C.yellow }, 12, 4)
+		self.audio:play("hammer")
+	elseif kind == "key" then
+		self.obstacles:unlockKeyDoors()
+		self:_popup("Door unlocked!", at + Vector3.yAxis * 0.6)
+		burst:burst(at, { C.yellow, C.cream }, 16, 4)
+		self.audio:play("unlock")
 	end
 end
 
-function Game:_die(heading: string, sub: string)
+function Game:_die(heading: string, sub: string, fell: boolean?)
 	if self.state ~= "playing" then
 		return
 	end
 	self:_setState("dying")
 	self.player:die()
-	self.player:setHammer(false)
+	self:_setHammer(false)
 	self.hammerTime = 0
+	self.audio:play(if fell then "fall" else "hit")
 	self.combo:reset()
 	self:_hitStop(0.12, 0.6)
 	local p = self.player
@@ -335,6 +429,7 @@ function Game:_die(heading: string, sub: string)
 end
 
 function Game:_gameOver()
+	self.audio:play("gameOver")
 	self.barrels:clear()
 	self:_clearFires()
 	self:_setState("gameover")
@@ -351,6 +446,7 @@ function Game:_clearRound()
 	end
 	self.barrels:clear()
 	self:_clearFires()
+	self.audio:play("clear")
 	local bonus = self.bonus
 	self:_addScore(bonus)
 	self.hud:show("ROUND CLEAR!", `Bonus {bonus}`)
@@ -371,7 +467,7 @@ function Game:_checkCollisions(): boolean
 					return true
 				end
 				self.barrels:smash(b)
-				self:_smash(centre, SCORE.smashBarrel)
+				self:_smash(centre, SCORE.smashBarrel, self.barrels:burst())
 				continue
 			end
 			local clearedAbove = p.state == "air"
@@ -465,8 +561,14 @@ function Game:_stepPlaying(dt: number)
 			down = held.down,
 			jump = jump,
 		}, self.obstacles)
+		if result.jumped then
+			self.audio:play("jump")
+		end
+		if result.landed then
+			self.audio:play("land")
+		end
 		if result.fellInPit then
-			self:_die("Ouch!", "Jump the spike pits")
+			self:_die("Ouch!", "Jump the spike pits", true)
 			return
 		end
 		if result.reachedSummit then
@@ -479,7 +581,11 @@ function Game:_stepPlaying(dt: number)
 			self:_hint("Can't climb holding the hammer")
 		end
 		local events = self.obstacles:update(SUBSTEP, { ring = p.ring, s = p.s, grounded = p.state == "ground" })
+		if events.crumbled then
+			self.audio:play("crumble")
+		end
 		if events.switched then
+			self.audio:play("switch")
 			self:_popup("Gate open!", Vector3.new(p.px, p.py + 2.2, p.pz))
 		end
 		self.barrels:update(SUBSTEP)
@@ -493,19 +599,21 @@ function Game:_stepPlaying(dt: number)
 			ghost:update(SUBSTEP)
 		end
 		for _, fire in self.fires do
-			fire:update(SUBSTEP, self.barrels.speedMul)
+			fire:update(SUBSTEP, self.obstacles, self.barrels.speedMul)
 		end
 		if self:_checkCollisions() then
 			return
 		end
 	end
-	self.cameraRig:watch(p.px, p.pz)
+	if self.cameraRig:watch(p.px, p.pz) then
+		self.audio:play("turn")
+	end
 
 	if self.hammerTime > 0 then
 		self.hammerTime -= dt
 		p.hammerBlink = self.hammerTime < HAMMER.warnAt and math.floor(self.hammerTime * 8) % 2 == 0
 		if self.hammerTime <= 0 then
-			p:setHammer(false)
+			self:_setHammer(false)
 		end
 	end
 
@@ -522,6 +630,19 @@ function Game:_stepPlaying(dt: number)
 		self.hud:setBonus(self.bonus)
 		if self.bonus == 0 then
 			self:_die("Time's up!", "Climb before the bonus runs out")
+			return
+		end
+	end
+
+	if p:isWalking() or p:isClimbing() then
+		self.footstepClock += dt
+		if self.footstepClock > FOOTSTEP_EVERY then
+			self.footstepClock = 0
+			if p:isClimbing() then
+				self.audio:play("climb", 1 + math.random() * CLIMB_PITCH_RANGE)
+			else
+				self.audio:play("step", 1 + math.random() * STEP_PITCH_RANGE)
+			end
 		end
 	end
 end
@@ -565,6 +686,7 @@ function Game:update(dt: number, held)
 
 	if self.boss:update(dt) and self.state == "playing" then
 		self.barrels:spawn(self.throwOrigin)
+		self.audio:play("throw")
 	end
 	self.barrels:render(dt)
 	for _, ghost in self.ghosts do
@@ -583,10 +705,6 @@ function Game:update(dt: number, held)
 	self.cameraRig:update(dt, self:_focus())
 	self.backdrop:update(dt, self.cameraRig.azimuth, self.cameraRig.focus)
 
-	if not self.goal then
-		local world = workspace:FindFirstChild("Popscotch")
-		self.goal = world and world:FindFirstChild("Goal") :: BasePart?
-	end
 	if self.goal then
 		self.goalSpin += dt * (if self.state == "clear" then 12 else 1.6)
 		self.goal.CFrame = CFrame.new(self.goal.Position) * CFrame.Angles(0, self.goalSpin, 0)

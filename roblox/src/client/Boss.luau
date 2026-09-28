@@ -57,16 +57,21 @@ function Boss.new(parent: Instance, level)
 	end
 	self.cframes = table.create(#self.parts)
 	self.frames = {}
-
-	-- Faces +x, towards the barrel spawn on the east side of the top ring.
-	local summitY = level:tierTop(level.summitTier)
-	self.root = CFrame.new(Vector3.new(Config.BOSS_POS.x, summitY, Config.BOSS_POS.z) * STUD) * CFrame.Angles(0, math.pi / 2, 0)
+	self:setLevel(level)
 
 	self.throwT = -1
 	self.released = false
 	self.t = 0
 	self.model.Parent = parent
 	return self
+end
+
+-- Stands on the level's summit, facing +x towards the barrel spawn on the east side of the top ring.
+function Boss:setLevel(level)
+	local summitY = level:tierTop(level.summitTier)
+	self.root = CFrame.new(Vector3.new(Config.BOSS_POS.x, summitY, Config.BOSS_POS.z) * STUD) * CFrame.Angles(0, math.pi / 2, 0)
+	self.throwT = -1
+	self.released = false
 end
 
 function Boss:isBusy(): boolean

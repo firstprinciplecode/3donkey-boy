@@ -82,10 +82,22 @@ function Hud.new(playerGui: Instance, levelName: string)
 	end
 
 	self.gui, self.banner, self.heading, self.sub = gui, banner, heading, sub
+	self.title = title
 	self.scoreLabel, self.statusLabel = score, status
 	self.chips = chips
 	self.lives, self.bonus = 0, 0
 	return self
+end
+
+-- "candy hills" -> "Candy Hills"
+function Hud.levelTitle(name: string): string
+	return (string.gsub(name, "(%a)([%w]*)", function(first, rest)
+		return string.upper(first) .. rest
+	end))
+end
+
+function Hud:setLevel(name: string)
+	self.title.Text = string.upper(name)
 end
 
 -- Poster-style score: 333-000

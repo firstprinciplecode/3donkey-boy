@@ -110,6 +110,13 @@ function Level:ringDistance(ring: number, a: number, b: number): number
 	return math.min(d, len - d)
 end
 
+-- Signed shortest distance from `b` to `a` along the ring.
+function Level:ringDelta(ring: number, a: number, b: number): number
+	local len = self:ringLength(ring)
+	local d = (a - b) % len
+	return if d > len / 2 then d - len else d
+end
+
 -- A stretch of ring from level data ({ ring, side, offset, width }).
 function Level:span(def)
 	return { ring = def.ring, center = self:spotS(def), half = def.width / 2, def = def }

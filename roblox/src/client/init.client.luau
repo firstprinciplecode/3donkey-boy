@@ -23,6 +23,7 @@ local KEYS = {
 	[Enum.KeyCode.Down] = "down",
 	[Enum.KeyCode.S] = "down",
 	[Enum.KeyCode.Space] = "jump",
+	[Enum.KeyCode.M] = "mute",
 }
 
 local popscotch = Game.new(Players.LocalPlayer:WaitForChild("PlayerGui"))
@@ -40,10 +41,12 @@ local function onKey(_, inputState: Enum.UserInputState, input: InputObject)
 	if inputState == Enum.UserInputState.Begin then
 		if name == "jump" then
 			popscotch:pressJump()
+		elseif name == "mute" then
+			popscotch:toggleMute()
 		else
 			held[name] = true
 		end
-	elseif name ~= "jump" then
+	elseif held[name] ~= nil then
 		held[name] = false
 	end
 	return Enum.ContextActionResult.Sink

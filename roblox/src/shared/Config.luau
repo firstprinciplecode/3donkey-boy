@@ -72,6 +72,15 @@ Config.BARREL = {
 	maxAlive = 9,
 }
 
+-- What the boss throws, per skin. The physics are the barrel's; only the look and smash burst change.
+Config.PROJECTILES = {
+	barrel = { burst = { C.cream, C.yellow, C.orange } },
+	gumball = {
+		burst = { C.pink, C.cyan, C.yellow },
+		colors = { C.pink, C.cyan, C.yellow, C.purple, C.red, C.teal },
+	},
+}
+
 Config.GHOST = { speed = 1.8, radius = 0.45 }
 
 Config.FIRE = { speed = 2.3, radius = 0.38, ladderChance = 0.4, minTurn = 1.2, maxTurn = 3.5 }
@@ -88,6 +97,7 @@ Config.GAME_RULES = {
 	bonusStart = 5000,
 	bonusStep = 100,
 	bonusInterval = 2,
+	maxSpeedMul = 1.8,
 }
 
 Config.SCORE = {
@@ -117,6 +127,9 @@ Config.PHYSICS = {
 
 Config.OBSTACLES = {
 	conveyorSpeed = 2.6,
+	-- Seconds a crumbling tile shakes after being stepped on, then how long it takes to fall away.
+	crumbleDelay = 0.6,
+	crumbleFall = 0.5,
 	-- You only fall once your centre is this far past the lip of a pit.
 	pitMargin = 0.2,
 	switchReach = 0.6,

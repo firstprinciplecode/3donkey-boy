@@ -55,4 +55,68 @@ local MEADOW = {
 	locks = { { kind = "switch", ladder = 5, switchAt = { ring = 2, side = 1, offset = 3 } } },
 }
 
-return { MEADOW }
+local CANDY = {
+	name = "candy hills",
+	skin = "candy",
+	rings = 5,
+	terraceDepth = 3,
+	tierHeight = 4,
+	summitHalf = 3,
+	ladders = {
+		{ ring = 0, side = 3, offset = 4 },
+		{ ring = 0, side = 1, offset = -6 },
+		{ ring = 1, side = 2, offset = 5 },
+		{ ring = 2, side = 1, offset = 0 },
+		{ ring = 2, side = 3, offset = 3 },
+		{ ring = 3, side = 0, offset = 2 },
+		{ ring = 4, side = 3, offset = 0 },
+	},
+	chutes = {
+		{ ring = 1, side = 1, offset = 6 },
+		{ ring = 2, side = 0, offset = -4 },
+		{ ring = 3, side = 3, offset = -2 },
+		{ ring = 4, side = 2, offset = 0 },
+	},
+	playerStart = { ring = 0, side = 0, offset = 9 },
+	drum = { ring = 0, side = 0, offset = 14 },
+	barrelSpawn = { ring = 4, side = 1, offset = 1 },
+	items = {
+		{ type = "gem", spot = { ring = 0, side = 0, offset = -8.5 } },
+		{ type = "gem", spot = { ring = 0, side = 3, offset = 12 } },
+		{ type = "gem", spot = { ring = 1, side = 3, offset = -5 } },
+		{ type = "hammer", spot = { ring = 1, side = 2, offset = 0 } },
+		{ type = "hotdog", spot = { ring = 1, side = 2, offset = -8 } },
+		{ type = "letter-u", spot = { ring = 2, side = 1, offset = 5 } },
+		{ type = "oneup", spot = { ring = 2, side = 3, offset = -6 } },
+		{ type = "key", spot = { ring = 3, side = 2, offset = -3 } },
+		{ type = "gem", spot = { ring = 3, side = 0, offset = -3 } },
+		{ type = "hotdog", spot = { ring = 3, side = 1, offset = 4 } },
+		{ type = "gem", spot = { ring = 4, side = 0, offset = -2 } },
+		{ type = "letter-1", spot = { ring = 0, side = 3, offset = -6 } },
+		{ type = "letter-p", spot = { ring = 4, side = 2, offset = -2 } },
+	},
+	totems = { { ring = 0, from = { 0, -4 }, to = { 0, 5 } } },
+	patrols = {
+		{ ring = 1, from = { 2, -10 }, to = { 2, 10 } },
+		{ ring = 3, from = { 0, -6 }, to = { 1, 6 } },
+		{ ring = 0, from = { 3, -12 }, to = { 0, -12 } },
+		{ ring = 2, from = { 3, -8 }, to = { 0, 8 } },
+		{ ring = 4, from = { 1, -3 }, to = { 2, 3 } },
+	},
+	ghosts = 2,
+	fires = 2,
+	pits = {
+		{ ring = 1, side = 3, offset = -5, width = 2 },
+		{ ring = 3, side = 1, offset = -4, width = 2 },
+	},
+	crumbles = {
+		{ ring = 0, side = 0, offset = -8.5, width = 3 },
+		{ ring = 1, side = 2, offset = 9.5, width = 3 },
+	},
+	conveyors = { { ring = 0, side = 3, offset = 10, width = 4, dir = -1 } },
+	platforms = { { ring = 2, side = 1, offset = 5, width = 6, platformWidth = 2, period = 4 } },
+	-- Ladder 6 in the web build.
+	locks = { { kind = "key", ladder = 7 } },
+}
+
+return { MEADOW, CANDY }

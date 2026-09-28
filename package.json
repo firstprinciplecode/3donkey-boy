@@ -14,7 +14,8 @@
     "typecheck": "tsc",
     "check:levels": "node --import tsx scripts/validate-levels.ts && node --import tsx scripts/sim-routes.ts",
     "rojo": "rojo serve roblox/default.project.json",
-    "roblox:smoke": "roblox/tools/smoke.sh"
+    "roblox:smoke": "roblox/tools/smoke.sh",
+    "roblox:audio": "node --import tsx roblox/tools/render-audio.ts"
   },
   "dependencies": {
     "three": "^0.186.1"

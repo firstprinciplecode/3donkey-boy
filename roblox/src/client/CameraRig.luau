@@ -52,9 +52,10 @@ function CameraRig:isTurning(): boolean
 end
 
 -- Starts a turn once the player is clearly round a corner, so the view doesn't flicker on the edge.
-function CameraRig:watch(x: number, z: number)
+-- Returns true when a turn starts.
+function CameraRig:watch(x: number, z: number): boolean
 	if self.turn then
-		return
+		return false
 	end
 	local side, offset, radius = Level.squareCoords(x, z)
 	if side ~= self.viewSide and math.abs(offset) < radius - CAMERA.turnHysteresis then
@@ -62,8 +63,10 @@ function CameraRig:watch(x: number, z: number)
 		local delta = (sideAzimuth(side) - self.azimuth + math.pi) % (math.pi * 2) - math.pi
 		if math.abs(delta) > 1e-4 then
 			self.turn = { from = self.azimuth, to = self.azimuth + delta, t = 0 }
+			return true
 		end
 	end
+	return false
 end
 
 -- Decays the shake and re-places the camera without following the target (used during hit-stop).

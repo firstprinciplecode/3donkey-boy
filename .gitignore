@@ -3,6 +3,9 @@ dist
 .DS_Store
 /popscotch.mp4
 
+# Rendered Roblox audio (regenerate with npm run roblox:audio)
+roblox/audio/
+
 # Rojo build output
 *.rbxl
 *.rbxlx

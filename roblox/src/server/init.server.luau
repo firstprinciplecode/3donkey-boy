@@ -1,11 +1,5 @@
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Shared = ReplicatedStorage.Shared
-local Level = require(Shared.Level)
-local Levels = require(Shared.Levels)
-local World = require(Shared.World)
 
 -- The climber is drawn by the client, so no Roblox avatar. Set here rather than only in the project
 -- file because live sync doesn't reliably apply service properties to an already-open place.
@@ -47,10 +41,9 @@ if atmosphere then
 	atmosphere:Destroy()
 end
 
+-- Each client builds the level it's on (see client Game:_loadLevel), so clear out any world an
+-- older build saved into the place.
 local existing = workspace:FindFirstChild("Popscotch")
 if existing then
 	existing:Destroy()
 end
-local started = os.clock()
-local world = World.build(Level.new(Levels[1]), workspace)
-print(`[popscotch] world built: {world:GetAttribute("PartCount")} parts in {math.round((os.clock() - started) * 1000)} ms`)

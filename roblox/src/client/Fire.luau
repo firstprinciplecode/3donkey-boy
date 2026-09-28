@@ -64,7 +64,8 @@ function Fire:destroy()
 	self.model:Destroy()
 end
 
-function Fire:update(dt: number, speedMul: number)
+-- `env` is the level's obstacles: fires turn back at gaps and don't climb locked ladders.
+function Fire:update(dt: number, env, speedMul: number)
 	local L = self.level
 	self.t += dt
 	self.spawnT = math.min(1, self.spawnT + dt * 2.5)
@@ -99,13 +100,13 @@ function Fire:update(dt: number, speedMul: number)
 
 	local delta = speed * dt
 	local nextS = (self.s + self.dir * delta) % L:ringLength(self.ring)
-	if L:overGap(self.ring, nextS + self.dir * 0.4) then
+	if env:carry(self.ring, nextS + self.dir * 0.4) == nil then
 		self.dir = -self.dir
 	else
 		local prev = self.s
 		self.s = nextS
 		for _, p in L.ladderPaths do
-			if p.topS ~= nil and math.random() < FIRE.ladderChance then
+			if p.topS ~= nil and env:isLadderOpen(p.index) and math.random() < FIRE.ladderChance then
 				if p.ladder.ring == self.ring and L:crossed(self.ring, prev, p.bottomS, delta, self.dir) then
 					self:_enterLadder(p, 0.01, 1)
 					break
