@@ -119,6 +119,11 @@ function Barrels:spawn(from: Vector3)
 	table.insert(self.list, b)
 end
 
+-- Knocked out by the hammer; it's put back in the pool on the next update.
+function Barrels:smash(b)
+	b.done = true
+end
+
 function Barrels:clear()
 	for _, b in self.list do
 		self:_release(b)

@@ -27,8 +27,16 @@ function Player.new(level)
 	self.facing = 1
 	self.moving = false
 	self.inPit = false
+	self.hasHammer = false
+	-- Flickers the hammer when it's about to run out; the rig reads it.
+	self.hammerBlink = false
 	self.px, self.py, self.pz = 0, 0, 0
 	return self
+end
+
+function Player:setHammer(on: boolean)
+	self.hasHammer = on
+	self.hammerBlink = false
 end
 
 function Player:reset(spot)
@@ -42,6 +50,7 @@ function Player:reset(spot)
 	self.facing = 1
 	self.moving = false
 	self.inPit = false
+	self:setHammer(false)
 	self:_updatePosition()
 end
 
@@ -62,7 +71,7 @@ function Player:isClimbing(): boolean
 end
 
 function Player:step(dt: number, controls)
-	local result = { jumped = false, landed = false, reachedSummit = false, fellInPit = false }
+	local result = { jumped = false, landed = false, reachedSummit = false, fellInPit = false, hammerBlocked = false }
 	if self.state == "ground" then
 		self:_stepGround(dt, controls, result)
 	elseif self.state == "air" then
@@ -74,14 +83,26 @@ function Player:step(dt: number, controls)
 	return result
 end
 
+-- The hammer takes both hands, so ladders are off while holding it.
+function Player:_tryLadder(path, d: number, result): boolean
+	if self.hasHammer then
+		result.hammerBlocked = true
+		return false
+	end
+	self:_enterLadder(path, d)
+	return true
+end
+
 function Player:_stepGround(dt: number, c, result)
 	local L = self.level
 	local grab = PHYSICS.ladderGrab
 	if c.up then
 		for _, path in L.ladderPaths do
 			if path.ladder.ring == self.ring and L:ringDistance(self.ring, self.s, path.bottomS) < grab then
-				self:_enterLadder(path, 0.01)
-				return
+				if self:_tryLadder(path, 0.01, result) then
+					return
+				end
+				break
 			end
 		end
 	end
@@ -89,8 +110,10 @@ function Player:_stepGround(dt: number, c, result)
 		for _, path in L.ladderPaths do
 			local fromAbove = path.topS ~= nil and path.ladder.ring + 1 == self.ring
 			if fromAbove and L:ringDistance(self.ring, self.s, path.topS) < grab then
-				self:_enterLadder(path, path.length - 0.01)
-				return
+				if self:_tryLadder(path, path.length - 0.01, result) then
+					return
+				end
+				break
 			end
 		end
 	end

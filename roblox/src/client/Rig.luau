@@ -18,8 +18,10 @@ local LIMB_PIVOTS = {
 	armR = Vector3.new(0.37, 0.92, 0),
 }
 
--- { limb or false, size, offset from the limb pivot (or the feet), colour, transparency }
+-- { limb or false, size, offset from the limb pivot (or the feet), colour, transparency, is hammer }
 local PARTS = {
+	{ "armR", Vector3.new(0.08, 0.08, 0.7), Vector3.new(0, -0.38, 0.35), C.brown, 0, true },
+	{ "armR", Vector3.new(0.3, 0.3, 0.46), Vector3.new(0, -0.38, 0.75), C.charcoal, 0, true },
 	{ "legL", Vector3.new(0.2, 0.45, 0.24), Vector3.new(0, -0.225, 0), C.charcoal, 0 },
 	{ "legR", Vector3.new(0.2, 0.45, 0.24), Vector3.new(0, -0.225, 0), C.charcoal, 0 },
 	{ "armL", Vector3.new(0.16, 0.44, 0.2), Vector3.new(0, -0.2, 0), C.yellow, 0 },
@@ -44,7 +46,7 @@ function Rig.new(parent: Instance)
 	self.entries = {}
 	for _, spec in PARTS do
 		table.insert(self.parts, Voxel.part(self.model, spec[2], spec[4], spec[5]))
-		table.insert(self.entries, { limb = spec[1], offset = CFrame.new(spec[3] * STUD) })
+		table.insert(self.entries, { limb = spec[1], offset = CFrame.new(spec[3] * STUD), hammer = spec[6] == true })
 	end
 	self.pivots = {}
 	for limb, pivot in LIMB_PIVOTS do
@@ -101,6 +103,9 @@ function Rig:update(dt: number, player)
 		elseif player.state == "air" then
 			legL, legR, armL, armR = 0.7, -0.5, -2.4, -2.4
 		end
+		if player.hasHammer then
+			armR = -1.6 + math.sin(self.animT * 16) * 1.3
+		end
 		local a = self.angles
 		a.legL = Util.damp(a.legL, legL, 24, dt)
 		a.legR = Util.damp(a.legR, legR, 24, dt)
@@ -110,8 +115,11 @@ function Rig:update(dt: number, player)
 
 	local feet = Vector3.new(player.px, player.py + hop, player.pz) * STUD
 	local root = CFrame.new(feet) * CFrame.Angles(0, self.heading, 0) * CFrame.Angles(0, 0, self.tilt)
+	local showHammer = player.hasHammer and not player.hammerBlink
 	for i, entry in self.entries do
-		if entry.limb then
+		if entry.hammer and not showHammer then
+			self.cframes[i] = Voxel.HIDDEN
+		elseif entry.limb then
 			self.cframes[i] = root * self.pivots[entry.limb] * CFrame.Angles(self.angles[entry.limb], 0, 0) * entry.offset
 		else
 			self.cframes[i] = root * entry.offset

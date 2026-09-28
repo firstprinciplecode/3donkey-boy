@@ -1,3 +1,4 @@
+local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -22,14 +23,34 @@ for _, player in Players:GetPlayers() do
 end
 Players.PlayerAdded:Connect(removeCharacter)
 
--- The template baseplate sits through the bottom tiers; the world brings its own ground.
-local baseplate = workspace:FindFirstChild("Baseplate")
-if baseplate then
-	baseplate:Destroy()
+-- The pyramid floats in the sky, so the template baseplate and spawn have to go.
+for _, name in { "Baseplate", "SpawnLocation" } do
+	local leftover = workspace:FindFirstChild(name)
+	if leftover then
+		leftover:Destroy()
+	end
+end
+
+-- Daylight close to the web build's: bright white sky light, soft green bounce from below.
+Lighting.ClockTime = 13.5
+Lighting.GeographicLatitude = 35
+Lighting.Brightness = 2.2
+Lighting.Ambient = Color3.fromRGB(96, 104, 92)
+Lighting.OutdoorAmbient = Color3.fromRGB(170, 190, 160)
+Lighting.EnvironmentDiffuseScale = 0.3
+Lighting.EnvironmentSpecularScale = 0
+Lighting.GlobalShadows = true
+Lighting.ShadowSoftness = 0.3
+Lighting.FogEnd = 100000
+local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+if atmosphere then
+	atmosphere:Destroy()
 end
 
 local existing = workspace:FindFirstChild("Popscotch")
 if existing then
 	existing:Destroy()
 end
-World.build(Level.new(Levels[1]), workspace)
+local started = os.clock()
+local world = World.build(Level.new(Levels[1]), workspace)
+print(`[popscotch] world built: {world:GetAttribute("PartCount")} parts in {math.round((os.clock() - started) * 1000)} ms`)

@@ -3,10 +3,15 @@
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 
 local Game = require(script.Game)
 
 local MAX_FRAME_DT = 1 / 20
+
+-- Single-player for now: the chat window and player list only cover the score and bonus.
+StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
 
 local KEYS = {
 	[Enum.KeyCode.Left] = "left",

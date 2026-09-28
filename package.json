@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "typecheck": "tsc",
     "check:levels": "node --import tsx scripts/validate-levels.ts && node --import tsx scripts/sim-routes.ts",
-    "rojo": "rojo serve roblox/default.project.json"
+    "rojo": "rojo serve roblox/default.project.json",
+    "roblox:smoke": "roblox/tools/smoke.sh"
   },
   "dependencies": {
     "three": "^0.186.1"

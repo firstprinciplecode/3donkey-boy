@@ -69,8 +69,21 @@ function Hud.new(playerGui: Instance, levelName: string)
 	status.Size = UDim2.fromOffset(260, 30)
 	status.TextXAlignment = Enum.TextXAlignment.Right
 
+	-- 1-U-P chips under the score, lit as each letter is picked up.
+	local chips = {}
+	for i, ch in { "1", "U", "P" } do
+		local chip = label(gui, ch, 20, C.grey)
+		chip.Position = UDim2.fromOffset(16 + (i - 1) * 26, 40)
+		chip.Size = UDim2.fromOffset(22, 26)
+		chip.BackgroundColor3 = C.black
+		chip.BackgroundTransparency = 0.4
+		Instance.new("UICorner").Parent = chip
+		chips[i] = chip
+	end
+
 	self.gui, self.banner, self.heading, self.sub = gui, banner, heading, sub
 	self.scoreLabel, self.statusLabel = score, status
+	self.chips = chips
 	self.lives, self.bonus = 0, 0
 	return self
 end
@@ -94,6 +107,12 @@ function Hud:setLives(lives: number)
 	self:_updateStatus()
 end
 
+function Hud:setLetters(held: { boolean })
+	for i, chip in self.chips do
+		chip.TextColor3 = if held[i] then C.yellow else C.grey
+	end
+end
+
 function Hud:setBonus(bonus: number)
 	self.bonus = bonus
 	self:_updateStatus()
@@ -113,7 +132,7 @@ function Hud:popup(text: string, worldPos: Vector3)
 	local inset = GuiService:GetGuiInset()
 	local popup = label(self.gui, text, 20, C.yellow)
 	popup.AnchorPoint = Vector2.new(0.5, 0.5)
-	popup.Size = UDim2.fromOffset(120, 24)
+	popup.Size = UDim2.fromOffset(260, 24)
 	popup.Position = UDim2.fromOffset(screen.X - inset.X, screen.Y - inset.Y)
 	local info = TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	local tween = TweenService:Create(popup, info, {
