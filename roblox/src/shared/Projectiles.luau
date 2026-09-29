@@ -8,8 +8,9 @@ local C = Config.COLORS
 local R = Config.BARREL.radius
 local LENGTH = 0.8
 
--- `ellipsoid` pieces are drawn as a squashed sphere filling their size (Ball parts stay round).
-export type Piece = { size: Vector3, at: CFrame, color: Color3, shape: Enum.PartType?, ellipsoid: boolean? }
+-- `ellipsoid` pieces are drawn as a squashed sphere filling their size (Ball parts stay round);
+-- `glow` ones are Neon, for the web's emissive lava.
+export type Piece = { size: Vector3, at: CFrame, color: Color3, shape: Enum.PartType?, ellipsoid: boolean?, glow: boolean? }
 
 local Projectiles = {}
 
@@ -85,6 +86,17 @@ local function pumpkin(scale: number): { Piece }
 	return pieces
 end
 
+-- A ball with two bands through it at right angles, standing in for the web's shaded faces so the
+-- roll reads. `glow` makes the bands Neon.
+local function banded(scale: number, body: Color3, bandA: Color3, bandB: Color3, glow: boolean?): { Piece }
+	local r = R * scale
+	return {
+		{ size = Vector3.one * r * 2, at = CFrame.identity, color = body, shape = Enum.PartType.Ball },
+		{ size = Vector3.new(0.05, r * 2 + 0.02, r * 1.5), at = CFrame.identity, color = bandA, ellipsoid = true, glow = glow },
+		{ size = Vector3.new(r * 2 + 0.02, 0.05, r * 1.5), at = CFrame.identity, color = bandB, ellipsoid = true, glow = glow },
+	}
+end
+
 -- `variant` picks the colour for looks that come in several (1-based; ignored otherwise).
 function Projectiles.pieces(look: string, variant: number?): { Piece }
 	local spec = Config.PROJECTILES[look]
@@ -96,6 +108,12 @@ function Projectiles.pieces(look: string, variant: number?): { Piece }
 		return tumbleweed(spec.scale)
 	elseif look == "pumpkin" then
 		return pumpkin(spec.scale)
+	elseif look == "snowball" then
+		return banded(spec.scale, C.snow, C.ice, C.iceDark)
+	elseif look == "boulder" then
+		return banded(spec.scale, C.sandstone, C.sandstoneDark, Config.hex(0xa97c45))
+	elseif look == "lavarock" then
+		return banded(spec.scale, C.basalt, C.lava, C.orange, true)
 	end
 	error(`Projectile "{look}" isn't ported yet`)
 end
@@ -104,6 +122,9 @@ end
 function Projectiles.dress(part: BasePart, piece: Piece)
 	if piece.shape then
 		(part :: Part).Shape = piece.shape
+	end
+	if piece.glow then
+		part.Material = Enum.Material.Neon
 	end
 	if piece.ellipsoid then
 		local mesh = Instance.new("SpecialMesh")

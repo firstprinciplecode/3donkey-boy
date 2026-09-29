@@ -84,6 +84,12 @@ Config.PROJECTILES = {
 		colors = { C.pink, C.cyan, C.yellow, C.purple, C.red, C.teal },
 	},
 	tumbleweed = { scale = 1.1, speed = 1.05, hop = { height = 0.55, every = 2.8 }, burst = { C.tan, C.sand, C.brown } },
+	-- Grows as it rolls, up to maxScale after rolling `distance`; bigger ones pay more to jump.
+	snowball = { scale = 1, speed = 1, grow = { maxScale = 1.85, distance = 40 }, burst = { C.snow, C.snowShade, C.ice } },
+	-- Big and slow, so it's under you for longer when you jump it.
+	boulder = { scale = 1.45, speed = 0.9, burst = { C.sandstone, C.sandstoneDark, C.tan } },
+	-- Leaves a burning patch for `life` seconds wherever it lands off a chute.
+	lavarock = { scale = 1, speed = 1, scorch = { life = 3 }, burst = { C.lava, C.orange, C.basalt } },
 	-- Splits in two (each this much smaller, rolling opposite ways) the first time it drops off a chute.
 	pumpkin = { scale = 1.15, speed = 0.95, splits = { scale = 0.75 }, burst = { C.orange, C.maple, C.yellow } },
 }
@@ -138,6 +144,8 @@ Config.PHYSICS = {
 Config.OBSTACLES = {
 	conveyorSpeed = 2.6,
 	-- Seconds a crumbling tile shakes after being stepped on, then how long it takes to fall away.
+	-- On ice your speed eases toward the controls at this rate instead of snapping.
+	iceGrip = 1.6,
 	crumbleDelay = 0.6,
 	crumbleFall = 0.5,
 	-- You only fall once your centre is this far past the lip of a pit.
@@ -146,6 +154,25 @@ Config.OBSTACLES = {
 	-- Launch speed off a spring pad; clears a 5-wide pit at full run.
 	springVelocity = 17,
 	springReach = 0.45,
+}
+
+-- Pitfall-style vines over 6-wide pits. They swing on their own clock; jump into the end of the
+-- rope to catch it and press Jump again to let go with the swing's speed.
+Config.VINE = {
+	-- Height of the pivot above the walkway, and the rope hanging from it.
+	pivot = 4.4,
+	length = 2.9,
+	-- Widest angle either side of straight down (radians), and seconds for one swing there and back.
+	swing = 0.8,
+	period = 2.4,
+	-- How close your hands must pass to the end of the rope to catch it.
+	grabReach = 0.8,
+	-- Hands above feet while hanging.
+	hang = 1.35,
+	-- Upward kick when you let go, on top of the rope's own motion.
+	releaseBoost = 9,
+	-- Seconds after letting go before you can catch a vine again.
+	regrab = 0.4,
 }
 
 Config.HAZARDS = {

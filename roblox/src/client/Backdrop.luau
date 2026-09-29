@@ -28,6 +28,8 @@ local SECTORS = 8
 local HIDE_WITHIN = math.rad(90)
 -- The sky panel sits this far behind the focus, beyond all scenery.
 local SKY_BEHIND = 150
+local STAR_COUNT = 70
+local STAR_SEED = 7
 
 type Rand = () -> number
 
@@ -313,6 +315,7 @@ function Backdrop.new(level, skin, parent: Instance)
 		sprinkles(vb, f, y, 3, rand)
 	end
 	self.partCount = vb.count
+	self.glowParts = vb.glowParts
 
 	self:_buildCritters()
 	self:_buildSky(skin.sky)
@@ -377,17 +380,48 @@ function Backdrop:_buildSky(colors)
 	fill.BackgroundColor3 = Color3.new(1, 1, 1)
 	fill.Parent = gui
 
-	-- The web gradient is radial, lightest a third of the way down; this is its vertical slice.
 	local gradient = Instance.new("UIGradient")
 	gradient.Rotation = 90
-	gradient.Color = ColorSequence.new({
+	gradient.Parent = fill
+	self.sky = panel
+	self.skyGradient = gradient
+
+	-- Stars over the upper sky, hidden in daylight (the web's CSS star layer). Seeded so they sit in
+	-- the same place every run.
+	local rand = Rand.seeded(STAR_SEED)
+	self.stars = {}
+	for _ = 1, STAR_COUNT do
+		local star = Instance.new("Frame")
+		local size = if rand() < 0.2 then 3 else 2
+		star.Size = UDim2.fromOffset(size, size)
+		star.Position = UDim2.fromScale(rand(), rand() * 0.6)
+		star.BorderSizePixel = 0
+		star.BackgroundColor3 = Color3.new(1, 1, 1)
+		star.BackgroundTransparency = 1
+		star.ZIndex = 2
+		star.Parent = gui
+		table.insert(self.stars, { frame = star, twinkle = rand() * math.pi * 2 })
+	end
+	self.starStrength = 0
+	self:setSky(colors, 0)
+end
+
+-- Repaints the sky gradient and sets how strongly the stars show (0 in daylight, 1 at night).
+function Backdrop:setSky(colors: { Color3 }, stars: number)
+	-- The web gradient is radial, lightest a third of the way down; this is its vertical slice.
+	self.skyGradient.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, colors[2]),
 		ColorSequenceKeypoint.new(0.4, colors[1]),
 		ColorSequenceKeypoint.new(0.75, colors[2]),
 		ColorSequenceKeypoint.new(1, colors[3]),
 	})
-	gradient.Parent = fill
-	self.sky = panel
+	self.sky.Color = colors[3]
+	self.starStrength = stars
+	if stars <= 0 then
+		for _, s in self.stars do
+			s.frame.BackgroundTransparency = 1
+		end
+	end
 end
 
 function Backdrop:destroy()
@@ -428,6 +462,13 @@ function Backdrop:update(dt: number, azimuth: number, focus: Vector3)
 		end
 	end
 	workspace:BulkMoveTo(self.critterParts, self.critterFrames, Enum.BulkMoveMode.FireCFrameChanged)
+
+	if self.starStrength > 0 then
+		for _, s in self.stars do
+			local shine = self.starStrength * (0.55 + 0.45 * math.sin(self.t * 1.7 + s.twinkle))
+			s.frame.BackgroundTransparency = 1 - shine
+		end
+	end
 
 	-- Keep the sky panel square-on to the camera, far behind the pyramid.
 	local camera = workspace.CurrentCamera

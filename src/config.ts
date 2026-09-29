@@ -103,6 +103,27 @@ export const OBSTACLES = {
   iceGrip: 1.6,
 } as const;
 
+/**
+ * Pitfall-style vines over 6-wide pits. They swing on their own clock; jump into the end of the
+ * rope to catch it and press Jump again to let go with the swing's speed.
+ */
+export const VINE = {
+  /** Height of the pivot above the walkway, and the rope hanging from it. */
+  pivot: 4.4,
+  length: 2.9,
+  /** Widest angle either side of straight down (radians), and seconds for one swing there and back. */
+  swing: 0.8,
+  period: 2.4,
+  /** How close your hands must pass to the end of the rope to catch it. */
+  grabReach: 0.8,
+  /** Hands above feet while hanging. */
+  hang: 1.35,
+  /** Upward kick when you let go, on top of the rope's own motion. */
+  releaseBoost: 9,
+  /** Seconds after letting go before you can catch a vine again. */
+  regrab: 0.4,
+} as const;
+
 export const HAZARDS = {
   /** A jet rumbles for this long before it erupts, then stays up this long. */
   jetWarn: 0.6,

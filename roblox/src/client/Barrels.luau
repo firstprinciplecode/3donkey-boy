@@ -21,6 +21,9 @@ local STUD = Config.STUD
 local R = BARREL.radius
 local MAX_LIFETIME = 120
 local SINK_TIME = 0.3
+local SCORCH_RADIUS = 0.45
+local SCORCH_BASE = Vector3.new(0.9, 0.08, 0.9)
+local SCORCH_CORE = Vector3.new(0.45, 0.14, 0.45)
 
 -- Piece offsets and sizes per look, in studs, matching the order of the parts `_acquire` builds.
 type Layout = { offsets: { CFrame }, sizes: { Vector3 } }
@@ -64,6 +67,10 @@ function Barrels.new(level, parent: Instance)
 	self.onDrum = nil :: ((any) -> ())?
 	self.onPit = nil :: ((any) -> ())?
 	self.onSplit = nil :: ((any) -> ())?
+	self.onScorch = nil :: ((Vector3) -> ())?
+	-- Burning patches left by lava rocks, reported like hazard dangers: { at, r } in game units.
+	self.scorches = {}
+	self.dangers = {}
 	self.folder = Instance.new("Folder")
 	self.folder.Name = "Barrels"
 	self.folder.Parent = parent
@@ -123,7 +130,7 @@ function Barrels:_acquire(): { Part }
 end
 
 function Barrels:_release(b)
-	if b.scale ~= 1 then
+	if b.shownScale ~= 1 then
 		resize(b.parts, self.look, 1)
 	end
 	for _, part in b.parts do
@@ -192,6 +199,13 @@ function Barrels:_land(b)
 			self.onSplit(b)
 		end
 	end
+	local scorch = Config.PROJECTILES[self.look].scorch
+	if scorch then
+		self:_addScorch(b.pos, scorch.life)
+		if self.onScorch then
+			self.onScorch(b.pos)
+		end
+	end
 end
 
 -- Knocked out by the hammer; it's put back in the pool on the next update.
@@ -204,6 +218,40 @@ function Barrels:clear()
 		self:_release(b)
 	end
 	table.clear(self.list)
+	for _, s in self.scorches do
+		s.base:Destroy()
+		s.core:Destroy()
+	end
+	table.clear(self.scorches)
+	table.clear(self.dangers)
+end
+
+function Barrels:_addScorch(at: Vector3, life: number)
+	local base = Voxel.part(self.folder, SCORCH_BASE, Config.COLORS.lava)
+	local core = Voxel.part(self.folder, SCORCH_CORE, Config.COLORS.yellow)
+	base.Material = Enum.Material.Neon
+	core.Material = Enum.Material.Neon
+	base.CFrame = CFrame.new((at + Vector3.yAxis * 0.04) * STUD)
+	core.CFrame = CFrame.new((at + Vector3.yAxis * 0.08) * STUD)
+	table.insert(self.scorches, { base = base, core = core, at = at, life = life, fade = 1, flicker = 1 })
+end
+
+function Barrels:_updateScorches(dt: number)
+	table.clear(self.dangers)
+	for i = #self.scorches, 1, -1 do
+		local s = self.scorches[i]
+		s.life -= dt
+		if s.life <= 0 then
+			s.base:Destroy()
+			s.core:Destroy()
+			table.remove(self.scorches, i)
+			continue
+		end
+		-- Flicker, then shrink away over the last half second so the end is readable.
+		s.fade = math.min(1, s.life / 0.5)
+		s.flicker = 1 + math.sin(s.life * 23) * 0.08
+		table.insert(self.dangers, { at = s.at + Vector3.yAxis * 0.1, r = SCORCH_RADIUS * s.fade })
+	end
 end
 
 function Barrels:update(dt: number)
@@ -234,6 +282,7 @@ function Barrels:update(dt: number)
 			table.remove(self.list, i)
 		end
 	end
+	self:_updateScorches(dt)
 end
 
 function Barrels:_stepRoll(b, dt: number, speed: number)
@@ -241,7 +290,14 @@ function Barrels:_stepRoll(b, dt: number, speed: number)
 	local delta = speed * dt
 	local prev = b.s
 	b.s = (b.s + b.dir * delta) % L:ringLength(b.ring)
-	local hop = Config.PROJECTILES[self.look].hop
+	local spec = Config.PROJECTILES[self.look]
+	local grow = spec.grow
+	if grow then
+		local base, max = R * spec.scale, R * grow.maxScale
+		b.radius = math.min(max, b.radius + delta * (max - base) / grow.distance)
+		b.scale = b.radius / base
+	end
+	local hop = spec.hop
 	if hop then
 		b.hop += delta / hop.every
 		b.lift = hop.height * math.abs(math.sin(math.pi * b.hop))
@@ -363,7 +419,8 @@ function Barrels:render(dt: number)
 	local parts, frames = self.moveParts, self.moveFrames
 	local pieces = layoutFor(self.look).offsets
 	for _, b in self.list do
-		if b.shownScale ~= b.scale then
+		-- Growing snowballs only get resized once they've grown visibly.
+		if math.abs(b.shownScale - b.scale) > 0.005 then
 			b.shownScale = b.scale
 			resize(b.parts, self.look, b.scale)
 		end
@@ -380,12 +437,17 @@ function Barrels:render(dt: number)
 		b.yaw = Util.dampAngle(b.yaw, yaw, 20, dt)
 		local center = Barrels.centre(b) * STUD
 		local root = CFrame.new(center) * CFrame.Angles(0, b.yaw, 0) * CFrame.Angles(0, 0, b.spin)
-		local scale = b.scale
+		local scale = b.shownScale
 		for i, part in b.parts do
 			table.insert(parts, part)
 			local offset = pieces[i]
 			table.insert(frames, root * (if scale == 1 then offset else offset.Rotation + offset.Position * scale))
 		end
+	end
+	for _, s in self.scorches do
+		local k = s.fade * s.flicker
+		s.base.Size = Vector3.new(SCORCH_BASE.X * k, SCORCH_BASE.Y, SCORCH_BASE.Z * k) * STUD
+		s.core.Size = Vector3.new(SCORCH_CORE.X * k, SCORCH_CORE.Y, SCORCH_CORE.Z * k) * STUD
 	end
 	if #parts > 0 then
 		workspace:BulkMoveTo(parts, frames, Enum.BulkMoveMode.FireCFrameChanged)

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { COLORS, OBSTACLES } from './config';
-import { sideYaw, squarePoint, type Level, type RingSpan, type Spot } from './level';
-import type { LockDef, PlatformDef } from './levels/types';
+import { COLORS, OBSTACLES, VINE } from './config';
+import { mod, sideYaw, squarePoint, type Level, type RingSpan, type Spot } from './level';
+import type { LockDef, PlatformDef, VineDef } from './levels/types';
 import { makeConveyorTexture } from './textures';
 import { box, material, unitBox } from './voxel';
 
@@ -18,6 +18,17 @@ export interface ObstacleEnv {
   grip(ring: number, s: number): number;
   /** True if there is a spring pad under this spot. */
   spring(ring: number, s: number): boolean;
+  /** Index of a vine whose end is within reach of hands at this spot and height, or -1. */
+  grabVine(ring: number, s: number, handY: number): number;
+  /** Where the end of a vine is now, and how fast it's moving. */
+  vineTip(index: number): Readonly<VineTip>;
+}
+
+export interface VineTip {
+  s: number;
+  y: number;
+  vs: number;
+  vy: number;
 }
 
 export interface ObstacleEvents {
@@ -65,6 +76,16 @@ interface Spring {
   t: number;
 }
 
+interface Vine {
+  ring: number;
+  s: number;
+  pivotY: number;
+  period: number;
+  phase: number;
+  rope: THREE.Group;
+  tip: VineTip;
+}
+
 const LOCK_COLORS = { switch: COLORS.red, key: COLORS.pink, relics: COLORS.teal } as const;
 
 /** Spring pad: a base plate and a coil group that squashes when it fires. */
@@ -85,6 +106,7 @@ export class Obstacles implements ObstacleEnv {
   private readonly conveyors: Conveyor[] = [];
   private readonly ice: RingSpan[];
   private readonly springs: Spring[] = [];
+  private readonly vines: Vine[] = [];
   private readonly locks: Lock[] = [];
   private readonly lockByLadder = new Map<number, Lock>();
   private readonly ownedMaterials: THREE.Material[] = [];
@@ -100,6 +122,7 @@ export class Obstacles implements ObstacleEnv {
     this.ice = (def.ice ?? []).map((s) => level.span(s));
     this.ice.forEach((s) => this.addIce(s));
     (def.springs ?? []).forEach((s) => this.addSpring(s));
+    (def.vines ?? []).forEach((v) => this.addVine(v));
     def.locks.forEach((l) => this.addLock(l));
     this.reset(true);
   }
@@ -115,6 +138,7 @@ export class Obstacles implements ObstacleEnv {
       for (const cell of c.cells) cell.position.copy(cell.userData.base as THREE.Vector3);
     }
     for (const p of this.platforms) this.placePlatform(p, 0);
+    for (const v of this.vines) this.swingVine(v, 0);
     if (!relock) return;
     for (const lock of this.locks) {
       lock.open = false;
@@ -161,6 +185,7 @@ export class Obstacles implements ObstacleEnv {
     }
 
     for (const p of this.platforms) this.placePlatform(p, this.clock);
+    for (const v of this.vines) this.swingVine(v, this.clock);
     for (const c of this.conveyors) c.texture.offset.x -= (OBSTACLES.conveyorSpeed * dt) / 1;
     for (const sp of this.springs) {
       sp.t += dt;
@@ -220,6 +245,16 @@ export class Obstacles implements ObstacleEnv {
     for (const sp of this.springs) {
       if (sp.ring === ring && this.level.ringDistance(ring, s, sp.s) < OBSTACLES.springReach) sp.t = 0;
     }
+  }
+
+  grabVine(ring: number, s: number, handY: number): number {
+    return this.vines.findIndex(
+      (v) => v.ring === ring && Math.hypot(this.level.ringDelta(ring, s, v.tip.s), handY - v.tip.y) < VINE.grabReach,
+    );
+  }
+
+  vineTip(index: number): Readonly<VineTip> {
+    return this.vines[index].tip;
   }
 
   isLadderOpen(index: number): boolean {
@@ -367,6 +402,59 @@ export class Obstacles implements ObstacleEnv {
     g.add(base, coil);
     this.group.add(g);
     this.springs.push({ ring: spot.ring, s: this.level.spotS(spot), coil, t: 1 });
+  }
+
+  /**
+   * A beam reaching out from the tier above, with a leafy rope hanging from its end over the pit.
+   * The rope swings in the plane of the walkway (local x, along s).
+   */
+  private addVine(def: VineDef): void {
+    const L = this.level;
+    const g = this.anchor(def.ring, def.side, def.offset);
+    const upper = L.def.tierHeight;
+    const postZ = L.tierHalf(def.ring + 1) - L.ringRadius(def.ring) - 0.4;
+    const postH = VINE.pivot + 0.3 - upper;
+    const beam = 0.3 - postZ;
+    g.add(
+      box(0.3, postH, 0.3, COLORS.brown, 0, upper + postH / 2, postZ),
+      box(0.26, 0.26, beam, COLORS.brown, 0, VINE.pivot + 0.15, postZ + beam / 2 - 0.15),
+    );
+    const rope = new THREE.Group();
+    rope.position.y = VINE.pivot;
+    const segments = Math.ceil(VINE.length / 0.5);
+    const seg = VINE.length / segments;
+    for (let i = 0; i < segments; i++) {
+      const y = -(i + 0.5) * seg;
+      rope.add(box(0.12, seg + 0.02, 0.12, i % 2 ? COLORS.leaf : COLORS.leafDark, 0, y, 0));
+      if (i % 2 === 0) rope.add(box(0.2, 0.1, 0.06, COLORS.grass, i % 4 ? -0.12 : 0.12, y, 0));
+    }
+    rope.add(box(0.22, 0.3, 0.22, COLORS.leafDark, 0, -VINE.length, 0));
+    g.add(rope);
+    this.group.add(g);
+    const vine: Vine = {
+      ring: def.ring,
+      s: L.spotS(def),
+      pivotY: L.tierTop(def.ring) + VINE.pivot,
+      period: def.period ?? VINE.period,
+      phase: def.phase ?? 0,
+      rope,
+      tip: { s: 0, y: 0, vs: 0, vy: 0 },
+    };
+    this.vines.push(vine);
+    this.swingVine(vine, 0);
+  }
+
+  private swingVine(v: Vine, t: number): void {
+    const w = (Math.PI * 2) / v.period;
+    const phase = w * t + Math.PI * 2 * v.phase;
+    const a = VINE.swing * Math.sin(phase);
+    const da = VINE.swing * w * Math.cos(phase);
+    const r = VINE.length;
+    v.rope.rotation.z = a;
+    v.tip.s = mod(v.s + r * Math.sin(a), this.level.ringLength(v.ring));
+    v.tip.y = v.pivotY - r * Math.cos(a);
+    v.tip.vs = r * Math.cos(a) * da;
+    v.tip.vy = r * Math.sin(a) * da;
   }
 
   private addLock(def: LockDef): void {

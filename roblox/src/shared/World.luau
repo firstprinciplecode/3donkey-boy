@@ -517,7 +517,8 @@ function World.build(level, parent: Instance): Model
 
 	model:SetAttribute("PartCount", vb.count)
 	model.Parent = parent
-	return model
+	-- The windows, lanterns and neon ribs, for VoxelBuilder.setGlow at dusk and night.
+	return model, vb.glowParts
 end
 
 return World

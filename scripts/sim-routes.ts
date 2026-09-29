@@ -49,9 +49,16 @@ for (const def of LEVELS) {
   const keys = def.items.filter((it) => it.type === 'key').map((it) => it.spot);
   const relics = new Set(def.items.filter((it) => it.type === 'relic').map((it) => it.spot));
   const steps = ROUTES[def.name];
+  const vines = (def.vines ?? []).map((v) => ({
+    ring: v.ring,
+    s: level.spotS(v),
+    pit: level.span(def.pits.find((pit) => pit.ring === v.ring && pit.side === v.side && pit.offset === v.offset)!),
+  }));
   let i = 0;
   let t = 0;
   let outcome = 'timeout';
+  let prevS = p.s;
+  let swung = 0;
 
   while (t < 240) {
     t += DT;
@@ -82,7 +89,19 @@ for (const def of LEVELS) {
       }
       const move = () => (dir > 0 ? (c.right = true) : (c.left = true));
       const platformGap = def.platforms.some((pl) => level.inSpan(level.span(pl), p.ring, p.s + dir * (firstGap + 0.3)));
-      if (firstGap > 0.9) move();
+      const vine = vines.find((v) => level.inSpan(v.pit, p.ring, p.s + dir * (firstGap + 0.3)));
+      if (p.state === 'swing') {
+        // Let go on the forward swing, just past straight down.
+        const v = vines.find((v) => v.ring === p.ring && level.ringDistance(p.ring, p.s, v.s) < 3)!;
+        if (dir * level.ringDelta(p.ring, p.s, v.s) > 0.2 && dir * level.ringDelta(p.ring, p.s, prevS) > 0) c.jump = true;
+      } else if (vine && p.grounded && firstGap < 0.6) {
+        // Wait at the lip for the rope to swing close, then run and jump into it.
+        const tip = obs.vineTip(vines.indexOf(vine));
+        if (dir * level.ringDelta(p.ring, tip.s, vine.s) < -1.6) {
+          move();
+          c.jump = true;
+        }
+      } else if (firstGap > 0.9 || (vine && p.grounded)) move();
       else if (!platformGap && gapEnd - firstGap < 3.2) {
         move();
         if (firstGap < 0.5) c.jump = true;
@@ -97,7 +116,9 @@ for (const def of LEVELS) {
         `t=${t.toFixed(2)} step=${i} ring=${p.ring} side=${side} off=${offset.toFixed(2)} ${p.state} y=${p.y.toFixed(2)} carry=${obs.carry(p.ring, p.s)} keys=${JSON.stringify(c)}`,
       );
     }
+    prevS = p.s;
     const r = p.step(DT, c, obs);
+    if (r.grabbed) swung++;
     obs.update(DT, { ring: p.ring, s: p.s, grounded: p.grounded });
     for (const k of keys) {
       if (k.ring === p.ring && level.ringDistance(p.ring, p.s, level.spotS(k)) < 0.5) obs.unlockKeyDoors();
@@ -121,8 +142,9 @@ for (const def of LEVELS) {
     if ('climb' in step && p.ring > before && p.grounded) i++;
   }
 
-  const ok = outcome === 'summit';
+  const ok = outcome === 'summit' && swung >= vines.length;
   if (!ok) failures++;
-  console.log(`${ok ? '✓' : '✗'} ${def.name}: ${outcome} after ${t.toFixed(1)}s`);
+  const swings = vines.length ? `, swung on ${swung} vine${swung === 1 ? '' : 's'}` : '';
+  console.log(`${ok ? '✓' : '✗'} ${def.name}: ${outcome} after ${t.toFixed(1)}s${swings}`);
 }
 process.exit(failures ? 1 : 0);

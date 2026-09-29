@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { COLORS, OBSTACLES, PHYSICS } from '../config';
+import { COLORS, OBSTACLES, PHYSICS, VINE } from '../config';
 import { PIT_DEPTH, mod, sideYaw, type LadderPath, type Level, type Spot } from '../level';
 import type { ObstacleEnv } from '../obstacles';
 import { damp, dampAngle } from '../utils';
 import { box } from '../voxel';
 
-export type PlayerState = 'ground' | 'air' | 'ladder' | 'dead';
+export type PlayerState = 'ground' | 'air' | 'ladder' | 'swing' | 'dead';
 
 export interface Controls {
   left: boolean;
@@ -26,6 +26,8 @@ export interface StepResult {
   hammerBlocked: boolean;
   /** Launched off a spring pad. */
   bounced: boolean;
+  /** Caught a vine. */
+  grabbed: boolean;
 }
 
 export class Player {
@@ -49,6 +51,9 @@ export class Player {
   state: PlayerState = 'ground';
   hasHammer = false;
   private path: LadderPath | null = null;
+  /** Index of the vine being swung on, or -1. */
+  private vine = -1;
+  private regrabT = 0;
   private d = 0;
   private side = 0;
   private facing = 1;
@@ -116,6 +121,8 @@ export class Player {
     this.vy = 0;
     this.state = 'ground';
     this.path = null;
+    this.vine = -1;
+    this.regrabT = 0;
     this.facing = 1;
     this.moving = false;
     this.inPit = false;
@@ -152,10 +159,13 @@ export class Player {
       blockedLadder: -1,
       hammerBlocked: false,
       bounced: false,
+      grabbed: false,
     };
+    this.regrabT = Math.max(0, this.regrabT - dt);
     if (this.state === 'ground') this.stepGround(dt, c, env, result);
     else if (this.state === 'air') this.stepAir(dt, env, result);
     else if (this.state === 'ladder') this.stepLadder(dt, c, result);
+    else if (this.state === 'swing') this.stepSwing(c, env, result);
     this.updatePosition();
     return result;
   }
@@ -231,6 +241,18 @@ export class Player {
     if (!this.inPit) this.s = mod(this.s + this.vs * dt, L.ringLength(this.ring));
     this.y += this.vy * dt;
 
+    if (this.regrabT <= 0) {
+      const vine = env.grabVine(this.ring, this.s, this.y + VINE.hang);
+      if (vine >= 0) {
+        this.state = 'swing';
+        this.vine = vine;
+        this.inPit = false;
+        this.stepSwing({ left: false, right: false, up: false, down: false, jump: false }, env, result);
+        result.grabbed = true;
+        return;
+      }
+    }
+
     const overGap = env.carry(this.ring, this.s) === null;
     if (overGap && this.y < top - 0.05) this.inPit = true;
     if (this.inPit) {
@@ -250,6 +272,23 @@ export class Player {
       this.state = 'ground';
       result.landed = true;
     }
+  }
+
+  /** Hang from the end of the rope; left/right only turn you, Jump lets go with the rope's motion. */
+  private stepSwing(c: Controls, env: ObstacleEnv, result: StepResult): void {
+    const tip = env.vineTip(this.vine);
+    this.s = tip.s;
+    this.y = tip.y - VINE.hang;
+    this.moving = false;
+    const dir = Number(c.right) - Number(c.left);
+    if (dir !== 0) this.facing = dir;
+    if (!c.jump) return;
+    this.state = 'air';
+    this.vine = -1;
+    this.regrabT = VINE.regrab;
+    this.vs = tip.vs;
+    this.vy = tip.vy + VINE.releaseBoost;
+    result.jumped = true;
   }
 
   private stepLadder(dt: number, c: Controls, result: StepResult): void {
@@ -336,6 +375,11 @@ export class Player {
       armR = -2.6 - s * 0.4;
       legL = s * 0.5;
       legR = -s * 0.5;
+    } else if (this.state === 'swing') {
+      legL = 0.35;
+      legR = -0.25;
+      armL = -3;
+      armR = -3;
     } else if (this.state === 'air') {
       legL = 0.7;
       legR = -0.5;

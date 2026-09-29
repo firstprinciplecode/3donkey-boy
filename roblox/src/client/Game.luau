@@ -1,6 +1,7 @@
 -- The round rules, ported from src/game.ts: states, fixed-step physics, the boss's throws, barrel
 -- hits and jump-overs, score, lives and the bonus timer.
 
+local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -8,6 +9,8 @@ local Config = require(Shared.Config)
 local Level = require(Shared.Level)
 local Levels = require(Shared.Levels)
 local Skins = require(Shared.Skins)
+local TimeOfDay = require(Shared.TimeOfDay)
+local VoxelBuilder = require(Shared.VoxelBuilder)
 local World = require(Shared.World)
 
 local Audio = require(script.Parent.Audio)
@@ -49,6 +52,9 @@ local CLEAR_TIME = 2.5
 local JUMP_BUFFER = 0.12
 -- Ignore Space for a moment on the game over screen so a held jump doesn't skip it.
 local GAMEOVER_LOCK = 1
+-- Fire jets erupting within this distance of the player are heard.
+local JET_HEARING = 9
+local SCORCH_HEARING = 10
 local HINT_COOLDOWN = 1.4
 -- Smash splinters for fires, ghosts and totems; thrown things use their own look's burst.
 local SPLINTERS = { C.cream, C.yellow, C.orange }
@@ -108,6 +114,16 @@ function Game.new(playerGui: Instance)
 		self.particles:burst(Barrels.centre(b), self.barrels:burst(), 10, 3)
 		self.audio:play("crumble")
 	end
+	self.barrels.onScorch = function(at)
+		if self.state ~= "playing" then
+			return
+		end
+		self.particles:burst(at + Vector3.yAxis * 0.3, { C.lava, C.orange, C.yellow }, 8, 3)
+		local p = self.player
+		if (at - Vector3.new(p.px, p.py, p.pz)).Magnitude < SCORCH_HEARING then
+			self.audio:play("fire")
+		end
+	end
 
 	self.levelIndex = 0
 	self.world = nil :: Model?
@@ -152,8 +168,10 @@ function Game:_loadLevel(index: number)
 	local level = Level.new(Levels[index])
 	local skin = Skins[level.def.skin]
 	self.level = level
-	self.world = World.build(level, workspace)
+	self.world, self.worldGlow = World.build(level, workspace)
 	self.backdrop = Backdrop.new(level, skin, workspace)
+	-- New scenery is built unlit, so the next time of day has to be applied in full.
+	self.time = nil
 	self.items = Items.new(level, workspace)
 	self.obstacles = Obstacles.new(level, workspace)
 	self.hazards = Hazards.new(level, skin.drop, workspace)
@@ -292,6 +310,7 @@ end
 function Game:_startRound(fresh: boolean)
 	if fresh then
 		self:_loadLevel((self.round - 1) % #Levels + 1)
+		self:_setTime(TimeOfDay.forRound(self.round, #Levels))
 	end
 	local def = self.level.def
 	local loop = self:_loop()
@@ -323,8 +342,28 @@ function Game:_startRound(fresh: boolean)
 	self.bossClock = 1.2
 	self.hud:setBonus(self.bonus)
 	self:_setState("ready")
+	local when = if self.time == "dusk" then " · Dusk" elseif self.time == "night" then " · Night" else ""
 	local tip = if def.tip and loop == 0 then ` · {def.tip}` else ""
-	self.hud:show(`ROUND {self.round}`, `Level {self.levelIndex} · {Hud.levelTitle(def.name)}{tip}`)
+	self.hud:show(`ROUND {self.round}`, `Level {self.levelIndex} · {Hud.levelTitle(def.name)}{when}{tip}`)
+end
+
+-- Day, dusk or night: the sky gradient and stars, the light, and whether windows and lanterns glow.
+-- Lighting is set on the client, like the rest of the level, so each player sees their own round.
+function Game:_setTime(time: string)
+	if time == self.time then
+		return
+	end
+	self.time = time
+	local light = TimeOfDay.LIGHTING[time]
+	Lighting.ClockTime = light.ClockTime
+	Lighting.Brightness = light.Brightness
+	Lighting.Ambient = light.Ambient
+	Lighting.OutdoorAmbient = light.OutdoorAmbient
+	Lighting.ColorShift_Top = light.ColorShift_Top
+	VoxelBuilder.setGlow(self.worldGlow, light.glow)
+	VoxelBuilder.setGlow(self.backdrop.glowParts, light.glow)
+	local skinName = self.level.def.skin
+	self.backdrop:setSky(TimeOfDay.sky(skinName, Skins[skinName], time), light.stars)
 end
 
 function Game:_popup(text: string, at: Vector3)
@@ -377,6 +416,14 @@ function Game:_onHazards(events)
 	for _, s in events.shattered do
 		self.particles:burst(s.at, s.colors, 10, 3)
 		self.audio:play("shatter")
+	end
+	local p = self.player
+	local here = Vector3.new(p.px, p.py, p.pz)
+	for _, at in events.erupted do
+		if (at - here).Magnitude < JET_HEARING then
+			self.audio:play("jet")
+			break
+		end
 	end
 end
 
@@ -550,6 +597,13 @@ function Game:_checkCollisions(): boolean
 		end
 	end
 
+	for _, danger in self.barrels.dangers do
+		if self:_hitsPlayer(danger.at, danger.r) then
+			self:_die("Scorched!", "Lava rocks leave burning patches")
+			return true
+		end
+	end
+
 	for i = #self.fires, 1, -1 do
 		local fire = self.fires[i]
 		if self:_hitsPlayer(fire.position, FIRE.radius) then
@@ -630,7 +684,11 @@ function Game:_checkCollisions(): boolean
 
 	for _, danger in self.hazards.dangers do
 		if self:_hitsPlayer(danger.at, danger.r) then
-			self:_die("Bonk!", "Look up: things fall when you walk under them")
+			if danger.kind == "jet" then
+				self:_die("Toasted!", "Fire traps erupt on a beat")
+			else
+				self:_die("Bonk!", "Look up: things fall when you walk under them")
+			end
 			return true
 		end
 	end
@@ -649,7 +707,7 @@ function Game:_stepPlaying(dt: number)
 	self.accumulator += dt
 	while self.accumulator >= SUBSTEP do
 		self.accumulator -= SUBSTEP
-		local jump = self.jumpBuffer > 0 and p.state == "ground"
+		local jump = self.jumpBuffer > 0 and (p.state == "ground" or p.state == "swing")
 		if jump then
 			self.jumpBuffer = 0
 		end
@@ -666,6 +724,11 @@ function Game:_stepPlaying(dt: number)
 		end
 		if result.landed then
 			self.audio:play("land")
+		end
+		if result.grabbed then
+			-- A press buffered in mid-air shouldn't let go the moment you catch the rope.
+			self.jumpBuffer = 0
+			self.audio:play("climb")
 		end
 		if result.bounced then
 			self.audio:play("spring")

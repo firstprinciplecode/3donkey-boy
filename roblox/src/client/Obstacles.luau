@@ -1,6 +1,6 @@
 -- Dynamic level pieces, ported from src/obstacles.ts: crumbling tiles, moving platforms, conveyor
--- belts, spring pads, and ladders locked behind a switch gate, a key door or a relic seal. Ice joins
--- with the level that uses it.
+-- belts, spring pads, ice, swinging vines, and ladders locked behind a switch gate, a key door or a
+-- relic seal.
 --
 -- `carry` answers what's under a spot on a ring: nil for an open gap (you fall), otherwise the speed
 -- along s the floor carries you at (0 for plain floor).
@@ -15,6 +15,7 @@ local Voxel = require(script.Parent.Voxel)
 
 local C = Config.COLORS
 local OBSTACLES = Config.OBSTACLES
+local VINE = Config.VINE
 local STUD = Config.STUD
 
 local GATE_OPEN_TIME = 0.6
@@ -46,7 +47,9 @@ function Obstacles.new(level, parent: Instance)
 	self.crumbles = {}
 	self.platforms = {}
 	self.springs = {}
+	self.vines = {}
 	self.conveyors = {}
+	self.ice = {}
 	self.locks = {}
 	self.lockByLadder = {}
 	self.moveParts = {}
@@ -64,6 +67,12 @@ function Obstacles.new(level, parent: Instance)
 	end
 	for _, spot in def.springs or {} do
 		self:_addSpring(spot)
+	end
+	for _, span in def.ice or {} do
+		self:_addIce(span)
+	end
+	for _, v in def.vines or {} do
+		self:_addVine(v)
 	end
 	for _, l in def.locks do
 		self:_addLock(l)
@@ -182,6 +191,81 @@ function Obstacles:boing(ring: number, s: number)
 	end
 end
 
+-- A beam reaching out from the tier above, with a leafy rope hanging from its end over the pit.
+-- The rope swings in the plane of the walkway (local x, along s).
+function Obstacles:_addVine(def)
+	local L = self.level
+	local frame = self:_anchor(def.ring, def.side, def.offset)
+	local upper = L.def.tierHeight
+	local postZ = L:tierHalf(def.ring + 1) - L:ringRadius(def.ring) - 0.4
+	local postH = VINE.pivot + 0.3 - upper
+	local beam = 0.3 - postZ
+	self:_box(frame, 0.3, postH, 0.3, C.brown, 0, upper + postH / 2, postZ)
+	self:_box(frame, 0.26, 0.26, beam, C.brown, 0, VINE.pivot + 0.15, postZ + beam / 2 - 0.15)
+
+	local rope = {}
+	local function add(sx, sy, sz, color, x, y)
+		local part = Voxel.part(self.folder, Vector3.new(sx, sy, sz), color)
+		table.insert(rope, { part = part, at = unitFrame(x, y, 0) })
+	end
+	local segments = math.ceil(VINE.length / 0.5)
+	local seg = VINE.length / segments
+	for i = 0, segments - 1 do
+		local y = -(i + 0.5) * seg
+		add(0.12, seg + 0.02, 0.12, if i % 2 == 1 then C.leaf else C.leafDark, 0, y)
+		if i % 2 == 0 then
+			add(0.2, 0.1, 0.06, C.grass, if i % 4 ~= 0 then -0.12 else 0.12, y)
+		end
+	end
+	add(0.22, 0.3, 0.22, C.leafDark, 0, -VINE.length)
+	local vine = {
+		ring = def.ring,
+		s = L:spotS(def),
+		pivotY = L:tierTop(def.ring) + VINE.pivot,
+		period = def.period or VINE.period,
+		phase = def.phase or 0,
+		pivot = frame * unitFrame(0, VINE.pivot, 0),
+		rope = rope,
+		angle = 0,
+		tip = { s = 0, y = 0, vs = 0, vy = 0 },
+	}
+	table.insert(self.vines, vine)
+	self:_swingVine(vine, 0)
+end
+
+function Obstacles:_swingVine(v, t: number)
+	local w = 2 * math.pi / v.period
+	local phase = w * t + 2 * math.pi * v.phase
+	local a = VINE.swing * math.sin(phase)
+	local da = VINE.swing * w * math.cos(phase)
+	local r = VINE.length
+	v.angle = a
+	local tip = v.tip
+	tip.s = (v.s + r * math.sin(a)) % self.level:ringLength(v.ring)
+	tip.y = v.pivotY - r * math.cos(a)
+	tip.vs = r * math.cos(a) * da
+	tip.vy = r * math.sin(a) * da
+end
+
+-- Index of a vine whose end is within reach of hands at this spot and height, or nil.
+function Obstacles:grabVine(ring: number, s: number, handY: number): number?
+	for i, v in self.vines do
+		if v.ring == ring then
+			local ds = self.level:ringDelta(ring, s, v.tip.s)
+			local dy = handY - v.tip.y
+			if math.sqrt(ds * ds + dy * dy) < VINE.grabReach then
+				return i
+			end
+		end
+	end
+	return nil
+end
+
+-- Where the end of a vine is now, and how fast it's moving: { s, y, vs, vy }.
+function Obstacles:vineTip(index: number)
+	return self.vines[index].tip
+end
+
 function Obstacles:_addConveyor(c)
 	local depth = self.level.def.terraceDepth - 0.5
 	local frame = self:_anchor(c.ring, c.side, c.offset)
@@ -215,6 +299,22 @@ function Obstacles:_addConveyor(c)
 		reach = reach,
 		phase = 0,
 	})
+end
+
+-- A glassy sheet over the walkway with snow streaks, so you can see where the grip goes.
+function Obstacles:_addIce(def)
+	local depth = self.level.def.terraceDepth - 0.3
+	local frame = self:_anchor(def.ring, def.side, def.offset)
+	local sheet = self:_box(frame, def.width, 0.05, depth, C.ice, 0, 0.025, 0)
+	sheet.Transparency = 0.15
+	sheet.Material = Enum.Material.Glass
+	local u = -def.width / 2 + 0.6
+	while u < def.width / 2 - 0.3 do
+		self:_box(frame, 0.5, 0.02, 0.06, C.snow, u, 0.06, depth * 0.2)
+		self:_box(frame, 0.3, 0.02, 0.06, C.snow, u + 0.4, 0.06, -depth * 0.25)
+		u += 1.3
+	end
+	table.insert(self.ice, self.level:span(def))
 end
 
 function Obstacles:_addLock(def)
@@ -313,6 +413,9 @@ function Obstacles:reset(relock: boolean)
 	for _, p in self.platforms do
 		self:_movePlatform(p, 0)
 	end
+	for _, v in self.vines do
+		self:_swingVine(v, 0)
+	end
 	self:_placeMovers()
 	if not relock then
 		self:_flush()
@@ -378,6 +481,9 @@ function Obstacles:update(dt: number, player)
 	for _, p in self.platforms do
 		self:_movePlatform(p, self.clock)
 	end
+	for _, v in self.vines do
+		self:_swingVine(v, self.clock)
+	end
 	for _, sp in self.springs do
 		sp.t += dt
 		local k = math.max(0, 1 - sp.t / 0.45)
@@ -429,6 +535,13 @@ function Obstacles:_placeMovers()
 				table.insert(parts, piece.part)
 				table.insert(frames, sp.frame * unitFrame(0, piece.y * k, 0))
 			end
+		end
+	end
+	for _, v in self.vines do
+		local swung = v.pivot * CFrame.Angles(0, 0, v.angle)
+		for _, piece in v.rope do
+			table.insert(parts, piece.part)
+			table.insert(frames, swung * piece.at)
 		end
 	end
 	local L = self.level
@@ -509,6 +622,16 @@ function Obstacles:carry(ring: number, s: number): number?
 		end
 	end
 	return 0
+end
+
+-- How quickly your speed catches up with the controls here (Util.damp's lambda); math.huge off ice.
+function Obstacles:grip(ring: number, s: number): number
+	for _, span in self.ice do
+		if self.level:inSpan(span, ring, s) then
+			return OBSTACLES.iceGrip
+		end
+	end
+	return math.huge
 end
 
 function Obstacles:isLadderOpen(index: number): boolean

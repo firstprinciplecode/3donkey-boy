@@ -455,6 +455,7 @@ export class Game {
       jump = false;
       if (result.jumped) sfx.jump();
       if (result.landed) sfx.land();
+      if (result.grabbed) sfx.climb();
       if (result.bounced) {
         sfx.spring();
         this.obstacles.boing(this.player.ring, this.player.s);

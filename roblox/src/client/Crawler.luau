@@ -1,6 +1,6 @@
 -- Ground monster pacing a stretch of ring, ported from src/entities/crawler.ts. It turns back at gaps,
--- and every few seconds does its special move: hedgehogs curl up and roll (twice as fast, but low).
--- Snakes, scorpions and penguins join with the levels that use them.
+-- and every few seconds does its special move: snakes and scorpions stop and rear up (taller, harder
+-- to jump), hedgehogs curl up and roll and penguins belly slide (both twice as fast, but low).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -54,7 +54,131 @@ local function hedgehog(): Rig
 	}
 end
 
-local RIGS: { [string]: () -> Rig } = { hedgehog = hedgehog }
+-- Waddles side to side, and belly slides (tipped flat on its front) for its special.
+local function penguin(): Rig
+	local parts = {}
+	local function add(group, sx, sy, sz, color, x, y, z)
+		table.insert(parts, { group = group, size = Vector3.new(sx, sy, sz), at = Vector3.new(x, y, z), color = color })
+	end
+	add("body", 0.46, 0.66, 0.44, C.black, 0, 0.33, 0)
+	add("body", 0.06, 0.5, 0.34, C.cream, 0.23, 0.3, 0)
+	add("body", 0.16, 0.08, 0.12, C.orange, 0.3, 0.5, 0)
+	add("body", 0.04, 0.08, 0.08, C.cream, 0.24, 0.6, 0.12)
+	add("body", 0.04, 0.08, 0.08, C.cream, 0.24, 0.6, -0.12)
+	add("body", 0.3, 0.06, 0.1, C.orange, 0.08, 0.03, 0.12)
+	add("body", 0.3, 0.06, 0.1, C.orange, 0.08, 0.03, -0.12)
+	add("body", 0.3, 0.1, 0.46, C.red, 0, 0.62, 0)
+	add("flipperL", 0.3, 0.1, 0.06, C.black, 0, 0, 0)
+	add("flipperR", 0.3, 0.1, 0.06, C.black, 0, 0, 0)
+	return {
+		parts = parts,
+		rears = false,
+		pose = function(t, special)
+			local slide = if special > 0 then math.min(1, special * 5) * math.min(1, (1 - special) * 5) else 0
+			local tilt = -slide * (math.pi / 2) + (1 - slide) * math.sin(t * 10) * 0.14
+			local body = CFrame.new(0, slide * 0.22, 0) * CFrame.Angles(0, 0, tilt)
+			local flap = math.sin(t * 10) * 0.4 * (1 - slide) + slide * 0.5
+			return {
+				body = { frame = body },
+				flipperL = { frame = body * CFrame.new(0, 0.4, 0.25) * CFrame.Angles(flap, 0, 0) },
+				flipperR = { frame = body * CFrame.new(0, 0.4, -0.25) * CFrame.Angles(-flap, 0, 0) },
+			}
+		end,
+	}
+end
+
+-- Resizing to nearly nothing hides a group without touching Transparency every frame.
+local HIDDEN_SCALE = Vector3.one * 0.001
+
+local function rearAmount(special: number): number
+	if special <= 0 then
+		return 0
+	end
+	return math.sin(math.min(1, special * 1.6) * math.pi * 0.5) * (if special > 0.85 then (1 - special) / 0.15 else 1)
+end
+
+-- Slithers in a wave, and rears its head up high (harder to jump) for its special.
+local function snake(): Rig
+	local parts = {}
+	local function add(group, sx, sy, sz, color, x, y, z)
+		table.insert(parts, { group = group, size = Vector3.new(sx, sy, sz), at = Vector3.new(x, y, z), color = color })
+	end
+	for i = 0, 5 do
+		add(`seg{i}`, 0.3, 0.22, 0.24, if i % 2 == 1 then C.yellow else C.leaf, 0, 0, 0)
+	end
+	add("head", 0.38, 0.26, 0.32, C.leaf, 0.08, 0.13, 0)
+	add("head", 0.08, 0.08, 0.04, C.yellow, 0.16, 0.2, 0.17)
+	add("head", 0.08, 0.08, 0.04, C.yellow, 0.16, 0.2, -0.17)
+	add("head", 0.04, 0.06, 0.05, C.black, 0.18, 0.2, 0.19)
+	add("head", 0.04, 0.06, 0.05, C.black, 0.18, 0.2, -0.19)
+	add("tongue", 0.18, 0.03, 0.06, C.red, 0.3, 0.05, 0)
+	return {
+		parts = parts,
+		rears = true,
+		pose = function(t, special)
+			local rear = rearAmount(special)
+			local poses = {}
+			for i = 0, 5 do
+				local z = math.sin(t * 9 - i * 1.1) * 0.12 * (1 - rear * 0.7)
+				poses[`seg{i}`] = { frame = CFrame.new(-i * 0.26, 0.11 + math.max(0, rear * (0.8 - i * 0.28)), z) }
+			end
+			local head = CFrame.new(0.22, rear * 0.85, 0) * CFrame.Angles(0, 0, -rear * 0.35)
+			poses.head = { frame = head }
+			poses.tongue = { frame = head, scale = if math.sin(t * 6) > 0.3 or rear > 0.2 then nil else HIDDEN_SCALE }
+			return poses
+		end,
+	}
+end
+
+-- Scuttles on six legs, and raises its claws and stinger (taller, harder to jump) for its special.
+local function scorpion(): Rig
+	local parts = {}
+	local function add(group, sx, sy, sz, color, x, y, z)
+		table.insert(parts, { group = group, size = Vector3.new(sx, sy, sz), at = Vector3.new(x, y, z), color = color })
+	end
+	add("body", 0.62, 0.22, 0.44, C.rust, 0, 0.2, 0)
+	add("body", 0.24, 0.18, 0.34, C.black, 0.38, 0.2, 0)
+	local legs = {}
+	for i = 0, 2 do
+		for _, side in { -1, 1 } do
+			local name = `leg{#legs}`
+			table.insert(legs, { name = name, x = -0.15 + i * 0.16, z = side * 0.28 })
+			add(name, 0.08, 0.2, 0.08, C.black, 0, 0, 0)
+		end
+	end
+	add("claws", 0.28, 0.12, 0.12, C.rust, 0.62, 0.22, 0.2)
+	add("claws", 0.28, 0.12, 0.12, C.rust, 0.62, 0.22, -0.2)
+	add("claws", 0.14, 0.1, 0.18, C.lava, 0.8, 0.22, 0.2)
+	add("claws", 0.14, 0.1, 0.18, C.lava, 0.8, 0.22, -0.2)
+	add("tail", 0.16, 0.16, 0.16, C.rust, 0, 0.1, 0)
+	add("tail", 0.16, 0.16, 0.16, C.rust, 0.02, 0.28, 0)
+	add("tail", 0.16, 0.16, 0.16, C.rust, 0.12, 0.44, 0)
+	-- Stepped stand-in for the web's stinger cone.
+	add("tail", 0.14, 0.1, 0.14, C.yellow, 0.26, 0.49, 0)
+	add("tail", 0.07, 0.1, 0.07, C.yellow, 0.26, 0.59, 0)
+	return {
+		parts = parts,
+		rears = true,
+		pose = function(t, special)
+			local rear = if special > 0 then math.min(1, special * 3) * math.min(1, (1 - special) * 4) else 0
+			local poses = {
+				body = { frame = CFrame.identity },
+				claws = { frame = CFrame.new(0, rear * 0.25, 0) * CFrame.Angles(0, 0, rear * 0.3) },
+				tail = {
+					frame = CFrame.new(-0.34, 0.24, 0) * CFrame.Angles(0, 0, -rear * 0.5 + math.sin(t * 3) * 0.08),
+					scale = Vector3.one * (1 + rear * 0.6),
+				},
+			}
+			for i, leg in legs do
+				local lift = math.max(0, math.sin(t * 16 + (i - 1) * 1.3)) * 0.05 * (1 - rear)
+				poses[leg.name] = { frame = CFrame.new(leg.x, 0.08 + lift, leg.z) }
+			end
+			return poses
+		end,
+	}
+end
+
+local RIGS: { [string]: () -> Rig } = { hedgehog = hedgehog, penguin = penguin, snake = snake, scorpion = scorpion }
 
 local Crawler = {}
 Crawler.__index = Crawler

@@ -199,7 +199,7 @@ const DESERT: LevelDef = {
 const HARVEST: LevelDef = {
   name: 'harvest woods',
   skin: 'autumn',
-  tip: 'Springs clear wide pits · Gather 3 pumpkins',
+  tip: 'Springs and vines cross wide pits · Gather 3 pumpkins',
   rings: 5,
   terraceDepth: 3,
   tierHeight: 4,
@@ -228,7 +228,7 @@ const HARVEST: LevelDef = {
     { type: 'hotdog', spot: { ring: 0, side: 1, offset: -12 } },
     { type: 'hammer', spot: { ring: 0, side: 2, offset: 0 } },
     { type: 'gem', spot: { ring: 1, side: 1, offset: -1 } },
-    { type: 'relic', spot: { ring: 1, side: 1, offset: 6 } },
+    { type: 'relic', spot: { ring: 1, side: 1, offset: 4 } },
     { type: 'oneup', spot: { ring: 2, side: 2, offset: -5 } },
     { type: 'relic', spot: { ring: 2, side: 2, offset: 8 } },
     { type: 'gem', spot: { ring: 2, side: 3, offset: 0 } },
@@ -250,9 +250,10 @@ const HARVEST: LevelDef = {
   fires: 2,
   pits: [
     { ring: 0, side: 0, offset: 4.5, width: 5 },
-    { ring: 1, side: 1, offset: 9, width: 2 },
+    { ring: 1, side: 1, offset: 9, width: 6 },
     { ring: 2, side: 3, offset: -4.5, width: 5 },
   ],
+  vines: [{ ring: 1, side: 1, offset: 9 }],
   crumbles: [{ ring: 1, side: 2, offset: -6.5, width: 3 }],
   conveyors: [],
   platforms: [],
@@ -412,9 +413,10 @@ const TOMB: LevelDef = {
   ghosts: 1,
   fires: 2,
   pits: [
-    { ring: 0, side: 0, offset: -6, width: 2 },
+    { ring: 0, side: 0, offset: -5, width: 6 },
     { ring: 2, side: 1, offset: 8, width: 2 },
   ],
+  vines: [{ ring: 0, side: 0, offset: -5, period: 2.6 }],
   crumbles: [
     { ring: 0, side: 3, offset: 13.5, width: 3 },
     { ring: 3, side: 1, offset: -5.5, width: 3 },

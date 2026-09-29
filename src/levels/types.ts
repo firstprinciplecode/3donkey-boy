@@ -51,6 +51,14 @@ export interface JetDef extends SpotDef {
   phase?: number;
 }
 
+/** A vine hanging over the middle of a pit, swinging along the ring. */
+export interface VineDef extends SpotDef {
+  /** Seconds for one swing there and back; defaults to VINE.period. */
+  period?: number;
+  /** Fraction of a period to shift this vine's swing by. */
+  phase?: number;
+}
+
 export type LockDef =
   | { kind: 'switch'; ladder: number; switchAt: SpotDef }
   | { kind: 'key'; ladder: number }
@@ -104,6 +112,8 @@ export interface LevelDef {
   ice?: SpanDef[];
   /** Pads that launch you high enough to clear a 5-wide pit. */
   springs?: SpotDef[];
+  /** Swinging vines over pits too wide to jump. */
+  vines?: VineDef[];
   jets?: JetDef[];
   /** Icicles, acorns or rocks hanging over the walkway; they drop when you walk underneath. */
   drops?: SpotDef[];

@@ -100,6 +100,8 @@ function Rig:update(dt: number, player)
 			local s = if player.moving then math.sin(self.animT * 10) else 0
 			armL, armR = -2.6 + s * 0.4, -2.6 - s * 0.4
 			legL, legR = s * 0.5, -s * 0.5
+		elseif player.state == "swing" then
+			legL, legR, armL, armR = 0.35, -0.25, -3, -3
 		elseif player.state == "air" then
 			legL, legR, armL, armR = 0.7, -0.5, -2.4, -2.4
 		end

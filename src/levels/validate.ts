@@ -19,6 +19,7 @@ export function validateLevel(def: LevelDef): string[] {
   if (!intIn(def.tierHeight, 2, 8)) err('tierHeight must be an integer 2..8');
   const ice = def.ice ?? [];
   const springs = def.springs ?? [];
+  const vines = def.vines ?? [];
   const jets = def.jets ?? [];
   const drops = def.drops ?? [];
   const crawlers = def.crawlers ?? [];
@@ -36,6 +37,7 @@ export function validateLevel(def: LevelDef): string[] {
     def.locks,
     ice,
     springs,
+    vines,
     jets,
     drops,
     crawlers,
@@ -120,6 +122,14 @@ export function validateLevel(def: LevelDef): string[] {
     checkSpot('spring', sp);
     keepClear('spring', sp, 1);
     for (const [what, s] of blocking) if (within(s, sp.ring, sp.side, sp.offset, 0.5)) err(`spring ${label(sp)} sits in a ${what}`);
+  }
+  for (const v of vines) {
+    checkSpot('vine', v);
+    // The swing reaches about 2 either side of the pivot; the rest of the crossing is the leap off.
+    const pit = def.pits.find((p) => p.ring === v.ring && p.side === v.side && Math.abs(p.offset - v.offset) < EPS);
+    if (!pit) err(`vine ${label(v)} must hang over the middle of a pit`);
+    else if (!(pit.width >= 4 && pit.width <= 7)) err(`vine ${label(v)} needs a pit 4..7 wide`);
+    if (v.period !== undefined && !(v.period >= 1.6 && v.period <= 5)) err(`vine ${label(v)} period must be 1.6..5s`);
   }
   for (const j of jets) {
     checkSpot('jet', j);

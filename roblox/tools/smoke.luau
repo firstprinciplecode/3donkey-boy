@@ -382,13 +382,141 @@ assert(popscotch.level.def.name == "harvest woods", "level 4 is harvest woods")
 assert(#popscotch.crawlers == 3 and #popscotch.hazards.drops == 3 and #popscotch.ghosts == 1, "harvest spawns its critters and acorns")
 assert(popscotch.obstacles:lockKind(7) == "relics" and select(2, popscotch.items:relicsLeft()) == 3, "3 pumpkins unseal the summit")
 assert(popscotch.barrels.look == "pumpkin", "harvest throws pumpkins")
+
+-- The vine: wait at the lip, jump into the rope as it swings close, let go on the forward swing.
+local woods = popscotch.level
+local vineDef = woods.def.vines[1]
+local vineObs = popscotch.obstacles
+local vineS = woods:spotS(vineDef)
+local swinger = Player.new(woods)
+swinger:reset({ ring = vineDef.ring, side = vineDef.side, offset = vineDef.offset - 2.9 })
+local function tick(controls)
+	local r = swinger:step(1 / 120, controls, vineObs)
+	vineObs:update(1 / 120, { ring = swinger.ring, s = swinger.s, grounded = swinger.state == "ground" })
+	return r
+end
+for _ = 1, 120 * 3 do
+	local tip = vineObs:vineTip(1)
+	if woods:ringDelta(vineDef.ring, tip.s, vineS) < -1.6 then break end
+	tick({})
+end
+local caught, fell, across = false, false, false
+tick({ right = true, jump = true })
+for _ = 1, 120 do
+	caught = tick({ right = true }).grabbed
+	if caught then break end
+end
+assert(caught and swinger.state == "swing", "jumping into the swinging rope catches it")
+vineObs:render(1 / 60)
+local prevS = swinger.s
+for _ = 1, 120 * 4 do
+	local ahead = woods:ringDelta(vineDef.ring, swinger.s, vineS)
+	local release = swinger.state == "swing" and ahead > 0.2 and woods:ringDelta(vineDef.ring, swinger.s, prevS) > 0
+	prevS = swinger.s
+	local r = tick({ jump = release })
+	fell = fell or r.fellInPit
+	if r.landed then
+		across = woods:ringDelta(vineDef.ring, swinger.s, vineS) > 3
+		break
+	end
+end
+assert(not fell and across, "letting go on the forward swing lands across the pit")
 popscotch.round = #Levels + 4
 popscotch:_startRound(true)
 assert(#popscotch.ghosts == 2, "each lap adds a ghost")
+
+-- Frost peak: ice eases your speed in, penguins, icicles, and snowballs that grow as they roll.
+popscotch.round = 5
+popscotch:_startRound(true)
+local frost = popscotch.level
+assert(frost.def.name == "frost peak" and popscotch.barrels.look == "snowball", "level 5 is frost peak")
+local iceSpan = frost.def.ice[1]
+local frostObs = popscotch.obstacles
+assert(frostObs:grip(iceSpan.ring, frost:spotS(iceSpan)) == 1.6 and frostObs:grip(0, frost:sOf(0, 2, 0)) == math.huge, "ice has grip, floor doesn't")
+local skater = Player.new(frost)
+skater:reset({ ring = iceSpan.ring, side = iceSpan.side, offset = iceSpan.offset - 2 })
+skater:step(1 / 120, { right = true }, frostObs)
+assert(skater.vs > 0 and skater.vs < 1, `on ice you pick up speed gradually (vs {skater.vs})`)
+assert(#popscotch.crawlers == 3 and popscotch.crawlers[1].rig.parts[1].color == require({ __module = "shared/Config" }).COLORS.black, "frost has penguins")
+assert(#popscotch.hazards.drops == 4, "frost has four icicles")
+popscotch.barrels:spawn(vec(0, 20, 0))
+local ball = popscotch.barrels.list[1]
+for _ = 1, 120 * 6 do
+	popscotch.barrels:update(1 / 120)
+end
+popscotch.barrels:render(1 / 60)
+assert(ball.radius > 0.42 and ball.radius <= 0.42 * 1.85 + 1e-9, `snowballs grow as they roll ({ball.radius})`)
+assert(math.abs(ball.parts[1].Size.X - ball.radius * 2 * 2) < 0.05, "the snowball is drawn at its size")
+
+-- Serpent tomb: fire jets erupt on a beat, snakes rear up, boulders.
+popscotch.round = 6
+popscotch:_startRound(true)
+assert(popscotch.level.def.name == "serpent tomb" and popscotch.barrels.look == "boulder", "level 6 is serpent tomb")
+assert(#popscotch.crawlers == 5 and #popscotch.hazards.jets == 5 and #popscotch.totems == 0, "tomb has snakes and jets, no totem")
+local tombHaz = popscotch.hazards
+local erupted, jetDanger = 0, false
+for _ = 1, 120 * 4 do
+	local ev = tombHaz:update(1 / 120, { ring = 5, s = 0 })
+	tombHaz:render()
+	erupted += #ev.erupted
+	for _, d in tombHaz.dangers do
+		jetDanger = jetDanger or d.kind == "jet"
+	end
+end
+assert(erupted >= 5 and jetDanger, `every jet should erupt within 4 s ({erupted})`)
+local snake = popscotch.crawlers[1]
+local reared = 0
+for _ = 1, 120 * 8 do
+	snake:update(1 / 120, popscotch.obstacles)
+	snake:render()
+	reared = math.max(reared, snake.height)
+end
+assert(reared > 1, `snakes rear up taller ({reared})`)
+
+-- Volcano isle: scorpions, lava rocks that leave burning patches.
+popscotch.round = 7
+popscotch:_startRound(true)
+assert(popscotch.level.def.name == "volcano isle" and popscotch.barrels.look == "lavarock", "level 7 is volcano isle")
+local lava = popscotch.barrels
+lava.ladderChance = 0
+local scorched = 0
+lava.onScorch = function()
+	scorched += 1
+end
+lava:spawn(vec(0, 20, 0))
+local sawDanger = false
+for _ = 1, 120 * 20 do
+	lava:update(1 / 120)
+	lava:render(1 / 120)
+	sawDanger = sawDanger or #lava.dangers > 0
+	if scorched > 0 and #lava.scorches == 0 then break end
+end
+assert(scorched > 0 and sawDanger and #lava.scorches == 0, "a lava rock leaves a burning patch that fades")
+for _, c in popscotch.crawlers do
+	c:update(1 / 60, popscotch.obstacles)
+	c:render()
+end
 
 popscotch.round = #Levels + 1
 popscotch:_startRound(true)
 assert(popscotch.levelIndex == 1 and math.abs(popscotch.barrels.speedMul - 1.2) < 1e-9, "the second lap is back on the meadow, quicker")
 popscotch:skipLevel()
 assert(popscotch.levelIndex == 2 and popscotch.state == "ready", "the Studio skip key moves on a level")
+
+-- Each round moves on a time of day; each lap shifts it by one so levels come round at other times.
+local TimeOfDay = require({ __module = "shared/TimeOfDay" })
+local order = {}
+for round = 1, 4 do
+	table.insert(order, TimeOfDay.forRound(round, 7))
+end
+assert(table.concat(order, ",") == "day,dusk,night,day", table.concat(order, ","))
+assert(TimeOfDay.forRound(8, 7) == "night", "the second lap starts the meadow at night")
+popscotch.round = 3
+popscotch:_startRound(true)
+assert(popscotch.time == "night" and #popscotch.worldGlow > 0, "round 3 is night")
+local neon = require({ __module = "shared/Config" }) and Enum.Material.Neon
+assert(popscotch.worldGlow[1].part.Material == neon and popscotch.backdrop.starStrength == 1, "windows glow and stars show at night")
+popscotch.round = 4
+popscotch:_startRound(true)
+assert(popscotch.time == "day" and popscotch.worldGlow[1].part.Material ~= neon and popscotch.backdrop.starStrength == 0, "daylight is unlit")
 print("total Part instances:", counts.Part)

@@ -25,7 +25,19 @@ function VoxelBuilder.new(parent: Instance, options: Options?)
 	self.glowing = options and options.glowing or false
 	self.casting = true
 	self.count = 0
+	-- Everything built with `glow` and whether it casts shadows unlit, so the time of day can light
+	-- it up later (see setGlow).
+	self.glowParts = {} :: { { part: Part, casts: boolean } }
 	return self
+end
+
+-- Lights up (Neon, no shadow) or dims the glow parts from a build, e.g. when dusk falls.
+function VoxelBuilder.setGlow(glowParts: { { part: Part, casts: boolean } }, on: boolean)
+	local material = if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	for _, g in glowParts do
+		g.part.Material = material
+		g.part.CastShadow = g.casts and not on
+	end
 end
 
 -- Following parts go into `parent`, e.g. to group scenery by where it sits.
@@ -62,6 +74,7 @@ end
 -- Box that lights up when built with `glowing`; a plain box otherwise.
 function VoxelBuilder:glow(x: number, y: number, z: number, sx: number, sy: number, sz: number, color: Color3): Part
 	local part = self:box(x, y, z, sx, sy, sz, color)
+	table.insert(self.glowParts, { part = part, casts = self.casting })
 	if self.glowing then
 		part.Material = Enum.Material.Neon
 		part.CastShadow = false

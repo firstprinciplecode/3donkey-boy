@@ -6,8 +6,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Level = require(Shared.Level)
+local Util = require(Shared.Util)
 
 local PHYSICS = Config.PHYSICS
+local VINE = Config.VINE
+local IDLE = { left = false, right = false, up = false, down = false, jump = false }
 
 local Player = {}
 Player.__index = Player
@@ -22,6 +25,9 @@ function Player.new(level)
 	self.vy = 0
 	self.state = "ground"
 	self.path = nil
+	-- Index of the vine being swung on, or nil.
+	self.vine = nil :: number?
+	self.regrabT = 0
 	self.d = 0
 	self.side = 0
 	self.facing = 1
@@ -47,6 +53,8 @@ function Player:reset(spot)
 	self.vy = 0
 	self.state = "ground"
 	self.path = nil
+	self.vine = nil
+	self.regrabT = 0
 	self.facing = 1
 	self.moving = false
 	self.inPit = false
@@ -70,8 +78,8 @@ function Player:isClimbing(): boolean
 	return self.moving and self.state == "ladder" and self:onVerticalPart()
 end
 
--- `env` is the level's obstacles: `carry(ring, s)` (nil over a gap), `isLadderOpen(index)` and
--- `spring(ring, s)`.
+-- `env` is the level's obstacles: `carry(ring, s)` (nil over a gap), `isLadderOpen(index)`,
+-- `grip(ring, s)`, `spring(ring, s)`, `grabVine(ring, s, handY)` and `vineTip(index)`.
 function Player:step(dt: number, controls, env)
 	local result = {
 		jumped = false,
@@ -81,16 +89,21 @@ function Player:step(dt: number, controls, env)
 		hammerBlocked = false,
 		-- Launched off a spring pad.
 		bounced = false,
+		-- Caught a vine.
+		grabbed = false,
 		-- Index of a locked ladder the player tried to climb.
 		blockedLadder = nil :: number?,
 	}
 	self.env = env
+	self.regrabT = math.max(0, self.regrabT - dt)
 	if self.state == "ground" then
 		self:_stepGround(dt, controls, result)
 	elseif self.state == "air" then
 		self:_stepAir(dt, result)
 	elseif self.state == "ladder" then
 		self:_stepLadder(dt, controls, result)
+	elseif self.state == "swing" then
+		self:_stepSwing(controls, result)
 	end
 	self:_updatePosition()
 	return result
@@ -139,8 +152,11 @@ function Player:_stepGround(dt: number, c, result)
 	if dir ~= 0 then
 		self.facing = dir
 	end
-	self.vs = dir * PHYSICS.moveSpeed
-	self.moving = dir ~= 0
+	-- On ice you speed up and slow down gradually instead of instantly.
+	local grip = self.env:grip(self.ring, self.s)
+	local target = dir * PHYSICS.moveSpeed
+	self.vs = if grip < math.huge then Util.damp(self.vs, target, grip, dt) else target
+	self.moving = dir ~= 0 or math.abs(self.vs) > 0.5
 
 	local carry = self.env:carry(self.ring, self.s) or 0
 	if c.jump then
@@ -180,6 +196,18 @@ function Player:_stepAir(dt: number, result)
 	end
 	self.y += self.vy * dt
 
+	if self.regrabT <= 0 then
+		local vine = self.env:grabVine(self.ring, self.s, self.y + VINE.hang)
+		if vine then
+			self.state = "swing"
+			self.vine = vine
+			self.inPit = false
+			self:_stepSwing(IDLE, result)
+			result.grabbed = true
+			return
+		end
+	end
+
 	local overGap = self.env:carry(self.ring, self.s) == nil
 	if overGap and self.y < top - 0.05 then
 		self.inPit = true
@@ -202,6 +230,27 @@ function Player:_stepAir(dt: number, result)
 		self.state = "ground"
 		result.landed = true
 	end
+end
+
+-- Hang from the end of the rope; left/right only turn you, Jump lets go with the rope's motion.
+function Player:_stepSwing(c, result)
+	local tip = self.env:vineTip(self.vine)
+	self.s = tip.s
+	self.y = tip.y - VINE.hang
+	self.moving = false
+	local dir = (if c.right then 1 else 0) - (if c.left then 1 else 0)
+	if dir ~= 0 then
+		self.facing = dir
+	end
+	if not c.jump then
+		return
+	end
+	self.state = "air"
+	self.vine = nil
+	self.regrabT = VINE.regrab
+	self.vs = tip.vs
+	self.vy = tip.vy + VINE.releaseBoost
+	result.jumped = true
 end
 
 function Player:_stepLadder(dt: number, c, result)
