@@ -37,6 +37,8 @@ Enum = enumProxy()
 UDim2 = { fromScale = function() return {} end, fromOffset = function() return {} end, new = function() return {} end }
 ColorSequence = { new = function() return {} end }
 ColorSequenceKeypoint = { new = function() return {} end }
+NumberSequence = { new = function() return {} end }
+NumberSequenceKeypoint = { new = function() return {} end }
 
 counts = {}
 local Obj = {}
@@ -373,6 +375,7 @@ for i = 2, #Levels do
 		if frame % 90 == 0 then popscotch:pressJump() end
 	end
 	assert(popscotch.level.def == def, `still on {def.name}`)
+	assert(popscotch.boss.look == def.skin and #popscotch.boss.parts > 20, `{def.name} has its own boss`)
 	print(`{def.name} ran 20 s, state:`, popscotch.state, "score:", popscotch.score, "lives lost:", 99 - popscotch.lives)
 end
 -- Harvest woods: hedgehogs, acorns, pumpkins, and a summit sealed until 3 pumpkin relics are in.
@@ -513,10 +516,55 @@ assert(table.concat(order, ",") == "day,dusk,night,day", table.concat(order, ","
 assert(TimeOfDay.forRound(8, 7) == "night", "the second lap starts the meadow at night")
 popscotch.round = 3
 popscotch:_startRound(true)
-assert(popscotch.time == "night" and #popscotch.worldGlow > 0, "round 3 is night")
+assert(popscotch.level.def.skin == "desert" and popscotch.time == "day" and popscotch.backdrop.starStrength == 0, "the desert stays in baking daylight")
+popscotch.round = 6
+popscotch:_startRound(true)
+assert(popscotch.time == "night" and #popscotch.worldGlow > 0, "a later level is night")
 local neon = require({ __module = "shared/Config" }) and Enum.Material.Neon
 assert(popscotch.worldGlow[1].part.Material == neon and popscotch.backdrop.starStrength == 1, "windows glow and stars show at night")
 popscotch.round = 4
 popscotch:_startRound(true)
 assert(popscotch.time == "day" and popscotch.worldGlow[1].part.Material ~= neon and popscotch.backdrop.starStrength == 0, "daylight is unlit")
+
+-- Hi-score table: one row per name, best score kept, ties rank below the older score.
+local HiScore = require({ __module = "shared/HiScore" })
+local board = {}
+board = HiScore.insert(board, "abc", 500).board
+board = HiScore.insert(board, "XYZ", 900).board
+local again = HiScore.insert(board, "ABC", 300)
+assert(again and not again.improved and again.index == 2, "a lower score leaves the name's best row alone")
+local tie = HiScore.insert(board, "QQQ", 500)
+assert(tie and tie.index == 3, "a tie ranks below the older score")
+assert(HiScore.sanitizeName("a1") == "AAA", "names are padded to three letters")
+assert(HiScore.cycleLetter("Z", 1) == "A" and HiScore.cycleLetter("A", -1) == "Z", "letters wrap round")
+
+-- Game over with a table-worthy score asks for initials, then shows the table with that row lit.
+popscotch.practice = false
+popscotch.scores.board = {}
+popscotch.scores.name = nil
+popscotch.score = 1234
+popscotch.lives = 0
+popscotch:_gameOver()
+assert(popscotch.state == "initials", `a first score asks for initials ({popscotch.state})`)
+popscotch:press("letter", "T")
+popscotch:press("letter", "O")
+popscotch:press("up")
+popscotch:press("jump")
+assert(popscotch.state == "gameover", "saving the initials shows the table")
+assert(popscotch.scores.board[1].name == "TOB" and popscotch.scores.board[1].score == 1234, "the new row is on the table")
+assert(popscotch.hud.view.highlight == 1, "the player's row is highlighted")
+-- A returning player whose best isn't beaten goes straight to the table.
+popscotch.score = 10
+popscotch:_gameOver()
+assert(popscotch.state == "gameover" and popscotch.hud.view.highlight == 1, "an unbeaten best skips initials")
+popscotch.stateT = 5
+popscotch:press("jump")
+assert(popscotch.state == "ready", "jump on the table starts a new game")
+popscotch:_setState("playing")
+popscotch:press("pause")
+assert(popscotch.state == "paused", "pause stops the round")
+popscotch:update(1 / 60, keys)
+popscotch:press("pause")
+assert(popscotch.state == "playing", "pause again resumes")
+print("hi-score, initials and pause checks passed")
 print("total Part instances:", counts.Part)

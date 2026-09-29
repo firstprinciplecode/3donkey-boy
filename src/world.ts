@@ -198,13 +198,24 @@ const DECOR: Record<DecorKind, DecorFn> = {
     f.block(vb, 0.1, y + h - 0.25, 0.1, 0.16, 0.16, 0.16, COLORS.brown);
   },
   lollipop(vb, f, y, rand) {
-    const h = 1.1 + rand() * 0.6;
+    const h = 1.15 + rand() * 0.4;
     const colors = [COLORS.pink, COLORS.purple, COLORS.cyan, COLORS.yellow];
-    const c = colors[Math.floor(rand() * colors.length)];
-    f.block(vb, 0, y, 0, 0.08, h, 0.08, COLORS.cream);
-    f.box(vb, 0, y + h + 0.3, 0, 0.7, 0.7, 0.16, c);
-    f.box(vb, 0, y + h + 0.3, 0, 0.4, 0.4, 0.18, COLORS.cream);
-    f.box(vb, 0, y + h + 0.3, 0, 0.18, 0.18, 0.2, c);
+    const candy = colors[Math.floor(rand() * colors.length)];
+    const cell = 0.14;
+    const radius = 3;
+    const head = y + h + radius * cell;
+    const spin = rand() * Math.PI * 2;
+    f.block(vb, 0, y, 0, 0.1, h, 0.1, COLORS.cream);
+    // A round disc, coloured by a spiral so the swirl stays readable at this size.
+    for (let iy = -radius; iy <= radius; iy++) {
+      for (let ix = -radius; ix <= radius; ix++) {
+        const r2 = ix * ix + iy * iy;
+        if (r2 > radius * radius + 1) continue;
+        const swirl = Math.atan2(iy, ix) + spin + Math.sqrt(r2) * 1.4;
+        const cream = Math.floor((swirl + Math.PI) / Math.PI) % 2 === 0;
+        f.box(vb, ix * cell, head + iy * cell, 0, cell * 0.98, cell * 0.98, 0.16, cream ? COLORS.cream : candy);
+      }
+    }
   },
   maple(vb, f, y, rand) {
     const s = 0.9 + rand() * 0.3;

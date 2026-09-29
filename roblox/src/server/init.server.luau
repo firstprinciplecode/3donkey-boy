@@ -47,3 +47,5 @@ local existing = workspace:FindFirstChild("Popscotch")
 if existing then
 	existing:Destroy()
 end
+
+require(script.Scores).start()

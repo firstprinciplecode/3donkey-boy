@@ -10,7 +10,7 @@ const MARKUP = `
     <div class="hud__letters" data-letters aria-label="letters collected"><span>1</span><span>U</span><span>P</span></div>
   </div>
   <div class="hud__cell hud__center">
-    <span class="hud__label">Score</span><span class="hud__value" data-score>000-000</span><span class="hud__label">pt</span>
+    <span class="hud__label">Score</span><span class="hud__value" data-score>0</span><span class="hud__label">pt</span>
   </div>
   <div class="hud__cell hud__right">
     <span class="hud__label">Bonus</span><span class="hud__bonus" data-bonus>5000</span>
@@ -24,7 +24,7 @@ const MARKUP = `
     <span class="hud__label">Round</span><span class="hud__value hud__value--sm" data-round>1</span>
   </div>
   <div class="hud__cell hud__right">
-    <span class="hud__label">Hi</span><span class="hud__value hud__value--sm" data-hi>000-000</span>
+    <span class="hud__label">Hi</span><span class="hud__value hud__value--sm" data-hi>0</span>
   </div>
 </footer>
 <div class="popups" data-popups></div>

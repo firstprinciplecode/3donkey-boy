@@ -17,6 +17,7 @@ import { dropParts, jetParts, ledgeParts } from './hazards';
 import { Level } from './level';
 import { LEVELS } from './levels/defs';
 import type { CrawlerLook, DecorKind, DropLook } from './levels/skins';
+import type { SkinName } from './levels/types';
 import { springParts } from './obstacles';
 import {
   makeBarrelCapTexture,
@@ -346,6 +347,16 @@ const PROJECTILE_NAMES: Record<ProjectileLook, string> = {
   gumball: 'gumball',
 };
 
+const BOSS_NAMES: Record<SkinName, string> = {
+  meadow: 'meadow monster',
+  candy: 'gummy monster',
+  desert: 'sphinx',
+  autumn: 'pumpkin brute',
+  winter: 'yeti',
+  tomb: 'mummy',
+  volcano: 'lava golem',
+};
+
 /** Shown at its starting size, so the boulder reads as big next to the others. */
 function projectile(look: ProjectileLook): THREE.Object3D {
   const spec = PROJECTILES[look];
@@ -359,11 +370,14 @@ const sections: { title: string; cells: Entry[] }[] = [
     title: 'Characters',
     cells: [
       { name: 'player', object: new Player(level).group },
-      { name: 'boss', object: new Boss().group },
       { name: 'ghost', object: new Ghost(level, level.def.patrols[0], 1).group },
       { name: 'flame', object: flame.group },
       { name: 'sky critter', object: skyCritter() },
     ],
+  },
+  {
+    title: 'Bosses',
+    cells: (Object.keys(BOSS_NAMES) as SkinName[]).map((skin) => ({ name: BOSS_NAMES[skin], object: new Boss(skin).group })),
   },
   {
     title: 'Projectiles',

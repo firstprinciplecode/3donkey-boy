@@ -32,6 +32,10 @@ function CameraRig.new()
 	self.turn = nil
 	self.trauma = 0
 	self.shakeClock = 0
+	self.clock = 0
+	self.showcase = false
+	self.showcaseFocus = Vector3.zero
+	self.zoom = 1
 	return self
 end
 
@@ -74,9 +78,45 @@ function CameraRig:settle(dt: number)
 	self:update(dt, nil)
 end
 
+-- Pulls back to frame the whole pyramid and turns a face every few seconds, like the web title.
+function CameraRig:setShowcase(on: boolean, focus: Vector3?, zoom: number?)
+	self.showcase = on
+	self.zoom = if on then (zoom or 0.5) else 1
+	if focus then
+		self.showcaseFocus = focus
+	end
+	if on then
+		self.turn = nil
+	end
+end
+
+local SHOWCASE_EVERY = 3
+local SHOWCASE_TURN_TIME = 0.8
+
+local function easeInOutCubic(t: number): number
+	if t < 0.5 then
+		return 4 * t * t * t
+	end
+	return 1 - ((-2 * t + 2) ^ 3) / 2
+end
+
+local function showcaseAzimuth(clock: number): number
+	local step = math.floor(clock / SHOWCASE_EVERY)
+	local phase = clock - step * SHOWCASE_EVERY
+	local t = math.clamp((phase - (SHOWCASE_EVERY - SHOWCASE_TURN_TIME)) / SHOWCASE_TURN_TIME, 0, 1)
+	return (step + easeInOutCubic(t)) * (math.pi / 2) + YAW_BIAS
+end
+
 function CameraRig:update(dt: number, target: Vector3?)
 	self.shakeClock += dt
+	self.clock += dt
 	self.trauma = math.max(0, self.trauma - dt * SHAKE_DECAY)
+	if self.showcase then
+		self.azimuth = showcaseAzimuth(self.clock)
+		self.focus = self.showcaseFocus
+		self:_apply()
+		return
+	end
 	if not target then
 		self:_apply()
 		return
@@ -108,7 +148,7 @@ function CameraRig:_apply()
 	camera.CameraType = Enum.CameraType.Scriptable
 	local viewport = camera.ViewportSize
 	local aspect = viewport.X / math.max(viewport.Y, 1)
-	local halfHeight = math.max(CAMERA.minHalfHeight, CAMERA.minHalfWidth / aspect) * STUD
+	local halfHeight = math.max(CAMERA.minHalfHeight, CAMERA.minHalfWidth / aspect) / self.zoom * STUD
 	camera.FieldOfView = math.deg(2 * math.atan(halfHeight / CAMERA.distance))
 
 	local ring = math.sin(POLAR)

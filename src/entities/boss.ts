@@ -1,48 +1,43 @@
 import * as THREE from 'three';
-import { COLORS } from '../config';
-import { box, cone } from '../voxel';
+import type { SkinName } from '../levels/types';
+import { box, cone, material } from '../voxel';
+import { BOSS_LOOKS, type BossPart } from './bossLooks';
 
 const THROW_DURATION = 0.75;
+const ARM_PIVOT_X = 1.45;
+const ARM_PIVOT_Y = 1.7;
 
-/** The black, cone-spiked monster from the poster, lobbing barrels from the top girder. */
+/** The monster on the summit, lobbing barrels. Each level skin has its own look (see bossLooks.ts). */
 export class Boss {
   readonly group = new THREE.Group();
+  private readonly legs = new THREE.Group();
   private readonly body = new THREE.Group();
   private readonly armL = new THREE.Group();
   private readonly armR = new THREE.Group();
+  private look: SkinName | null = null;
   private throwT = -1;
   private released = false;
   private t = 0;
 
-  constructor() {
-    const B = COLORS.black;
-    this.group.add(box(0.7, 1, 0.8, B, -0.65, 0.5, 0), box(0.7, 1, 0.8, B, 0.65, 0.5, 0));
-
+  constructor(look: SkinName = 'meadow') {
+    this.armL.position.set(-ARM_PIVOT_X, ARM_PIVOT_Y, 0);
+    this.armR.position.set(ARM_PIVOT_X, ARM_PIVOT_Y, 0);
     this.body.position.y = 1;
-    this.body.add(
-      box(2.4, 2, 1.8, B, 0, 1, 0),
-      cone(0.35, 1.1, COLORS.cream, -0.7, 2, 0),
-      cone(0.35, 1.1, COLORS.cream, 0.7, 2, 0),
-      box(0.5, 0.3, 0.5, COLORS.pink, 0, 2.15, 0.3),
-      box(0.45, 0.45, 0.1, COLORS.pink, -0.55, 1.45, 0.91),
-      box(0.45, 0.45, 0.1, COLORS.pink, 0.55, 1.45, 0.91),
-      box(0.16, 0.16, 0.05, COLORS.black, -0.5, 1.4, 0.97),
-      box(0.16, 0.16, 0.05, COLORS.black, 0.6, 1.4, 0.97),
-      box(1.6, 0.6, 0.1, COLORS.charcoal, 0, 0.6, 0.91),
-    );
-    for (let i = 0; i < 6; i++) {
-      const x = -0.6 + i * 0.24;
-      this.body.add(box(0.14, 0.22, 0.06, COLORS.cream, x, 0.78, 0.97));
-      this.body.add(box(0.14, 0.18, 0.06, COLORS.cream, x + 0.12, 0.42, 0.97));
-    }
-
-    this.armL.position.set(-1.45, 1.7, 0);
-    this.armR.position.set(1.45, 1.7, 0);
-    for (const arm of [this.armL, this.armR]) {
-      arm.add(box(0.55, 1.4, 0.7, B, 0, -0.65, 0), box(0.68, 0.5, 0.8, COLORS.charcoal, 0, -1.45, 0));
-    }
     this.body.add(this.armL, this.armR);
-    this.group.add(this.body);
+    this.group.add(this.legs, this.body);
+    this.setLook(look);
+  }
+
+  /** Swaps in another skin's monster. The meshes share cached geometry and materials, so nothing needs disposing. */
+  setLook(look: SkinName): void {
+    if (look === this.look) return;
+    this.look = look;
+    this.legs.clear();
+    this.armL.clear();
+    this.armR.clear();
+    this.body.remove(...this.body.children.filter((c) => c !== this.armL && c !== this.armR));
+    const groups = { root: this.legs, body: this.body, armL: this.armL, armR: this.armR };
+    for (const part of BOSS_LOOKS[look]) groups[part.g].add(mesh(part));
   }
 
   get busy(): boolean {
@@ -80,4 +75,14 @@ export class Boss {
     this.body.position.y = 1 + Math.abs(Math.sin(this.t * 3)) * 0.08;
     return release;
   }
+}
+
+function mesh(part: BossPart): THREE.Mesh {
+  const glow = part.glow ? { emissive: part.c } : undefined;
+  if (part.cone) {
+    const m = cone(part.s[0], part.s[1], part.c, part.p[0], part.p[1], part.p[2]);
+    if (glow) m.material = material(part.c, glow);
+    return m;
+  }
+  return box(part.s[0], part.s[1], part.s[2], part.c, part.p[0], part.p[1], part.p[2], glow);
 }

@@ -22,6 +22,10 @@
     },
 
     "StarterPlayer": {
+      "$properties": {
+        "DevTouchMovementMode": "Scriptable",
+        "DevComputerMovementMode": "Scriptable"
+      },
       "StarterPlayerScripts": {
         "Client": {
           "$path": "src/client"

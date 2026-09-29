@@ -41,6 +41,16 @@ TimeOfDay.LIGHTING = {
 		glow = true,
 		stars = 1,
 	},
+	-- High, hard sun for the desert: noon, warm, and brighter than a normal day.
+	bake = {
+		ClockTime = 12.2,
+		Brightness = 3,
+		Ambient = Color3.fromRGB(150, 126, 92),
+		OutdoorAmbient = Color3.fromRGB(230, 196, 140),
+		ColorShift_Top = hex(0xffe4a8),
+		glow = false,
+		stars = 0,
+	},
 }
 
 -- The page gradient (centre, middle, edge) for dusk and night; daytime is each skin's own `sky`.
@@ -69,6 +79,21 @@ function TimeOfDay.forRound(round: number, levelCount: number): string
 	local i = round - 1
 	local lap = i // levelCount
 	return TimeOfDay.TIMES[(i + lap) % #TimeOfDay.TIMES + 1]
+end
+
+-- The desert stays in daylight. Night belongs to the later levels.
+function TimeOfDay.forLevel(round: number, levelCount: number, skin: string): string
+	if skin == "desert" then
+		return "day"
+	end
+	return TimeOfDay.forRound(round, levelCount)
+end
+
+function TimeOfDay.lighting(time: string, skin: string)
+	if skin == "desert" then
+		return TimeOfDay.LIGHTING.bake
+	end
+	return TimeOfDay.LIGHTING[time]
 end
 
 function TimeOfDay.sky(skinName: string, skin, time: string): { Color3 }

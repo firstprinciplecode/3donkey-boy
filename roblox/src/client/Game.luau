@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
+local HiScore = require(Shared.HiScore)
 local Level = require(Shared.Level)
 local Levels = require(Shared.Levels)
 local Skins = require(Shared.Skins)
@@ -22,6 +23,7 @@ local Combo = require(script.Parent.Combo)
 local Crawler = require(script.Parent.Crawler)
 local Hazards = require(script.Parent.Hazards)
 local Fire = require(script.Parent.Fire)
+local Fx = require(script.Parent.Fx)
 local Ghost = require(script.Parent.Ghost)
 local Hud = require(script.Parent.Hud)
 local Items = require(script.Parent.Items)
@@ -29,7 +31,9 @@ local Obstacles = require(script.Parent.Obstacles)
 local Particles = require(script.Parent.Particles)
 local Player = require(script.Parent.Player)
 local Rig = require(script.Parent.Rig)
+local Scores = require(script.Parent.Scores)
 local Totem = require(script.Parent.Totem)
+local Weather = require(script.Parent.Weather)
 
 local BARREL = Config.BARREL
 local C = Config.COLORS
@@ -78,6 +82,15 @@ function Game.new(playerGui: Instance)
 	-- Only until _loadLevel below builds the first level for real.
 	local first = Level.new(Levels[1])
 	self.hud = Hud.new(playerGui, first.def.name)
+	self.fx = Fx.new(self.hud.gui)
+	self.weather = Weather.new(self.hud.gui)
+	self.scores = Scores.new()
+	self.hiScore = 0
+	-- Started from a later level (the Studio skip key), so the score stays off the table.
+	self.practice = false
+	self.initials = { "A", "A", "A" }
+	self.initialCursor = 1
+	self.returning = false
 	self.player = Player.new(first)
 	self.rig = Rig.new(workspace)
 	self.cameraRig = CameraRig.new()
@@ -131,7 +144,7 @@ function Game.new(playerGui: Instance)
 	self.goalSpin = 0
 	self:_loadLevel(1)
 
-	self.state = "ready"
+	self.state = "title"
 	self.stateT = 0
 	self.accumulator = 0
 	self.jumpBuffer = 0
@@ -170,6 +183,7 @@ function Game:_loadLevel(index: number)
 	self.level = level
 	self.world, self.worldGlow = World.build(level, workspace)
 	self.backdrop = Backdrop.new(level, skin, workspace)
+	self.weather:setSkin(level.def.skin)
 	-- New scenery is built unlit, so the next time of day has to be applied in full.
 	self.time = nil
 	self.items = Items.new(level, workspace)
@@ -183,7 +197,7 @@ function Game:_loadLevel(index: number)
 	self.throwOrigin = Vector3.new(Config.BOSS_POS.x + 1.3, summitY + 2.4, Config.BOSS_POS.z - 0.6)
 	self.goal = self.world:FindFirstChild("Goal") :: BasePart?
 	self.goalSpin = 0
-	self.hud:setLevel(level.def.name)
+	self.hud:setLevel(index, level.def.name)
 	print(`[popscotch] level {index} built: {self.world:GetAttribute("PartCount")} parts in {math.round((os.clock() - started) * 1000)} ms`)
 end
 
@@ -192,22 +206,53 @@ function Game:_loop(): number
 	return (self.round - 1) // #Levels
 end
 
-function Game:pressJump()
-	if self.state == "gameover" then
-		if self.stateT >= GAMEOVER_LOCK then
-			self:newGame()
-		end
+-- One pressed action from any input: "jump", "confirm", "back", "pause", "mute", a direction, or
+-- "letter" with the letter typed. What it does depends on the screen.
+function Game:press(action: string, letter: string?)
+	if action == "mute" then
+		self:toggleMute()
 		return
 	end
-	self.jumpBuffer = JUMP_BUFFER
+	local state = self.state
+	if state == "initials" then
+		self:_editInitials(action, letter)
+	elseif state == "title" then
+		if action == "jump" or action == "confirm" then
+			self:newGame()
+		end
+	elseif state == "gameover" then
+		if (action == "jump" or action == "confirm") and self.stateT >= GAMEOVER_LOCK then
+			self:newGame()
+		end
+	elseif state == "paused" then
+		if action == "jump" or action == "confirm" or action == "pause" then
+			self:_resume()
+		end
+	elseif action == "pause" then
+		if state == "playing" then
+			self:_pause()
+		end
+	elseif action == "jump" then
+		self.jumpBuffer = JUMP_BUFFER
+	end
+end
+
+function Game:pressJump()
+	self:press("jump")
+end
+
+function Game:setInputMode(mode: string)
+	self.hud:setInputMode(mode)
 end
 
 function Game:newGame()
 	self.score = 0
 	self.lives = GAME_RULES.lives
 	self.round = 1
+	self.practice = false
 	self.hud:setScore(self.score)
 	self.hud:setLives(self.lives)
+	self.hud:hideOverlay()
 	self:_startRound(true)
 end
 
@@ -222,13 +267,41 @@ function Game:_setState(state: string)
 	end
 end
 
+function Game:togglePause()
+	self:press("pause")
+end
+
+-- Called when the window loses focus or the Roblox menu opens, so the player doesn't die while away.
+function Game:autoPause()
+	if self.state == "playing" then
+		self:_pause()
+	end
+end
+
+function Game:_pause()
+	self.state = "paused"
+	self.audio:pauseMusic()
+	self.hud:showMessage("Paused", "resume")
+end
+
+function Game:_resume()
+	self.hud:hideOverlay()
+	self:_setState("playing")
+end
+
 -- Studio testing aid (bound in init.client): straight to the next round's level, keeping score and lives.
 function Game:skipLevel()
-	if self.state == "gameover" then
+	if self.state == "gameover" or self.state == "initials" then
 		return
 	end
+	self.practice = true
+	self.hud:hideOverlay()
 	self.round += 1
 	self:_startRound(true)
+end
+
+function Game:isMuted(): boolean
+	return self.audio.muted == true
 end
 
 function Game:toggleMute()
@@ -310,7 +383,7 @@ end
 function Game:_startRound(fresh: boolean)
 	if fresh then
 		self:_loadLevel((self.round - 1) % #Levels + 1)
-		self:_setTime(TimeOfDay.forRound(self.round, #Levels))
+		self:_setTime(TimeOfDay.forLevel(self.round, #Levels, Levels[(self.round - 1) % #Levels + 1].skin))
 	end
 	local def = self.level.def
 	local loop = self:_loop()
@@ -341,10 +414,13 @@ function Game:_startRound(fresh: boolean)
 	self.bonusClock = 0
 	self.bossClock = 1.2
 	self.hud:setBonus(self.bonus)
+	self.hud:setRound(self.round)
+	self.cameraRig:setShowcase(false)
+	self.hud:hideOverlay()
 	self:_setState("ready")
 	local when = if self.time == "dusk" then " · Dusk" elseif self.time == "night" then " · Night" else ""
 	local tip = if def.tip and loop == 0 then ` · {def.tip}` else ""
-	self.hud:show(`ROUND {self.round}`, `Level {self.levelIndex} · {Hud.levelTitle(def.name)}{when}{tip}`)
+	self.hud:show(`Round {self.round}`, `Level {self.levelIndex} · {Hud.levelTitle(def.name)}{when}{tip}`)
 end
 
 -- Day, dusk or night: the sky gradient and stars, the light, and whether windows and lanterns glow.
@@ -354,7 +430,7 @@ function Game:_setTime(time: string)
 		return
 	end
 	self.time = time
-	local light = TimeOfDay.LIGHTING[time]
+	local light = TimeOfDay.lighting(time, self.level.def.skin)
 	Lighting.ClockTime = light.ClockTime
 	Lighting.Brightness = light.Brightness
 	Lighting.Ambient = light.Ambient
@@ -364,6 +440,8 @@ function Game:_setTime(time: string)
 	VoxelBuilder.setGlow(self.backdrop.glowParts, light.glow)
 	local skinName = self.level.def.skin
 	self.backdrop:setSky(TimeOfDay.sky(skinName, Skins[skinName], time), light.stars)
+	self.hud:setTime(time)
+	self.fx:setTime(time)
 end
 
 function Game:_popup(text: string, at: Vector3)
@@ -373,8 +451,12 @@ end
 function Game:_addScore(points: number, at: Vector3?)
 	self.score += points
 	self.hud:setScore(self.score)
+	if self.score > self.hiScore then
+		self.hiScore = self.score
+		self.hud:setHi(self.hiScore)
+	end
 	if at then
-		self:_popup(`{points}-pt`, at)
+		self:_popup(`{points} pt`, at)
 	end
 end
 
@@ -383,7 +465,7 @@ function Game:_addJumpScore(base: number, at: Vector3)
 	local mult = self.combo:hit()
 	local points = base * mult
 	self:_addScore(points)
-	self:_popup(if mult > 1 then `{points}-pt x{mult}` else `{points}-pt`, at)
+	self:_popup(if mult > 1 then `{points} pt x{mult}` else `{points} pt`, at)
 	-- Each link lifts the chime a whole tone, so a chain sounds like it's climbing.
 	self.audio:play("score", 2 ^ (2 * (mult - 1) / 12))
 end
@@ -540,12 +622,78 @@ function Game:_die(heading: string, sub: string, fell: boolean?)
 	self.hud:show(heading, if self.lives > 0 then sub else "Last life lost")
 end
 
+-- Pulls back to the whole pyramid; a score that makes the table asks for initials first (as on the web).
 function Game:_gameOver()
 	self.audio:play("gameOver")
 	self.barrels:clear()
 	self:_clearFires()
+	self.hud:hide()
+	self:_framePyramid()
+	local board = self.scores.board
+	if self.practice or not HiScore.insertionIndex(board, self.score) then
+		self:_showGameOver(nil)
+		return
+	end
+	local known = self.scores.name
+	if known and HiScore.bestFor(board, known) >= self.score then
+		self:_showGameOver(HiScore.indexOf(board, known))
+		return
+	end
+	local start = known or "AAA"
+	self.initials = { string.sub(start, 1, 1), string.sub(start, 2, 2), string.sub(start, 3, 3) }
+	self.initialCursor = 1
+	self.returning = known ~= nil
+	self:_setState("initials")
+	self.hud:showInitials(self.initials, self.initialCursor, self.score, self.returning)
+end
+
+-- Three-letter name entry: up and down cycle a slot, left and right move, typing fills it.
+function Game:_editInitials(action: string, letter: string?)
+	local changed = true
+	if action == "letter" and letter then
+		self.initials[self.initialCursor] = letter
+		self.initialCursor = math.min(3, self.initialCursor + 1)
+	elseif action == "left" then
+		self.initialCursor = (self.initialCursor + 1) % 3 + 1
+	elseif action == "right" then
+		self.initialCursor = self.initialCursor % 3 + 1
+	elseif action == "up" or action == "down" then
+		local slot = self.initialCursor
+		self.initials[slot] = HiScore.cycleLetter(self.initials[slot], if action == "up" then 1 else -1)
+	elseif action == "back" then
+		self.initialCursor = math.max(1, self.initialCursor - 1)
+	elseif action == "jump" or action == "confirm" then
+		self:_saveInitials()
+		return
+	else
+		changed = false
+	end
+	if changed then
+		self.audio:play("land")
+		self.hud:showInitials(self.initials, self.initialCursor, self.score, self.returning)
+	end
+end
+
+function Game:_saveInitials()
+	local name = table.concat(self.initials)
+	local score = self.score
+	local placed = self.scores:submit(name, score, function(index)
+		-- The server's table may differ (other players); repaint it if the screen is still up.
+		if self.state == "gameover" then
+			self.hud:setBoard(self.scores.board, index)
+		end
+	end)
+	if placed and placed.improved then
+		self.audio:play("score")
+	end
+	self.hiScore = math.max(self.hiScore, HiScore.top(self.scores.board))
+	self.hud:setHi(self.hiScore)
+	self:_showGameOver(if placed then placed.index else nil)
+end
+
+function Game:_showGameOver(highlight: number?)
 	self:_setState("gameover")
-	self.hud:show("GAME OVER", `Score {Hud.formatScore(self.score)}  ·  Space to play again`)
+	self.hud:showGameOver(self.score, self.scores.board, highlight)
 end
 
 function Game:_clearRound()
@@ -561,7 +709,7 @@ function Game:_clearRound()
 	self.audio:play("clear")
 	local bonus = self.bonus
 	self:_addScore(bonus)
-	self.hud:show("ROUND CLEAR!", `Bonus {bonus}`)
+	self.hud:show("Round clear!", `Bonus {bonus}`)
 end
 
 -- Returns true if something killed the player. Holding the hammer, anything touched is smashed instead.
@@ -575,7 +723,7 @@ function Game:_checkCollisions(): boolean
 			local centre = Barrels.centre(b)
 			if self:_hitsPlayer(centre, br * 0.8) then
 				if not armed then
-					self:_die("Bonk!", "Jump the barrels with Space")
+					self:_die("Bonk!", "Jump over the barrels")
 					return true
 				end
 				self.barrels:smash(b)
@@ -818,13 +966,53 @@ function Game:_stepPlaying(dt: number)
 	end
 end
 
+-- Whole pyramid in frame, the same pull-back the web title uses.
+function Game:_framePyramid()
+	local summitY = self.level:tierTop(self.level.summitTier)
+	local zoom = math.min(0.5, 8 / self.level:tierHalf(0))
+	self.cameraRig:setShowcase(true, Vector3.new(0, summitY / 2, 0), zoom)
+end
+
 function Game:start()
-	self:newGame()
+	self.score = 0
+	self.lives = GAME_RULES.lives
+	self.round = 1
+	self.bonus = GAME_RULES.bonusStart
+	self.hud:setScore(self.score)
+	self.hud:setLives(self.lives)
+	self.hud:setBonus(self.bonus)
+	self:_setTime("day")
+	self.items:spawn()
+	self.hud:setLetters(self.items:lettersHeld())
+	self:_spawnGhosts(0)
+	self:_spawnCrawlers()
+	self:_spawnTotems()
+	self.player:reset(self.level.def.playerStart)
+	self.rig:snap(self.player)
+	self:_framePyramid()
+	self:_setState("title")
+	self.hud:showTitle(self.scores.board)
+	self.scores:fetch(function()
+		self.hiScore = math.max(self.hiScore, HiScore.top(self.scores.board))
+		self.hud:setHi(self.hiScore)
+		self.hud:setBoard(self.scores.board)
+	end)
 end
 
 -- `held` is the live table of held directions, owned by the input code.
 function Game:update(dt: number, held)
 	self.held = held
+	self.weather:update(dt)
+	self.hud:update(dt)
+	self:_frame(dt)
+	-- After the camera has moved, so the edge ghosts stay pinned to the screen.
+	self.fx:update(dt)
+end
+
+function Game:_frame(dt: number)
+	if self.state == "paused" then
+		return
+	end
 	-- Hit-stop: everything holds still while the camera keeps shaking.
 	if self.freeze > 0 then
 		self.freeze = math.max(0, self.freeze - dt)
@@ -836,7 +1024,17 @@ function Game:update(dt: number, held)
 	self.hintClock = math.max(0, self.hintClock - dt)
 
 	local state = self.state
-	if state == "ready" and self.stateT >= READY_TIME then
+	if state == "title" then
+		for _, ghost in self.ghosts do
+			ghost:update(dt)
+		end
+		for _, crawler in self.crawlers do
+			crawler:update(dt, self.obstacles)
+		end
+		for _, totem in self.totems do
+			totem:update(dt, self.obstacles)
+		end
+	elseif state == "ready" and self.stateT >= READY_TIME then
 		self:_setState("playing")
 		self.hud:hide()
 	elseif state == "playing" then

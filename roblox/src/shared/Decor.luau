@@ -83,13 +83,25 @@ function DECOR.palm(vb, f, y: number, rand: Rand)
 end
 
 function DECOR.lollipop(vb, f, y: number, rand: Rand)
-	local h = 1.1 + rand() * 0.6
+	local h = 1.15 + rand() * 0.4
 	local colors = { C.pink, C.purple, C.cyan, C.yellow }
-	local c = colors[math.floor(rand() * #colors) + 1]
-	f:block(vb, 0, y, 0, 0.08, h, 0.08, C.cream)
-	f:box(vb, 0, y + h + 0.3, 0, 0.7, 0.7, 0.16, c)
-	f:box(vb, 0, y + h + 0.3, 0, 0.4, 0.4, 0.18, C.cream)
-	f:box(vb, 0, y + h + 0.3, 0, 0.18, 0.18, 0.2, c)
+	local candy = colors[math.floor(rand() * #colors) + 1]
+	local cell = 0.14
+	local radius = 3
+	local head = y + h + radius * cell
+	local spin = rand() * math.pi * 2
+	f:block(vb, 0, y, 0, 0.1, h, 0.1, C.cream)
+	-- A round disc, coloured by a spiral so the swirl stays readable at this size.
+	for iy = -radius, radius do
+		for ix = -radius, radius do
+			local r2 = ix * ix + iy * iy
+			if r2 <= radius * radius + 1 then
+				local swirl = math.atan2(iy, ix) + spin + math.sqrt(r2) * 1.4
+				local cream = math.floor((swirl + math.pi) / math.pi) % 2 == 0
+				f:box(vb, ix * cell, head + iy * cell, 0, cell * 0.98, cell * 0.98, 0.16, if cream then C.cream else candy)
+			end
+		end
+	end
 end
 
 function DECOR.maple(vb, f, y: number, rand: Rand)

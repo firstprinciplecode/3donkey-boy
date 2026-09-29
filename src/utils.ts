@@ -45,10 +45,7 @@ export function levelTitle(name: string): string {
   return name.replace(/(^|\s)([a-z])/g, (_gap, lead: string, ch: string) => lead + ch.toUpperCase());
 }
 
-/** Poster-style score: 333-000 */
+/** Plain total, grouped by thousands: 1800 -> "1,800". */
 export function formatScore(n: number): string {
-  const safe = Math.max(0, Math.floor(n));
-  const hi = String(Math.floor(safe / 1000)).padStart(3, '0');
-  const lo = String(safe % 1000).padStart(3, '0');
-  return `${hi}-${lo}`;
+  return Math.max(0, Math.floor(n)).toLocaleString('en-US');
 }

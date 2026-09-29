@@ -13,7 +13,7 @@ export interface Lighting {
   glow: boolean;
 }
 
-export const LIGHTING: Record<TimeOfDay, Lighting> = {
+export const LIGHTING: Record<TimeOfDay | 'bake', Lighting> = {
   day: {
     skyColor: 0xffffff,
     groundColor: 0xa9c79a,
@@ -41,14 +41,35 @@ export const LIGHTING: Record<TimeOfDay, Lighting> = {
     sunPosition: [30, 55, 30],
     glow: true,
   },
+  /** High, hard sun for the desert: warm and bright, with sand-coloured bounce instead of green. */
+  bake: {
+    skyColor: 0xfff8ee,
+    groundColor: 0xe8c48a,
+    hemiIntensity: 1.15,
+    sunColor: 0xfff0c4,
+    sunIntensity: 3.2,
+    sunPosition: [10, 92, 8],
+    glow: false,
+  },
 };
 
 /**
  * Time of day moves on every round, and shifts by one each lap through the levels, so the
- * same level comes round at a different time of day on each lap.
+ * same level comes round at a different time of day on each lap. The desert stays in daylight:
+ * night belongs to the later levels.
  */
 export function timeForRound(round: number, levelCount: number): TimeOfDay {
   const i = round - 1;
   const lap = Math.floor(i / levelCount);
   return TIMES[(i + lap) % TIMES.length];
+}
+
+export function timeForLevel(round: number, levelCount: number, skin: string): TimeOfDay {
+  if (skin === 'desert') return 'day';
+  return timeForRound(round, levelCount);
+}
+
+export function lightingFor(time: TimeOfDay, skin: string): Lighting {
+  if (skin === 'desert') return LIGHTING.bake;
+  return LIGHTING[time];
 }

@@ -52,7 +52,7 @@ import { SKINS } from './levels/skins';
 import { validateLevel } from './levels/validate';
 import { Obstacles } from './obstacles';
 import type { Stage } from './stage';
-import { LIGHTING, timeForRound, type TimeOfDay } from './timeOfDay';
+import { lightingFor, timeForLevel, type TimeOfDay } from './timeOfDay';
 import { levelTitle, randRange, sphereHitsCylinder } from './utils';
 import { buildWorld, disposeWorld } from './world';
 
@@ -296,8 +296,8 @@ export class Game {
 
     const level = new Level(LEVELS[i]);
     this.level = level;
-    this.world = buildWorld(level, LIGHTING[time].glow);
-    this.stage.setLighting(LIGHTING[time]);
+    this.world = buildWorld(level, lightingFor(time, level.def.skin).glow);
+    this.stage.setLighting(lightingFor(time, level.def.skin));
     this.obstacles = new Obstacles(level);
     this.hazards = new Hazards(level);
     this.player.level = level;
@@ -306,6 +306,7 @@ export class Game {
     this.barrels.look = SKINS[level.def.skin].projectile;
 
     const summitY = level.tierTop(level.summitTier);
+    this.boss.setLook(level.def.skin);
     this.boss.group.position.set(BOSS_POS.x, summitY, BOSS_POS.z);
     this.throwOrigin.set(BOSS_POS.x + 1.3, summitY + 2.4, BOSS_POS.z - 0.6);
     const top = level.summitPath.point(level.summitPath.length);
@@ -340,7 +341,8 @@ export class Game {
   }
 
   private startRound(fresh: boolean): void {
-    if (fresh) this.loadLevel(this.round - 1, timeForRound(this.round, LEVELS.length));
+    const skin = LEVELS[(this.round - 1) % LEVELS.length].skin;
+    if (fresh) this.loadLevel(this.round - 1, timeForLevel(this.round, LEVELS.length, skin));
     const def = this.level.def;
     this.speedMul = Math.min(GAME_RULES.maxSpeedMul, 1 + 0.2 * this.loop + 0.06 * this.levelIndex);
     this.barrels.clear();
@@ -756,7 +758,7 @@ export class Game {
       this.hiScore = this.score;
       this.hud.setHi(this.hiScore);
     }
-    if (at) this.popup(`${points}-pt`, at.x, at.y + lift, at.z);
+    if (at) this.popup(`${points} pt`, at.x, at.y + lift, at.z);
   }
 
   /** Jump-overs chain into a combo: each one within the window multiplies its points. */
@@ -764,7 +766,7 @@ export class Game {
     const mult = this.combo.hit();
     const points = base * mult;
     this.addScore(points);
-    this.popup(mult > 1 ? `${points}-pt x${mult}` : `${points}-pt`, at.x, at.y + lift, at.z);
+    this.popup(mult > 1 ? `${points} pt x${mult}` : `${points} pt`, at.x, at.y + lift, at.z);
     sfx.score(mult);
   }
 
