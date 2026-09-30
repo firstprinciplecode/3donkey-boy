@@ -1,7 +1,9 @@
 node_modules
 dist
+/data/
 .DS_Store
 /popscotch.mp4
+/artifacts/
 
 # Rendered Roblox audio (regenerate with npm run roblox:audio)
 roblox/audio/

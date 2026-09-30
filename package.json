@@ -15,13 +15,17 @@
     "check:levels": "node --import tsx scripts/validate-levels.ts && node --import tsx scripts/sim-routes.ts",
     "rojo": "rojo serve roblox/default.project.json",
     "roblox:smoke": "roblox/tools/smoke.sh",
-    "roblox:audio": "node --import tsx roblox/tools/render-audio.ts"
+    "roblox:audio": "node --import tsx roblox/tools/render-audio.ts",
+    "bot:state": "node --import tsx scripts/bot/state-demo.ts",
+    "bot:play": "node --import tsx scripts/bot/play.ts"
   },
   "dependencies": {
+    "better-sqlite3": "^12.11.1",
     "three": "^0.186.1"
   },
   "devDependencies": {
     "@types/three": "^0.186.0",
+    "playwright-core": "^1.63.0",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.1"

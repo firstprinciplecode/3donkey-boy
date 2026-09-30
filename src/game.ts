@@ -41,6 +41,8 @@ import {
   loadPlayerName,
   saveBoard,
   savePlayerName,
+  submitScore,
+  syncBoard,
   topScore,
 } from './hiscore';
 import { Hazards, type HazardEvents } from './hazards';
@@ -88,6 +90,8 @@ export class Game {
   private hintClock = 0;
   /** Started from a later level (dev level select), so the score stays off the hi-score table. */
   private practice = false;
+  /** Space on the initials screen is held until the shared table answers. */
+  private savingScore = false;
 
   private readonly stage: Stage;
   private readonly hud: Hud;
@@ -184,6 +188,7 @@ export class Game {
     this.board = loadBoard();
     this.hiScore = topScore(this.board);
     this.hud.setHi(this.hiScore);
+    void this.refreshBoard();
     this.hud.setScore(0);
     this.hud.setLives(this.lives);
     this.hud.setBonus(this.bonus);
@@ -320,6 +325,7 @@ export class Game {
     this.showcaseZoom = Math.min(CAMERA.showcaseZoom, 8 / level.tierHalf(0));
     document.body.dataset.skin = level.def.skin;
     document.body.dataset.time = time;
+    music.setTheme(level.def.skin);
     this.hud.setLevel(i + 1, level.def.name);
   }
 
@@ -868,27 +874,47 @@ export class Game {
     }
 
     if (this.input.consume('Space') || this.input.consume('Enter') || this.input.consume('NumpadEnter')) {
+      if (this.savingScore) return;
+      this.savingScore = true;
       const name = this.initials.join('');
       savePlayerName(name);
-      const placed = insertScore(this.board, name, this.score);
-      if (placed) {
-        if (placed.improved) {
-          this.board = placed.board;
-          saveBoard(this.board);
-          this.hiScore = topScore(this.board);
-          this.hud.setHi(this.hiScore);
-          sfx.score();
-        }
-        this.showGameOver(placed.index);
-      } else {
-        this.showGameOver(null);
-      }
+      void this.commitScore(name);
       return;
     }
 
     if (changed) {
       sfx.land();
       this.hud.showInitials(this.initials, this.initialCursor, this.score, this.returning);
+    }
+  }
+
+  /** Replaces the title table with the shared one once the server answers. */
+  private async refreshBoard(): Promise<void> {
+    const board = await syncBoard();
+    if (!board) return;
+    this.board = board;
+    this.hiScore = topScore(board);
+    this.hud.setHi(this.hiScore);
+    if (this.state === 'title') this.hud.showTitle(this.board);
+  }
+
+  /** Writes the score to the shared table, and to this browser if the server can't be reached. */
+  private async commitScore(name: string): Promise<void> {
+    try {
+      const remote = await submitScore(name, this.score);
+      const placed = remote ?? insertScore(this.board, name, this.score);
+      if (!placed) {
+        this.showGameOver(null);
+        return;
+      }
+      this.board = placed.board;
+      saveBoard(this.board);
+      this.hiScore = topScore(this.board);
+      this.hud.setHi(this.hiScore);
+      if (placed.improved) sfx.score();
+      this.showGameOver(placed.index);
+    } finally {
+      this.savingScore = false;
     }
   }
 

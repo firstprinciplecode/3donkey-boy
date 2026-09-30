@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CAMERA } from './config';
+import { Grade } from './grade';
 import { LIGHTING, type Lighting } from './timeOfDay';
 import { damp } from './utils';
 
@@ -39,15 +40,19 @@ export class Stage {
   private shakeClock = 0;
   /** 0 disables screen shake (reduced motion). */
   shakeScale = 1;
+  private readonly grade: Grade;
 
   constructor(container: HTMLElement) {
     const dpr = window.devicePixelRatio || 1;
     // Retina pixels already soften edges, so skip MSAA there and stay under 2×.
+    // The scene is drawn into an offscreen target, so MSAA lives on that target.
     this.renderer = new THREE.WebGLRenderer({
-      antialias: dpr <= 1,
+      antialias: false,
       alpha: true,
       powerPreference: 'high-performance',
     });
+    this.grade = new Grade(dpr <= 1 ? 4 : 0);
+    this.grade.enabled = !new URLSearchParams(location.search).has('raw');
     this.renderer.setPixelRatio(Math.min(dpr, 1.5));
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.shadowMap.enabled = true;
@@ -90,6 +95,9 @@ export class Stage {
     this.camera.bottom = -halfH;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(this.width, this.height);
+    const buffer = new THREE.Vector2();
+    this.renderer.getDrawingBufferSize(buffer);
+    this.grade.setSize(buffer.x, buffer.y);
   }
 
   setLighting(l: Lighting): void {
@@ -100,6 +108,8 @@ export class Stage {
     this.sun.intensity = l.sunIntensity;
     this.sun.position.set(...l.sunPosition);
     this.renderer.shadowMap.needsUpdate = true;
+    // Night already carries the blue. The poster grade is for the paper-daylight pictures.
+    this.grade.print = l.glow && l.sunIntensity < 1.5 ? 0.35 : l.glow ? 0.7 : 1;
   }
 
   follow(goal: CameraGoal, dt: number): void {
@@ -137,7 +147,8 @@ export class Stage {
   }
 
   render(): void {
-    this.renderer.render(this.scene, this.camera);
+    if (this.grade.enabled) this.grade.render(this.renderer, this.scene, this.camera);
+    else this.renderer.render(this.scene, this.camera);
   }
 
   private applyCamera(): void {

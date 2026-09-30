@@ -323,7 +323,8 @@ silent:play("jump")
 silent:startMusic()
 silent:setHammer(true)
 silent:stopMusic()
-SoundAssets.sfx, SoundAssets.music, SoundAssets.musicHammer = "rbxassetid://1", "rbxassetid://2", "rbxassetid://3"
+SoundAssets.sfx = "rbxassetid://1"
+SoundAssets.themes = { meadow = { music = "rbxassetid://2", hammer = "rbxassetid://3" } }
 local audio = Audio.new()
 for _, s in audio.idle do s.IsLoaded = true end
 local cue = require({ __module = "client/SoundSprite" }).cues.score
@@ -338,6 +339,9 @@ audio:startMusic()
 audio.music.TimePosition = 7
 audio:setHammer(true)
 assert(audio.musicHammer.TimePosition == 7 and audio.music.Volume == 0 and audio.musicHammer.Volume == 1, "hammer swaps loops in sync")
+audio:setTheme("volcano")
+assert(audio.skin == "volcano" and audio.music.SoundId == "rbxassetid://2", "a theme without audio keeps Meadow")
+audio:setTheme("meadow")
 assert(audio:toggleMute() and audio.sfxGroup.Volume == 0, "mute silences")
 print("audio checks passed")
 

@@ -55,8 +55,10 @@ A score that cracks the top 10 asks for three initials before the table is shown
 keys or a letter key pick them, and space saves. The game remembers your initials, so next
 time they're filled in already: press space to keep them, or change them. Each name has
 one row, holding its best score. A run that doesn't beat your best goes straight to the
-table with your row highlighted. The list and your initials stay in this browser, under
-the `localStorage` keys `popscotch.hiscores` and `popscotch.player`.
+table with your row highlighted. The shared top 10 is stored in SQLite on the server (`/api/scores`). Your initials stay in
+this browser, under the `localStorage` key `popscotch.player`, and a copy of the last table
+you saw is kept under `popscotch.hiscores` so the title screen still has a list if the
+server can't be reached.
 
 In dev builds (`npm run dev`), pressing 1–7 on the title screen starts at that level.
 Those practice runs never go on the hi-score table.
@@ -133,10 +135,26 @@ npm run build       # type-checks, then writes a static site to dist/
 npm run preview
 ```
 
-`dist/` is a static bundle. Textures and sound are generated at runtime, so there is
-nothing else to host. The only persisted data is the high-score table in `localStorage`.
+`dist/` is the built site. Textures and sound are generated at runtime. `Dockerfile` builds
+that site and serves it with a small API for the shared high-score table. The database file
+is SQLite at `DATABASE_PATH` (on Uplink, `/data/scores.db` on a persistent volume).
 
-`Dockerfile` builds that site and serves it. Any static host works the same way.
+### Test bot
+
+A test player can drive the game in headless Chromium to find where levels kill you. It is dev
+only: the hook in `src/bot/` loads when the URL has `?bot`, and production builds leave it out.
+The game advances one frame at a time while the bot decides, so slow decisions cost nothing.
+
+```bash
+npm run bot:state                              # the JSON the bot sees on each level
+npm run bot:play                               # simple scripted bot, 3 attempts per level
+npm run bot:play -- --policy jev --level 2     # TypeSafe's Jev picks every move
+npm run bot:play -- --runs 10 --headed         # watch it play, with its readout on screen
+```
+
+Jev needs `TYPESAFE_API_KEY` or `JEV_API_KEY`. If neither is set, it reads them from `~/.config/secrets/global.env`. Each attempt is one life and uses its own seed
+(`--seed`), so a run replays exactly. Decisions, probabilities and latency are logged to
+`artifacts/bot/<run>/`, with a `summary.json` of clears and causes of death per level.
 
 ## Structure
 

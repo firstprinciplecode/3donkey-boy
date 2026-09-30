@@ -1,0 +1,534 @@
+{
+  "meadow": {
+    "title": "Meadow",
+    "mode": "Aeolian",
+    "bpm": 132,
+    "voices": [
+      "square",
+      "sawtooth"
+    ],
+    "detune": 8,
+    "bars": [
+      {
+        "lead": "A4 . E5 . A4 . C5 . A4 . E5 . D5 . C5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "B4 . A4 . G4 . A4 . E4 . . . A4 . . .",
+        "root": "G2"
+      },
+      {
+        "lead": "F4 . C5 . F4 . A4 . F4 . C5 . B4 . A4 .",
+        "root": "F2"
+      },
+      {
+        "lead": "G4 . D5 . G4 . B4 . D5 C5 B4 . G4 . . .",
+        "root": "G2"
+      },
+      {
+        "lead": "A4 . E5 . A4 . C5 . A4 . E5 . D5 . C5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "B4 . C5 . D5 . E5 . F5 . E5 . D5 . C5 .",
+        "root": "G2"
+      },
+      {
+        "lead": "D5 . F5 . D5 . A4 . B4 . C5 . D5 . B4 .",
+        "root": "D2"
+      },
+      {
+        "lead": "E5 . . . B4 . G#4 . E4 . . . . . . .",
+        "root": "E2"
+      },
+      {
+        "lead": "C5 . G5 . E5 . G5 . C6 . G5 . E5 . G5 .",
+        "root": "C3"
+      },
+      {
+        "lead": "B4 . G5 . D5 . G5 . B5 . A5 . G5 . D5 .",
+        "root": "G2"
+      },
+      {
+        "lead": "A4 . E5 . C5 . E5 . A5 . G5 . E5 . C5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "B4 . E5 . G#4 . B4 . E5 . D5 . C5 . B4 .",
+        "root": "E2"
+      },
+      {
+        "lead": "F4 . A4 . C5 . F5 . E5 . D5 . C5 . A4 .",
+        "root": "F2"
+      },
+      {
+        "lead": "G4 . B4 . D5 . G5 . F5 . E5 . D5 . B4 .",
+        "root": "G2"
+      },
+      {
+        "lead": "C5 . E5 . G5 . C6 . B5 . G5 . E5 . C5 .",
+        "root": "C3"
+      },
+      {
+        "lead": "E5 . D5 . C5 . B4 . G#4 . B4 . E5 . . .",
+        "root": "E2"
+      }
+    ]
+  },
+  "candy": {
+    "title": "Candy Hills",
+    "mode": "Dorian",
+    "bpm": 138,
+    "voices": [
+      "square",
+      "triangle"
+    ],
+    "detune": 5,
+    "bars": [
+      {
+        "lead": "A4 . E5 . G4 . C5 . A4 . E5 . G4 . C5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "B4 . A4 . G4 . B4 . C5 . A4 . G4 . B4 .",
+        "root": "G2"
+      },
+      {
+        "lead": "F4 . C5 . F4 . A4 . F4 . C5 . B4 . A4 .",
+        "root": "F2"
+      },
+      {
+        "lead": "G4 . D5 . G4 . B4 . D5 C5 B4 . G4 . . .",
+        "root": "G2"
+      },
+      {
+        "lead": "A4 . E5 . G4 . C5 . A4 . E5 . G4 . C5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "B4 . A4 . G4 . B4 . C5 . A4 . G4 . B4 .",
+        "root": "G2"
+      },
+      {
+        "lead": "F4 . C5 . F4 . A4 . F4 . C5 . B4 . A4 .",
+        "root": "F2"
+      },
+      {
+        "lead": "G4 . D5 . G4 . B4 . D5 C5 B4 . G4 . . .",
+        "root": "G2"
+      },
+      {
+        "lead": "C5 . G5 . E5 . G5 . C6 . G5 . E5 . G5 .",
+        "root": "C3"
+      },
+      {
+        "lead": "B4 . G5 . D5 . G5 . B5 . A5 . G5 . D5 .",
+        "root": "D3"
+      },
+      {
+        "lead": "A4 . E5 . C5 . E5 . A5 . G5 . E5 . C5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "B4 . E5 . G#4 . B4 . E5 . D5 . C5 . B4 .",
+        "root": "E2"
+      },
+      {
+        "lead": "F4 . A4 . C5 . F5 . E5 . D5 . C5 . A4 .",
+        "root": "F2"
+      },
+      {
+        "lead": "G4 . B4 . D5 . G5 . F5 . E5 . D5 . B4 .",
+        "root": "G2"
+      },
+      {
+        "lead": "A4 . E5 . G4 . C5 . A4 . E5 . G4 . C5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "B4 . E5 . G#4 . B4 . E5 . D5 . C5 . B4 .",
+        "root": "E2"
+      }
+    ]
+  },
+  "desert": {
+    "title": "Desert Arcade",
+    "mode": "Phrygian",
+    "bpm": 120,
+    "voices": [
+      "sawtooth",
+      "sawtooth"
+    ],
+    "detune": 14,
+    "bars": [
+      {
+        "lead": "A4 . E5 . A#4 . C5 . A4 . E5 . A#4 . C5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "F4 . D5 . C#5 . D5 . F4 . D5 . C#5 . D5 .",
+        "root": "A#2"
+      },
+      {
+        "lead": "A4 . E5 . A#4 . C5 . A4 . E5 . A#4 . C5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "F4 . D5 . C#5 . D5 . F4 . D5 . C#5 . D5 .",
+        "root": "A#2"
+      },
+      {
+        "lead": "A4 . E5 . A#4 . C5 . A4 . E5 . A#4 . C5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "F4 . D5 . C#5 . D5 . F4 . D5 . C#5 . D5 .",
+        "root": "A#2"
+      },
+      {
+        "lead": "D5 . F5 . D5 . A4 . B4 . C5 . D5 . B4 .",
+        "root": "D4"
+      },
+      {
+        "lead": "E5 . . . B4 . G#4 . E4 . . . . . . .",
+        "root": "E2"
+      },
+      {
+        "lead": "C5 . G5 . D#5 . G5 . C6 . D#5 . C5 . A#4 .",
+        "root": "C2"
+      },
+      {
+        "lead": "B4 . G5 . D5 . G5 . B5 . A5 . G5 . D5 .",
+        "root": "B2"
+      },
+      {
+        "lead": "A4 . E5 . C5 . E5 . A5 . G5 . E5 . C5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "B4 . E5 . G#4 . B4 . E5 . D5 . C5 . B4 .",
+        "root": "E2"
+      },
+      {
+        "lead": "F4 . A4 . C5 . F5 . E5 . D5 . C5 . A4 .",
+        "root": "F2"
+      },
+      {
+        "lead": "G4 . B4 . D5 . G5 . F5 . E5 . D5 . B4 .",
+        "root": "G2"
+      },
+      {
+        "lead": "C5 . E5 . G5 . C6 . B5 . G5 . E5 . C5 .",
+        "root": "C3"
+      },
+      {
+        "lead": "E5 . D5 . C5 . B4 . G#4 . B4 . E5 . . .",
+        "root": "E2"
+      }
+    ]
+  },
+  "autumn": {
+    "title": "Harvest Woods",
+    "mode": "Mixolydian",
+    "bpm": 140,
+    "voices": [
+      "square",
+      "sawtooth"
+    ],
+    "detune": 7,
+    "bars": [
+      {
+        "lead": "G4 . B4 D5 . B4 G4 . A4 . C5 . B4 . G4 .",
+        "root": "G2"
+      },
+      {
+        "lead": "F4 . A4 C5 . A4 F4 . G4 . B4 . A4 . F4 .",
+        "root": "F2"
+      },
+      {
+        "lead": "G4 . B4 D5 . G5 . F5 . D5 . B4 . C5 D5 .",
+        "root": "G2"
+      },
+      {
+        "lead": "C5 . . B4 A4 . F4 . G4 . . . . . . .",
+        "root": "C3"
+      },
+      {
+        "lead": "G4 . B4 D5 . B4 G4 . A4 . C5 . B4 . G4 .",
+        "root": "G2"
+      },
+      {
+        "lead": "F4 . A4 C5 . A4 F4 . G4 . B4 . A4 . F4 .",
+        "root": "F2"
+      },
+      {
+        "lead": "E5 . D5 C5 . A4 . C5 . D5 . F5 . E5 D5 .",
+        "root": "C3"
+      },
+      {
+        "lead": "D5 . . . G4 . B4 . D5 . . . . . . .",
+        "root": "D3"
+      },
+      {
+        "lead": "C5 . E5 . G5 . E5 . C5 . E5 . G5 . A5 .",
+        "root": "C3"
+      },
+      {
+        "lead": "G5 . F5 . D5 . F5 . G5 . . . F5 . D5 .",
+        "root": "F2"
+      },
+      {
+        "lead": "B4 . D5 . G5 . D5 . B4 . D5 . F5 . E5 .",
+        "root": "G2"
+      },
+      {
+        "lead": "D5 . C5 . A4 . F4 . A4 . C5 . D5 . . .",
+        "root": "F2"
+      },
+      {
+        "lead": "G4 . B4 D5 . B4 G4 . A4 . C5 . B4 . G4 .",
+        "root": "G2"
+      },
+      {
+        "lead": "F4 . A4 C5 . A4 F4 . G4 . B4 . A4 . F4 .",
+        "root": "F2"
+      },
+      {
+        "lead": "G4 . B4 D5 . G5 . F5 . D5 . B4 . C5 D5 .",
+        "root": "G2"
+      },
+      {
+        "lead": "G4 . . . D4 . G4 . . . . . . . . .",
+        "root": "G2"
+      }
+    ]
+  },
+  "winter": {
+    "title": "Frost Peak",
+    "mode": "Lydian",
+    "bpm": 150,
+    "voices": [
+      "square",
+      "square"
+    ],
+    "detune": 4,
+    "bars": [
+      {
+        "lead": "F5 . C5 . A4 . C5 . F5 . A5 . G5 . F5 .",
+        "root": "F2"
+      },
+      {
+        "lead": "E5 . C5 . G4 . C5 . E5 . G5 . F5 . E5 .",
+        "root": "C3"
+      },
+      {
+        "lead": "D5 . B4 . G4 . B4 . D5 . G5 . F5 . D5 .",
+        "root": "G2"
+      },
+      {
+        "lead": "C5 D5 E5 F5 G5 . A5 . B5 . C6 . . . . .",
+        "root": "C3"
+      },
+      {
+        "lead": "F5 . C5 . A4 . C5 . F5 . A5 . G5 . F5 .",
+        "root": "F2"
+      },
+      {
+        "lead": "E5 . C5 . G4 . C5 . E5 . G5 . F5 . E5 .",
+        "root": "C3"
+      },
+      {
+        "lead": "A5 . G5 . F5 . E5 . D5 . C5 . B4 . C5 .",
+        "root": "D3"
+      },
+      {
+        "lead": "D5 . . . G5 . . . C5 . . . . . . .",
+        "root": "G2"
+      },
+      {
+        "lead": "F5 F5 . A5 . F5 C6 . A5 . F5 . G5 . A5 .",
+        "root": "F2"
+      },
+      {
+        "lead": "G5 G5 . B5 . G5 D6 . B5 . G5 . A5 . B5 .",
+        "root": "G2"
+      },
+      {
+        "lead": "A5 . G5 . F5 . E5 . F5 . G5 . A5 . B5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "C6 . . . B5 . . . A5 . G5 . F5 . E5 .",
+        "root": "C3"
+      },
+      {
+        "lead": "F5 . C5 . A4 . C5 . F5 . A5 . G5 . F5 .",
+        "root": "F2"
+      },
+      {
+        "lead": "E5 . C5 . G4 . C5 . E5 . G5 . F5 . E5 .",
+        "root": "C3"
+      },
+      {
+        "lead": "D5 . B4 . G4 . B4 . D5 . G5 . F5 . D5 .",
+        "root": "G2"
+      },
+      {
+        "lead": "F5 . C5 . A4 . F4 . . . . . . . . .",
+        "root": "F2"
+      }
+    ]
+  },
+  "tomb": {
+    "title": "Serpent Tomb",
+    "mode": "Ionian",
+    "bpm": 146,
+    "voices": [
+      "sawtooth",
+      "square"
+    ],
+    "detune": 9,
+    "bars": [
+      {
+        "lead": "D4 F#4 A4 D5 A4 F#4 D4 F#4 A4 D5 F#5 D5 A4 F#4 A4 D5",
+        "root": "D2"
+      },
+      {
+        "lead": "B3 D4 F#4 B4 F#4 D4 B3 D4 F#4 B4 D5 B4 F#4 D4 F#4 B4",
+        "root": "B2"
+      },
+      {
+        "lead": "G3 B3 D4 G4 D4 B3 G3 B3 D4 G4 B4 G4 D4 B3 D4 G4",
+        "root": "G2"
+      },
+      {
+        "lead": "A3 C#4 E4 A4 E4 C#4 A3 C#4 E4 A4 C#5 A4 E4 C#4 E4 A4",
+        "root": "A2"
+      },
+      {
+        "lead": "F#5 . . E5 D5 . . A4 . . D5 . E5 . F#5 .",
+        "root": "D2"
+      },
+      {
+        "lead": "G5 . . F#5 E5 . . B4 . . D5 . E5 . B4 .",
+        "root": "B2"
+      },
+      {
+        "lead": "D5 . . C#5 B4 . . G4 . . B4 . D5 . G5 .",
+        "root": "G2"
+      },
+      {
+        "lead": "E5 . . . C#5 . . . A4 . B4 . C#5 . E5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "F#5 . . E5 D5 . . A4 . . D5 . E5 . F#5 .",
+        "root": "D2"
+      },
+      {
+        "lead": "G5 . . F#5 E5 . . B4 . . D5 . E5 . B4 .",
+        "root": "B2"
+      },
+      {
+        "lead": "D5 . . C#5 B4 . . G4 . . B4 . D5 . G5 .",
+        "root": "G2"
+      },
+      {
+        "lead": "A5 . G5 . F#5 . E5 . C#5 . A4 . E5 . . .",
+        "root": "A2"
+      },
+      {
+        "lead": "D4 F#4 A4 D5 A4 F#4 D4 F#4 A4 D5 F#5 D5 A4 F#4 A4 D5",
+        "root": "D2"
+      },
+      {
+        "lead": "B3 D4 F#4 B4 F#4 D4 B3 D4 F#4 B4 D5 B4 F#4 D4 F#4 B4",
+        "root": "B2"
+      },
+      {
+        "lead": "G3 B3 D4 G4 D4 B3 G3 B3 D4 G4 B4 G4 D4 B3 D4 G4",
+        "root": "G2"
+      },
+      {
+        "lead": "D5 . A4 . F#4 . D4 . . . . . . . . .",
+        "root": "D2"
+      }
+    ]
+  },
+  "volcano": {
+    "title": "Volcano Isle",
+    "mode": "Locrian",
+    "bpm": 104,
+    "voices": [
+      "sawtooth",
+      "sawtooth"
+    ],
+    "detune": 16,
+    "bars": [
+      {
+        "lead": "B4 . . . F5 . . . E5 D5 C5 . D5 . . .",
+        "root": "B2"
+      },
+      {
+        "lead": "F5 . . . E5 D5 C5 . D5 . . . F5 . . .",
+        "root": "G2"
+      },
+      {
+        "lead": "E5 D5 E5 . C5 . . . . . . . . . . .",
+        "root": "C3"
+      },
+      {
+        "lead": "B4 B4 B4 . D5 . . . F5 . . . E5 . D5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "B4 . . . F5 . . . E5 D5 C5 . D5 . . .",
+        "root": "B2"
+      },
+      {
+        "lead": "F5 . . . E5 D5 C5 . D5 . . . F5 . . .",
+        "root": "G2"
+      },
+      {
+        "lead": "E5 D5 E5 . C5 . . . B4 . C5 . D5 . . .",
+        "root": "C3"
+      },
+      {
+        "lead": "B4 . . . . . . . . . . . . . . .",
+        "root": "B2"
+      },
+      {
+        "lead": "G5 . . . G5 F5 E5 . D5 . . . E5 . F5 .",
+        "root": "E2"
+      },
+      {
+        "lead": "G5 . . . A5 . . . F5 . . . . . . .",
+        "root": "F2"
+      },
+      {
+        "lead": "E5 . D5 . C5 . D5 . E5 . F5 . G5 . A5 .",
+        "root": "A2"
+      },
+      {
+        "lead": "D5 . . . . . A5 G5 F5 . . . . . . .",
+        "root": "B2"
+      },
+      {
+        "lead": "B4 . . . F5 . . . E5 D5 C5 . D5 . . .",
+        "root": "B2"
+      },
+      {
+        "lead": "F5 . . . E5 D5 C5 . D5 . . . F5 . . .",
+        "root": "G2"
+      },
+      {
+        "lead": "E5 D5 E5 . C5 . . . . . . . . . . .",
+        "root": "C3"
+      },
+      {
+        "lead": "B4 B4 B4 . F5 . . . D5 . . . . . . .",
+        "root": "B2"
+      }
+    ]
+  }
+}

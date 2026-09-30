@@ -9,8 +9,8 @@ const VOLUME = 0.5;
 /** Player volume settings, 0..1 each; applied on top of VOLUME. */
 const levels = { music: 1, sfx: 1 };
 
-/** Browsers require a user gesture before audio can start. */
-export function unlockAudio(): void {
+/** Browsers require a user gesture before audio can start. Await this from a click. */
+export async function unlockAudio(): Promise<void> {
   try {
     if (!ctx) {
       ctx = new AudioContext();
@@ -24,7 +24,7 @@ export function unlockAudio(): void {
       musicBus.gain.value = levels.music;
       musicBus.connect(master);
     }
-    if (ctx.state === 'suspended') void ctx.resume();
+    if (ctx.state === 'suspended') await ctx.resume();
   } catch {
     ctx = null;
     master = sfxBus = musicBus = null;

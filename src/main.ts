@@ -1,5 +1,5 @@
 import './style.css';
-import { createBackdrop, createForeground } from './backdrop';
+import { createBackdrop, createForeground, mountPaperGrain } from './backdrop';
 import { Game } from './game';
 import { Hud } from './hud';
 import { Input } from './input';
@@ -24,6 +24,7 @@ function showFatal(message: string): void {
 function boot(): void {
   createBackdrop(element('backdrop'));
   createForeground(element('foreground'));
+  mountPaperGrain(element('fx'));
 
   let stage: Stage;
   try {
@@ -45,12 +46,20 @@ function boot(): void {
   const game = new Game(stage, new Hud(element('hud')), input);
   if (import.meta.env.DEV) Object.assign(window, { __game: game, __input: input });
 
+  /** While a test bot drives the game it advances frames itself; the loop only keeps drawing. */
+  let manual = false;
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('bot')) {
+    void import('./bot/hook').then(({ installBot }) => installBot({ game, setManual: (on) => (manual = on) }));
+  }
+
   let last = performance.now();
   const frame = (now: number) => {
     const dt = Math.min((now - last) / 1000, MAX_FRAME_DT);
     last = now;
-    input.poll();
-    game.update(dt);
+    if (!manual) {
+      input.poll();
+      game.update(dt);
+    }
     stage.render();
     requestAnimationFrame(frame);
   };

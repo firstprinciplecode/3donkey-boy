@@ -44,6 +44,27 @@ function stars(): HTMLDivElement {
   return layer;
 }
 
+/** A tiled grey noise, blended over the picture so the sky and the blocks share one paper grain. */
+export function mountPaperGrain(root: HTMLElement): void {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const image = ctx.createImageData(size, size);
+  for (let i = 0; i < image.data.length; i += 4) {
+    const n = 118 + Math.random() * 20;
+    image.data[i] = image.data[i + 1] = image.data[i + 2] = n;
+    image.data[i + 3] = 255;
+  }
+  ctx.putImageData(image, 0, 0);
+  const grain = document.createElement('div');
+  grain.className = 'paper-grain';
+  grain.style.backgroundImage = `url(${canvas.toDataURL()})`;
+  root.appendChild(grain);
+}
+
 /** Background layer: stars and far-away blurred ghosts behind the canvas (the 3D scenery does the rest). */
 export function createBackdrop(root: HTMLElement): void {
   root.append(stars(), ghost('ghost--far g-a'), ghost('ghost--far g-b'));

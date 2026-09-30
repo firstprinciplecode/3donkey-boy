@@ -131,3 +131,73 @@ export function saveBoard(board: HiScoreEntry[]): void {
     // Storage can be unavailable (private mode, quota); the table just won't persist.
   }
 }
+
+export type ScorePlacement = { board: HiScoreEntry[]; index: number | null; improved: boolean };
+
+const MIGRATED_KEY = 'popscotch.scores.migrated';
+
+function placement(data: unknown): ScorePlacement | null {
+  if (!data || typeof data !== 'object') return null;
+  const body = data as { board?: unknown; index?: unknown; improved?: unknown };
+  const index = typeof body.index === 'number' ? body.index : null;
+  return { board: normalizeBoard(body.board), index, improved: body.improved === true };
+}
+
+/** The shared top 10. Null when the server can't be reached; the caller keeps the local copy. */
+export async function fetchBoard(): Promise<HiScoreEntry[] | null> {
+  try {
+    const res = await fetch('/api/scores');
+    if (!res.ok) return null;
+    const data = (await res.json()) as { board?: unknown };
+    return normalizeBoard(data.board);
+  } catch {
+    return null;
+  }
+}
+
+/** Records one score on the shared table. Null means it stayed on this browser only. */
+export async function submitScore(name: string, score: number): Promise<ScorePlacement | null> {
+  try {
+    const res = await fetch('/api/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, score }),
+    });
+    if (!res.ok) return null;
+    return placement(await res.json());
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Loads the shared table and, once per browser, folds this browser's old local scores into it.
+ * Returns null when the server can't be reached.
+ */
+export async function syncBoard(): Promise<HiScoreEntry[] | null> {
+  const remote = await fetchBoard();
+  if (!remote) return null;
+  let board = remote;
+  try {
+    if (!window.localStorage.getItem(MIGRATED_KEY)) {
+      const local = loadBoard().filter((entry) => /^[A-Z]{3}$/.test(entry.name));
+      if (local.length === 0) {
+        window.localStorage.setItem(MIGRATED_KEY, '1');
+      } else {
+        const res = await fetch('/api/scores', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entries: local }),
+        });
+        if (!res.ok) return board;
+        const placed = placement(await res.json());
+        if (placed) board = placed.board;
+        window.localStorage.setItem(MIGRATED_KEY, '1');
+      }
+    }
+    saveBoard(board);
+  } catch {
+    return board;
+  }
+  return board;
+}

@@ -208,6 +208,16 @@ body[data-skin='volcano'] .weather span {
   background-size: 5px 5px;
 }
 
+/* Static paper grain over the sky and the blocks. The HUD sits above this, so the type stays sharp. */
+.paper-grain {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+  mix-blend-mode: overlay;
+  opacity: 0.16;
+  pointer-events: none;
+}
+
 #foreground {
   z-index: 3;
   overflow: hidden;

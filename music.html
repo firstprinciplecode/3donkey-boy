@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Popscotch tracker</title>
+    <style>
+      :root {
+        --bg: #0b0d17;
+        --panel: #141828;
+        --cell: #1a1f33;
+        --cell-beat: #222944;
+        --line: rgba(120, 140, 255, 0.14);
+        --text: #d9def5;
+        --dim: #6b7399;
+        --cyan: #38f2e0;
+        --pink: #ff4fa3;
+        --gold: #ffd23a;
+        --bad: #ff3d6e;
+        --font: 'Arial Rounded MT Bold', 'SF Pro Rounded', ui-rounded, 'Nunito', system-ui, sans-serif;
+        --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--font);
+        color: var(--text);
+        background:
+          radial-gradient(ellipse 80% 50% at 50% -10%, rgba(56, 242, 224, 0.12), transparent 70%),
+          radial-gradient(ellipse 60% 40% at 100% 100%, rgba(255, 79, 163, 0.1), transparent 70%),
+          var(--bg);
+        background-attachment: fixed;
+      }
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px);
+        z-index: 10;
+      }
+      header, .themes {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        padding: 18px 20px 0;
+      }
+      h1 {
+        margin: 0 14px 0 0;
+        font-size: 22px;
+        letter-spacing: 0.04em;
+        background: linear-gradient(90deg, var(--cyan), var(--pink));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 0 10px rgba(56, 242, 224, 0.35));
+      }
+      button, .axis {
+        font: inherit;
+        font-size: 14px;
+        color: var(--text);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 14px;
+        cursor: pointer;
+        transition: border-color 0.15s, box-shadow 0.15s, color 0.15s;
+      }
+      button:hover {
+        border-color: rgba(56, 242, 224, 0.5);
+        box-shadow: 0 0 12px rgba(56, 242, 224, 0.18);
+      }
+      #play { color: var(--cyan); }
+      #save { color: var(--gold); }
+      button[aria-pressed='true'] {
+        color: var(--bg);
+        background: var(--cyan);
+        border-color: var(--cyan);
+        box-shadow: 0 0 16px rgba(56, 242, 224, 0.45);
+      }
+      .axis {
+        border: 0;
+        border-radius: 6px;
+        padding: 6px 0;
+        font: 11px var(--mono);
+        color: var(--dim);
+        background: transparent;
+      }
+      .axis:hover { color: var(--cyan); box-shadow: none; }
+      #status { font: 13px var(--mono); color: var(--dim); }
+      #grid {
+        padding: 18px 20px 210px;
+        overflow-x: auto;
+      }
+      .bar {
+        display: grid;
+        grid-template-columns: 52px repeat(16, 52px) 64px;
+        gap: 4px;
+        margin-bottom: 4px;
+        align-items: center;
+      }
+      .bar span { font-size: 12px; }
+      input {
+        width: 100%;
+        font: 12px var(--mono);
+        text-align: center;
+        border: 0;
+        border-radius: 5px;
+        padding: 7px 0;
+        background: var(--cell);
+        color: var(--text);
+        caret-color: var(--cyan);
+        transition: background 0.08s;
+      }
+      .bar > input:nth-child(4n + 2) { background: var(--cell-beat); }
+      .bar > input:last-child {
+        color: var(--pink);
+        background: rgba(255, 79, 163, 0.1);
+      }
+      input:focus { outline: 1px solid var(--cyan); }
+      input.bad { background: rgba(255, 61, 110, 0.35) !important; color: #fff; }
+      .bar > input.now {
+        background: var(--cyan);
+        color: var(--bg);
+        font-weight: 700;
+        box-shadow: 0 0 14px rgba(56, 242, 224, 0.7);
+      }
+      input.sel {
+        box-shadow: inset 0 0 0 2px var(--pink);
+        background: rgba(255, 79, 163, 0.16) !important;
+      }
+      .bar > input.now.sel { box-shadow: inset 0 0 0 2px var(--gold), 0 0 14px rgba(56, 242, 224, 0.7); }
+      .bar.now > .axis { color: var(--cyan); font-weight: 700; }
+      .head .axis { opacity: 0.8; }
+      #keyboard {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+        padding: 14px 20px 16px;
+        background: rgba(11, 13, 23, 0.92);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid var(--line);
+        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+        z-index: 5;
+      }
+      #rest {
+        height: 48px;
+        margin-bottom: 8px;
+      }
+      #rest.on {
+        color: var(--bg);
+        background: var(--pink);
+        border-color: var(--pink);
+        box-shadow: 0 0 16px rgba(255, 79, 163, 0.5);
+      }
+      .piano {
+        position: relative;
+        height: 128px;
+        flex: 1;
+        overflow-x: auto;
+      }
+      .piano-inner { position: relative; height: 100%; }
+      .key {
+        position: absolute;
+        top: 0;
+        border: 0;
+        border-radius: 0 0 6px 6px;
+        padding: 0 0 6px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        font: 10px var(--mono);
+        cursor: pointer;
+      }
+      .key:hover { box-shadow: none; }
+      .key.white {
+        height: 100%;
+        background: linear-gradient(180deg, #c9cfe6, #eef1ff 85%);
+        color: #3a4060;
+        box-shadow: inset -1px 0 0 rgba(11, 13, 23, 0.35);
+      }
+      .key.black {
+        height: 62%;
+        background: linear-gradient(180deg, #05060c, #232840);
+        color: var(--dim);
+        border: 1px solid #000;
+        z-index: 1;
+      }
+      .key.on.white {
+        background: linear-gradient(180deg, #1fb8aa, var(--cyan));
+        color: var(--bg);
+        box-shadow: 0 0 18px rgba(56, 242, 224, 0.6);
+        z-index: 1;
+      }
+      .key.on.black {
+        background: linear-gradient(180deg, #b0306d, var(--pink));
+        color: #fff;
+        box-shadow: 0 0 18px rgba(255, 79, 163, 0.6);
+        z-index: 2;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Tracker</h1>
+      <button type="button" id="play">Play</button>
+      <button type="button" id="stop">Stop</button>
+      <button type="button" id="save">Save</button>
+      <span id="status"></span>
+    </header>
+    <nav class="themes" id="themes"></nav>
+    <div id="grid"></div>
+    <div id="keyboard">
+      <button type="button" id="rest">Rest</button>
+      <div class="piano" id="piano"></div>
+    </div>
+    <script type="module" src="/src/music-page.ts"></script>
+  </body>
+</html>

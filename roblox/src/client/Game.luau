@@ -198,6 +198,7 @@ function Game:_loadLevel(index: number)
 	self.goal = self.world:FindFirstChild("Goal") :: BasePart?
 	self.goalSpin = 0
 	self.hud:setLevel(index, level.def.name)
+	self.audio:setTheme(level.def.skin)
 	print(`[popscotch] level {index} built: {self.world:GetAttribute("PartCount")} parts in {math.round((os.clock() - started) * 1000)} ms`)
 end
 

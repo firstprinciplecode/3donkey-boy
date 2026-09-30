@@ -37,8 +37,10 @@ function Audio.new()
 	local self = setmetatable({}, Audio)
 	self.muted = false
 	self.hammer = false
+	self.skin = "meadow"
 	self.idle = {} :: { Sound }
 	self.busy = {} :: { [Sound]: {} }
+	self.tracks = {} :: { [string]: { music: Sound, hammer: Sound } }
 
 	local folder = Instance.new("Folder")
 	folder.Name = "PopscotchAudio"
@@ -58,13 +60,19 @@ function Audio.new()
 		end
 		table.insert(preload, self.idle[1])
 	end
-	if SoundAssets.music ~= "" and SoundAssets.musicHammer ~= "" then
-		self.music = sound(SoundAssets.music, self.musicGroup, true)
-		self.musicHammer = sound(SoundAssets.musicHammer, self.musicGroup, true)
-		self.musicHammer.Volume = 0
-		table.insert(preload, self.music)
-		table.insert(preload, self.musicHammer)
+	for skin, ids in SoundAssets.themes do
+		if ids.music ~= "" and ids.hammer ~= "" then
+			local music = sound(ids.music, self.musicGroup, true)
+			local hammer = sound(ids.hammer, self.musicGroup, true)
+			hammer.Volume = 0
+			self.tracks[skin] = { music = music, hammer = hammer }
+			table.insert(preload, music)
+			table.insert(preload, hammer)
+		end
 	end
+	local meadow = self.tracks.meadow
+	self.music = if meadow then meadow.music else nil
+	self.musicHammer = if meadow then meadow.hammer else nil
 	if #preload > 0 then
 		task.spawn(function()
 			ContentProvider:PreloadAsync(preload)
@@ -98,6 +106,34 @@ function Audio:play(name: string, speed: number?)
 			table.insert(self.idle, s)
 		end
 	end)
+end
+
+-- Switches to a level's tune. A skin with no uploaded loop keeps playing Meadow.
+-- If music is already going, the new loop takes over from the top.
+function Audio:setTheme(skin: string)
+	if skin == self.skin then
+		return
+	end
+	local playing = self.music ~= nil and self.music.IsPlaying
+	if self.music then
+		self.music:Stop()
+		self.musicHammer:Stop()
+	end
+	self.skin = skin
+	local track = if self.tracks then self.tracks[skin] or self.tracks.meadow else nil
+	self.music = if track then track.music else nil
+	self.musicHammer = if track then track.hammer else nil
+	if not self.music then
+		return
+	end
+	self.music.TimePosition = 0
+	self.musicHammer.TimePosition = 0
+	self.music.Volume = if self.hammer then 0 else 1
+	self.musicHammer.Volume = if self.hammer then 1 else 0
+	if playing then
+		self.music:Play()
+		self.musicHammer:Play()
+	end
 end
 
 -- Starts the loop, or carries on from where pause() left it.

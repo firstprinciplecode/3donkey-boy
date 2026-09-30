@@ -1,74 +1,24 @@
 import { audioGraph } from './audio';
+import type { SkinName } from './levels/types';
+import { compileBars, SONGS, STEPS_PER_BAR, type Bar, type Step } from './song-data';
 
 /**
- * Background music: an original bouncy minor-key synth loop in the style of early-70s Moog pop
- * (think "Popcorn"). Notes are scheduled slightly ahead on the WebAudio clock so the groove stays
- * tight even when frames drop.
+ * Background music: an original bouncy synth loop in the style of early-70s Moog pop
+ * (think "Popcorn"). Every level shares the rhythm and the A tonic, and each one is written in
+ * its own mode so the colour note is on the beat: the major third, the flat second, the sharp
+ * fourth, the tritone. Meadow plays the original tune. Notes are scheduled slightly ahead on the WebAudio clock so the groove
+ * stays tight even when frames drop.
  */
 
-const BASE_BPM = 132;
-const MAX_BPM = 164;
+const MAX_BPM_MUL = 1.24;
 const LOOKAHEAD = 0.12;
 const TICK_MS = 25;
 const VOLUME = 0.55;
-const STEPS_PER_BAR = 16;
-
-/** One bar: 16 sixteenth-note slots for the lead ('.' = rest) plus the bass root. */
-interface Bar {
-  lead: string;
-  root: string;
-}
-
-const VERSE: Bar[] = [
-  { lead: 'A4 . E5 . A4 . C5 . A4 . E5 . D5 . C5 .', root: 'A2' },
-  { lead: 'B4 . A4 . G4 . A4 . E4 . . . A4 . . .', root: 'A2' },
-  { lead: 'F4 . C5 . F4 . A4 . F4 . C5 . B4 . A4 .', root: 'F2' },
-  { lead: 'G4 . D5 . G4 . B4 . D5 C5 B4 . G4 . . .', root: 'G2' },
-  { lead: 'A4 . E5 . A4 . C5 . A4 . E5 . D5 . C5 .', root: 'A2' },
-  { lead: 'B4 . C5 . D5 . E5 . F5 . E5 . D5 . C5 .', root: 'F2' },
-  { lead: 'D5 . F5 . D5 . A4 . B4 . C5 . D5 . B4 .', root: 'D2' },
-  { lead: 'E5 . . . B4 . G#4 . E4 . . . . . . .', root: 'E2' },
-];
-
-const CHORUS: Bar[] = [
-  { lead: 'C5 . G5 . E5 . G5 . C6 . G5 . E5 . G5 .', root: 'C3' },
-  { lead: 'B4 . G5 . D5 . G5 . B5 . A5 . G5 . D5 .', root: 'G2' },
-  { lead: 'A4 . E5 . C5 . E5 . A5 . G5 . E5 . C5 .', root: 'A2' },
-  { lead: 'B4 . E5 . G#4 . B4 . E5 . D5 . C5 . B4 .', root: 'E2' },
-  { lead: 'F4 . A4 . C5 . F5 . E5 . D5 . C5 . A4 .', root: 'F2' },
-  { lead: 'G4 . B4 . D5 . G5 . F5 . E5 . D5 . B4 .', root: 'G2' },
-  { lead: 'C5 . E5 . G5 . C6 . B5 . G5 . E5 . C5 .', root: 'C3' },
-  { lead: 'E5 . D5 . C5 . B4 . G#4 . B4 . E5 . . .', root: 'E2' },
-];
-
-const SONG = [...VERSE, ...CHORUS];
-
-const SEMITONES: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-
-function midi(name: string): number {
-  const m = /^([A-G])(#|b)?(\d)$/.exec(name);
-  if (!m) throw new Error(`bad note ${name}`);
-  const accidental = m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0;
-  return 12 * (Number(m[3]) + 1) + SEMITONES[m[1]] + accidental;
-}
-
 const freq = (note: number) => 440 * 2 ** ((note - 69) / 12);
 
-interface Step {
-  lead: number | null;
-  bass: number | null;
-}
-
-/** Flattened song: the lead as written, the bass bouncing root / octave on every eighth note. */
-const STEPS: Step[] = SONG.flatMap(({ lead, root }) => {
-  const slots = lead.split(' ');
-  if (slots.length !== STEPS_PER_BAR) throw new Error(`bar needs ${STEPS_PER_BAR} slots: ${lead}`);
-  const r = midi(root);
-  return slots.map((slot, i) => ({
-    lead: slot === '.' ? null : midi(slot),
-    bass: i % 2 === 0 ? r + (i % 4 === 2 ? 12 : 0) : null,
-  }));
-});
+const SCORES = Object.fromEntries(
+  Object.entries(SONGS).map(([skin, theme]) => [skin, compileBars(theme.bars)]),
+) as Record<SkinName, Step[]>;
 
 interface Nodes {
   bus: GainNode;
@@ -98,8 +48,8 @@ function buildNodes(ctx: AudioContext, master: GainNode): Nodes {
   return { bus, echo, noise };
 }
 
-/** Plucky filtered square + detuned saw: the Moog-ish lead. */
-function lead(ctx: AudioContext, out: AudioNode, t: number, note: number): void {
+/** Plucky filtered pair of oscillators, one detuned: the Moog-ish lead. */
+function lead(ctx: AudioContext, out: AudioNode, t: number, note: number, theme: (typeof SONGS)[SkinName]): void {
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
   filter.Q.value = 6;
@@ -112,7 +62,8 @@ function lead(ctx: AudioContext, out: AudioNode, t: number, note: number): void 
   gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
   filter.connect(gain).connect(out);
 
-  for (const [type, detune] of [['square', 0], ['sawtooth', 8]] as const) {
+  const [first, second] = theme.voices;
+  for (const [type, detune] of [[first, 0], [second, theme.detune]] as const) {
     const osc = ctx.createOscillator();
     osc.type = type;
     osc.frequency.value = freq(note);
@@ -175,7 +126,13 @@ class Music {
   private nodes: Nodes | null = null;
   private step = 0;
   private nextTime = 0;
-  private bpm = BASE_BPM;
+  /** Step currently sounding, or -1 when nothing is. */
+  private head = -1;
+  private marks: { index: number; time: number }[] = [];
+  private skin: SkinName = 'meadow';
+  private steps: Step[] = SCORES.meadow;
+  private speedMul = 1;
+  private bpm = SONGS.meadow.bpm;
   private transpose = 0;
 
   private get stepDuration(): number {
@@ -202,11 +159,54 @@ class Music {
   stop(): void {
     this.pause();
     this.step = 0;
+    this.head = -1;
+    this.marks = [];
+  }
+
+  /** Next press of start() begins at this step. */
+  cue(index: number): void {
+    const length = Math.max(1, this.steps.length);
+    this.step = ((index % length) + length) % length;
+    this.head = -1;
+    this.marks = [];
+  }
+
+  /** Which theme is loaded, whether it is running, and the step you can hear. */
+  playhead(): { skin: SkinName; index: number; playing: boolean } {
+    return { skin: this.skin, index: this.head, playing: this.timer !== null };
+  }
+
+  /** Switches to a level's tune, tempo and lead tone. The song keeps its place in the bar. */
+  setTheme(skin: SkinName): void {
+    this.skin = skin;
+    this.steps = SCORES[skin];
+    this.applyTempo();
+  }
+
+  /**
+   * Plays these bars for one theme immediately. Returns an error message when a note
+   * can't be read, and leaves the current tune in place.
+   */
+  setBars(skin: SkinName, bars: Bar[]): string | null {
+    try {
+      const steps = compileBars(bars);
+      SONGS[skin].bars = bars.map((bar) => ({ lead: bar.lead, root: bar.root }));
+      SCORES[skin] = steps;
+      if (this.skin === skin) this.steps = steps;
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : 'Bad notes';
+    }
   }
 
   /** Nudges the tempo up with game speed (1 = normal). */
   setSpeed(mul: number): void {
-    this.bpm = Math.min(MAX_BPM, BASE_BPM * (1 + (mul - 1) * 0.35));
+    this.speedMul = mul;
+    this.applyTempo();
+  }
+
+  private applyTempo(): void {
+    this.bpm = SONGS[this.skin].bpm * Math.min(MAX_BPM_MUL, 1 + (this.speedMul - 1) * 0.35);
     if (this.nodes) this.nodes.echo.delayTime.value = this.stepDuration * 3;
   }
 
@@ -220,16 +220,20 @@ class Music {
     // If the timer was throttled (background tab), skip ahead rather than burst-play the backlog.
     if (this.nextTime < ctx.currentTime) this.nextTime = ctx.currentTime + 0.02;
     while (this.nextTime < ctx.currentTime + LOOKAHEAD) {
+      this.marks.push({ index: this.step, time: this.nextTime });
       this.playStep(ctx, this.nodes, this.step, this.nextTime);
       this.nextTime += this.stepDuration;
-      this.step = (this.step + 1) % STEPS.length;
+      this.step = (this.step + 1) % this.steps.length;
     }
+    const now = ctx.currentTime;
+    while (this.marks.length > 1 && this.marks[1].time <= now) this.marks.shift();
+    if (this.marks.length > 0 && this.marks[0].time <= now) this.head = this.marks[0].index;
   }
 
   private playStep(ctx: AudioContext, nodes: Nodes, index: number, t: number): void {
-    const { lead: leadNote, bass: bassNote } = STEPS[index];
+    const { lead: leadNote, bass: bassNote } = this.steps[index];
     const beat = index % STEPS_PER_BAR;
-    if (leadNote !== null) lead(ctx, nodes.bus, t, leadNote + this.transpose);
+    if (leadNote !== null) lead(ctx, nodes.bus, t, leadNote + this.transpose, SONGS[this.skin]);
     if (bassNote !== null) bass(ctx, nodes.bus, t, bassNote);
     if (beat % 8 === 0) kick(ctx, nodes.bus, t);
     if (beat % 8 === 4) noiseHit(ctx, nodes.bus, nodes.noise, t, 'bandpass', 1800, 0.12, 0.09);
