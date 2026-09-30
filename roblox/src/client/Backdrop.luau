@@ -99,7 +99,7 @@ local function steppedCloud(vb, f, y: number, size: number, rand: Rand)
 		local u = (rand() - 0.5) * size * 0.2 + i * size * 0.08
 		f:block(vb, u, y + i * size * 0.22, i * 0.2, w, size * 0.22, d, if i % 2 == 1 then C.white else C.cream)
 	end
-	f:block(vb, -size * 0.45, y, -0.1, size * 0.3, size * 0.15, size * 0.4, C.creamDark)
+	f:block(vb, -size * 0.45, y - 0.05, -0.1, size * 0.3, size * 0.15, size * 0.4, C.creamDark)
 end
 
 -- Tiny coloured cubes floating round a cloud, like the poster's sprinkles.
@@ -143,7 +143,7 @@ local function rainbowTrail(vb, f, y: number, rand: Rand)
 	local dir = if rand() < 0.5 then 1 else -1
 	for s = 0, steps - 1 do
 		for i, color in RAINBOW do
-			f:glow(vb, dir * (s * 0.9), y - s * 0.9 - (i - 1) * 0.28, 0, 1.0, 0.28, 0.3, color)
+			f:glow(vb, dir * (s * 0.9), y - s * 0.9 - (i - 1) * 0.28, 0, 0.9, 0.28, 0.3, color)
 		end
 	end
 	steppedCloud(vb, f, y - 0.2, 5, rand)
@@ -176,8 +176,8 @@ local function castleMonster(vb, f, bottom: number, height: number)
 	f:glow(vb, 1.3, faceY - 0.1, front - 0.06, 0.5, 0.6, 0.06, C.pink)
 	f:box(vb, 0, faceY - 2.2, front, 3.4, 1.4, 0.1, C.black)
 	for i = 0, 4 do
-		f:box(vb, -1.36 + i * 0.68, faceY - 1.7, front - 0.06, 0.4, 0.4, 0.06, C.cream)
-		f:box(vb, -1.02 + i * 0.68, faceY - 2.7, front - 0.06, 0.4, 0.4, 0.06, C.cream)
+		f:box(vb, -1.36 + i * 0.68, faceY - 1.72, front - 0.06, 0.4, 0.4, 0.06, C.cream)
+		f:box(vb, -1.02 + i * 0.68, faceY - 2.68, front - 0.06, 0.4, 0.4, 0.06, C.cream)
 	end
 	f:cone(vb, -half + 0.6, top, 0, 0.8, 4, C.cream)
 	f:cone(vb, half - 0.6, top, 0, 0.8, 4, C.cream)
@@ -293,7 +293,7 @@ function Backdrop.new(level, skin, parent: Instance)
 		local r = 80 + rand() * 8
 		local cx, cz = math.sin(a) * r, math.cos(a) * r
 		at(cx, cz)
-		castleMonster(vb, facingCentre(cx, cz), -22, 44 + math.floor(rand() * 8))
+		castleMonster(vb, facingCentre(cx, cz), -22.5, 44 + math.floor(rand() * 8))
 	end
 	for _ = 1, 3 do
 		local x, z = around(rand, 50, 62)

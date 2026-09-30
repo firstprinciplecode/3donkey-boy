@@ -138,7 +138,7 @@ function limeBall(vb: VoxelBuilder, f: Frame, yCenter: number, r: number, u = 0)
   const d = r * 2;
   f.box(vb, u, yCenter, 0, d, d * 0.62, d * 0.62, COLORS.lime);
   f.box(vb, u, yCenter, 0, d * 0.62, d, d * 0.62, COLORS.lime);
-  f.box(vb, u, yCenter, 0, d * 0.62, d * 0.62, d, COLORS.limeDark);
+  f.box(vb, u, yCenter, 0, d * 0.6, d * 0.6, d, COLORS.limeDark);
   f.box(vb, u - r * 0.25, yCenter + r * 0.3, r + 0.02, d * 0.2, d * 0.2, 0.04, COLORS.cream);
 }
 
@@ -166,7 +166,7 @@ const DECOR: Record<DecorKind, DecorFn> = {
     f.block(vb, 0, y, 0, 0.8, 1.6, 0.7, COLORS.teal);
     f.box(vb, 0, y + 1.1, 0.36, 0.6, 0.45, 0.02, COLORS.black);
     f.box(vb, 0, y + 1.1, 0.37, 0.46, 0.3, 0.02, COLORS.cyan);
-    f.box(vb, 0, y + 0.75, 0.42, 0.8, 0.12, 0.2, COLORS.pink);
+    f.box(vb, 0, y + 0.75, 0.42, 0.84, 0.12, 0.2, COLORS.pink);
     f.block(vb, 0, y + 1.6, 0, 0.86, 0.26, 0.76, COLORS.yellow);
   },
   cart(vb, f, y) {
@@ -178,7 +178,7 @@ const DECOR: Record<DecorKind, DecorFn> = {
     f.block(vb, 0.7, y + 0.9, 0, 0.08, 0.95, 0.08, COLORS.cream);
     f.block(vb, 0, y + 1.85, 0, 1.4, 0.32, 0.5, COLORS.tan);
     f.block(vb, 0, y + 2.0, 0, 1.65, 0.26, 0.3, COLORS.red);
-    f.block(vb, 0, y + 2.26, 0, 1.2, 0.05, 0.12, COLORS.yellow);
+    f.block(vb, 0, y + 2.26, 0, 1.2, 0.06, 0.12, COLORS.yellow);
   },
   cactus(vb, f, y, rand) {
     const h = 1.2 + rand() * 0.8;
@@ -191,9 +191,9 @@ const DECOR: Record<DecorKind, DecorFn> = {
   },
   palm(vb, f, y, rand) {
     const h = 1.8 + rand() * 0.6;
-    for (let i = 0; i < 5; i++) f.block(vb, i * 0.04, y + (i * h) / 5, 0, 0.22, h / 5 + 0.02, 0.22, i % 2 ? COLORS.brown : COLORS.tan);
+    for (let i = 0; i < 5; i++) f.block(vb, i * 0.04, y + (i * h) / 5, 0, 0.22, h / 5, 0.22, i % 2 ? COLORS.brown : COLORS.tan);
     f.box(vb, 0.2, y + h, 0, 1.4, 0.1, 0.3, COLORS.leaf);
-    f.box(vb, 0.2, y + h, 0, 0.3, 0.1, 1.2, COLORS.leaf);
+    f.box(vb, 0.2, y + h, 0, 0.32, 0.1, 1.2, COLORS.leaf);
     f.box(vb, 0.2, y + h + 0.1, 0, 0.8, 0.1, 0.8, COLORS.grass);
     f.block(vb, 0.1, y + h - 0.25, 0.1, 0.16, 0.16, 0.16, COLORS.brown);
   },
@@ -300,7 +300,7 @@ const DECOR: Record<DecorKind, DecorFn> = {
     const s = 0.8 + rand() * 0.3;
     const pot = [COLORS.pink, COLORS.teal, COLORS.yellow, COLORS.terracotta][Math.floor(rand() * 4)];
     f.block(vb, 0, y, 0, 0.44, 0.34, 0.44, pot);
-    f.box(vb, 0, y + 0.3, 0, 0.5, 0.08, 0.5, COLORS.cream);
+    f.box(vb, 0, y + 0.31, 0, 0.5, 0.1, 0.5, COLORS.cream);
     f.block(vb, 0, y + 0.34, 0, 0.08, 0.3 * s, 0.08, COLORS.brown);
     f.cone(vb, 0, y + 0.5 * s, 0, 0.3 * s, 0.9 * s, COLORS.grassDark);
     f.block(vb, 0, y + 1.35 * s, 0, 0.1, 0.1, 0.1, COLORS.yellow);

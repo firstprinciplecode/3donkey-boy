@@ -30,7 +30,7 @@ export function steppedCloud(vb: VoxelBuilder, f: Frame, y: number, size: number
     const u = (rand() - 0.5) * size * 0.2 + i * size * 0.08;
     f.block(vb, u, y + i * size * 0.22, i * 0.2, w, size * 0.22, d, i % 2 ? 0xffffff : COLORS.cream);
   }
-  f.block(vb, -size * 0.45, y, -0.1, size * 0.3, size * 0.15, size * 0.4, COLORS.creamDark);
+  f.block(vb, -size * 0.45, y - 0.05, -0.1, size * 0.3, size * 0.15, size * 0.4, COLORS.creamDark);
 }
 
 /** Tiny coloured cubes floating round a cloud, like the poster's sprinkles. */
@@ -72,7 +72,7 @@ export function rainbowTrail(vb: VoxelBuilder, f: Frame, y: number, rand: Rand):
   const dir = rand() < 0.5 ? 1 : -1;
   for (let s = 0; s < steps; s++) {
     RAINBOW.forEach((color, i) => {
-      f.glow(vb, dir * (s * 0.9), y - s * 0.9 - i * 0.28, 0, 1.0, 0.28, 0.3, color);
+      f.glow(vb, dir * (s * 0.9), y - s * 0.9 - i * 0.28, 0, 0.9, 0.28, 0.3, color);
     });
   }
   steppedCloud(vb, f, y - 0.2, 5, rand);
@@ -102,8 +102,8 @@ export function castleMonster(vb: VoxelBuilder, f: Frame, bottom: number, height
   f.glow(vb, 1.3, faceY - 0.1, front - 0.06, 0.5, 0.6, 0.06, COLORS.pink);
   f.box(vb, 0, faceY - 2.2, front, 3.4, 1.4, 0.1, COLORS.black);
   for (let i = 0; i < 5; i++) {
-    f.box(vb, -1.36 + i * 0.68, faceY - 1.7, front - 0.06, 0.4, 0.4, 0.06, COLORS.cream);
-    f.box(vb, -1.02 + i * 0.68, faceY - 2.7, front - 0.06, 0.4, 0.4, 0.06, COLORS.cream);
+    f.box(vb, -1.36 + i * 0.68, faceY - 1.72, front - 0.06, 0.4, 0.4, 0.06, COLORS.cream);
+    f.box(vb, -1.02 + i * 0.68, faceY - 2.68, front - 0.06, 0.4, 0.4, 0.06, COLORS.cream);
   }
   f.cone(vb, -half + 0.6, top, 0, 0.8, 4, COLORS.cream);
   f.cone(vb, half - 0.6, top, 0, 0.8, 4, COLORS.cream);
@@ -118,7 +118,7 @@ export function buildPosterScenery(vb: VoxelBuilder, rand: Rand): void {
   const r = 80 + rand() * 8;
   const cx = Math.sin(a) * r;
   const cz = Math.cos(a) * r;
-  castleMonster(vb, facingCentre(cx, cz), -22, 44 + Math.floor(rand() * 8));
+  castleMonster(vb, facingCentre(cx, cz), -22.5, 44 + Math.floor(rand() * 8));
 
   for (let i = 0; i < 3; i++) {
     const { x, z } = spot(rand, 50, 62);
