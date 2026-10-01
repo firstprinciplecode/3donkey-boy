@@ -128,6 +128,35 @@ function HudKit.arrow(parent: Instance, direction: string, size: number?, color:
 end
 
 -- A little figure mid-jump, arms up and legs apart, above a short ground line.
+-- A thin open chevron, two rounded strokes meeting at a tip, pointing `direction`.
+function HudKit.chevron(parent: Instance, direction: string, leg: number, thickness: number): Frame
+	local reach = leg * math.cos(math.rad(45))
+	local holder = Instance.new("Frame")
+	holder.BackgroundTransparency = 1
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Size = UDim2.fromOffset(reach * 2, reach * 2)
+	holder.Rotation = ({ right = 0, left = 180, up = -90, down = 90 })[direction] or 0
+	holder.Parent = parent
+	for _, rotation in { -45, 45 } do
+		-- Pivot on the tip, so the strokes stay joined when they turn.
+		local pivot = Instance.new("Frame")
+		pivot.BackgroundTransparency = 1
+		pivot.AnchorPoint = Vector2.new(0.5, 0.5)
+		pivot.Position = UDim2.new(0.5, reach / 2, 0.5, 0)
+		pivot.Size = UDim2.fromOffset(0, 0)
+		pivot.Rotation = rotation
+		pivot.Parent = holder
+		local stroke = Instance.new("Frame")
+		stroke.BackgroundColor3 = HudKit.INK
+		stroke.BorderSizePixel = 0
+		stroke.AnchorPoint = Vector2.new(1 - thickness / 2 / (leg + thickness), 0.5)
+		stroke.Size = UDim2.fromOffset(leg + thickness, thickness)
+		stroke.Parent = pivot
+		Instance.new("UICorner", stroke).CornerRadius = UDim.new(1, 0)
+	end
+	return holder
+end
+
 function HudKit.jumpMark(parent: Instance): Frame
 	local root = Instance.new("Frame")
 	root.BackgroundTransparency = 1

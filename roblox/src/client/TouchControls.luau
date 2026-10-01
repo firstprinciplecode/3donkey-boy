@@ -9,12 +9,17 @@ local UserInputService = game:GetService("UserInputService")
 local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
 
 local HudKit = require(script.Parent.HudKit)
+local ImageAssets = require(script.Parent.ImageAssets)
 
 local C = Config.COLORS
 -- Fraction of the pad's radius the thumb has to travel before a direction engages.
 local ENGAGE = 0.3
-local PAD_SIZE = 148
-local JUMP_SIZE = 112
+local PAD_SIZE = 132
+local JUMP_SIZE = 110
+-- Both circles' centres sit on one line this far up from the bottom, and this far in from the sides.
+local CENTRE_UP = 118
+local PAD_IN = 94
+local JUMP_IN = 80
 
 export type Handlers = {
 	setHeld: (direction: string, on: boolean) -> (),
@@ -35,11 +40,11 @@ local function screenPoint(input: InputObject): Vector2
 	return Vector2.new(input.Position.X + inset.X, input.Position.Y + inset.Y)
 end
 
--- Frosted glass: a soft, semi-see-through fill with no border or drop. Roblox can't blur the game
--- behind a single button, so a light top-to-bottom sheen stands in for the blur.
-local function hitTarget(parent: Instance, size: number, tint: Color3): (Frame, Frame)
-	local wrap, face = HudKit.raised(parent, tint, UDim2.fromOffset(size, size), size / 2, 0, 0)
-	face.BackgroundTransparency = 0.45
+-- Frosted glass: a plain white circle at 40% with no border or drop. Roblox can't blur the game
+-- behind a GUI element, so it's the web design minus the background blur.
+local function hitTarget(parent: Instance, size: number): (Frame, Frame)
+	local wrap, face = HudKit.raised(parent, C.white, UDim2.fromOffset(size, size), size / 2, 0, 0)
+	face.BackgroundTransparency = 0.6
 	face.Active = true
 	local shadow = wrap:FindFirstChildWhichIsA("Frame")
 	if shadow and shadow ~= face then
@@ -49,14 +54,23 @@ local function hitTarget(parent: Instance, size: number, tint: Color3): (Frame, 
 	if stroke then
 		stroke:Destroy()
 	end
-	local sheen = Instance.new("UIGradient")
-	sheen.Rotation = 90
-	sheen.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.3),
-		NumberSequenceKeypoint.new(1, 0.5),
-	})
-	sheen.Parent = face
 	return wrap, face
+end
+
+-- The Figma jumping figure once it's uploaded, a drawn stand-in until then.
+local function jumpIcon(parent: Instance)
+	if ImageAssets.jump ~= "" then
+		local icon = Instance.new("ImageLabel")
+		icon.BackgroundTransparency = 1
+		icon.AnchorPoint = Vector2.new(0.5, 0.5)
+		icon.Position = UDim2.fromScale(0.5, 0.5)
+		icon.Size = UDim2.fromOffset(22, 24)
+		icon.Image = ImageAssets.jump
+		icon.Parent = parent
+		return
+	end
+	local mark = HudKit.jumpMark(parent)
+	Instance.new("UIScale", mark).Scale = 0.52
 end
 
 function TouchControls.new(gui: Instance, handlers: Handlers)
@@ -73,28 +87,30 @@ function TouchControls.new(gui: Instance, handlers: Handlers)
 	root.Parent = gui
 	self.root = root
 
-	local padWrap, pad = hitTarget(root, PAD_SIZE, C.cream)
-	padWrap.AnchorPoint = Vector2.new(0, 1)
-	padWrap.Position = UDim2.new(0, 20, 1, -44)
+	local padWrap, pad = hitTarget(root, PAD_SIZE)
+	padWrap.AnchorPoint = Vector2.new(0.5, 0.5)
+	padWrap.Position = UDim2.new(0, PAD_IN, 1, -CENTRE_UP)
+	self.padWrap = padWrap
 	self.pad = pad
 	self.arrows = {}
 	local spots = {
-		up = UDim2.fromScale(0.5, 0.16),
-		down = UDim2.fromScale(0.5, 0.84),
-		left = UDim2.fromScale(0.16, 0.5),
-		right = UDim2.fromScale(0.84, 0.5),
+		up = UDim2.fromScale(0.5, 0.17),
+		down = UDim2.fromScale(0.5, 0.83),
+		left = UDim2.fromScale(0.17, 0.5),
+		right = UDim2.fromScale(0.83, 0.5),
 	}
 	for direction, at in spots do
-		local arrow = HudKit.arrow(pad, direction, 26)
+		local arrow = HudKit.chevron(pad, direction, 7.5, 2)
 		arrow.Position = at
 		self.arrows[direction] = arrow
 	end
 	self:_lightArrows()
 
-	local jumpWrap, jump = hitTarget(root, JUMP_SIZE, C.orange)
-	jumpWrap.AnchorPoint = Vector2.new(1, 1)
-	jumpWrap.Position = UDim2.new(1, -24, 1, -48)
-	HudKit.jumpMark(jump)
+	local jumpWrap, jump = hitTarget(root, JUMP_SIZE)
+	jumpWrap.AnchorPoint = Vector2.new(0.5, 0.5)
+	jumpWrap.Position = UDim2.new(1, -JUMP_IN, 1, -CENTRE_UP)
+	self.jumpWrap = jumpWrap
+	jumpIcon(jump)
 	self:_button(jump, "jump")
 
 	local menu = HudKit.row(root, 4, 44)
@@ -151,6 +167,12 @@ function TouchControls:setMuted(muted: boolean)
 	end
 end
 
+-- Hides just the direction pad and jump button, leaving pause and mute, for clean screenshots.
+function TouchControls:setPadHidden(hidden: boolean)
+	self.padWrap.Visible = not hidden
+	self.jumpWrap.Visible = not hidden
+end
+
 function TouchControls:setVisible(on: boolean)
 	self.root.Visible = on
 	if not on then
@@ -178,7 +200,7 @@ function TouchControls:_lightArrows()
 	for direction, arrow in self.arrows do
 		for _, bar in arrow:GetDescendants() do
 			if bar:IsA("Frame") and bar.BackgroundTransparency < 1 then
-				bar.BackgroundTransparency = if self.held[direction] then 0 else 0.45
+				bar.BackgroundTransparency = if self.held[direction] then 0 else 0.3
 			end
 		end
 	end

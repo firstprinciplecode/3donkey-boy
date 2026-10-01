@@ -50,9 +50,11 @@ local PAD: { [Enum.KeyCode]: string } = {
 	[Enum.KeyCode.ButtonX] = "pause",
 	[Enum.KeyCode.ButtonY] = "mute",
 }
--- Testing aid: skip ahead a level. Only bound in Studio, never in a published game.
+-- Testing aids, only bound in Studio and never in a published game: skip ahead a level, and hide
+-- the touch pad and jump button for clean mobile screenshots in the device emulator.
 if RunService:IsStudio() then
 	KEYS[Enum.KeyCode.N] = "nextLevel"
+	KEYS[Enum.KeyCode.H] = "cleanShot"
 end
 
 -- Every letter key, so initials can be typed. While not typing, the WASD ones still move.
@@ -79,9 +81,19 @@ local function release(set)
 	end
 end
 
+local touch
+local setMode: (string?) -> ()
+local cleanShot = false
+
 local function press(action: string, letter: string?)
 	if action == "nextLevel" then
 		popscotch:skipLevel()
+	elseif action == "cleanShot" then
+		cleanShot = not cleanShot
+		touch:setPadHidden(cleanShot)
+		if cleanShot then
+			setMode("touch")
+		end
 	else
 		popscotch:press(action, letter)
 	end
@@ -153,7 +165,7 @@ end
 ContextActionService:BindActionAtPriority("PopscotchControls", onButton, false, Enum.ContextActionPriority.High.Value, table.unpack(codes))
 ContextActionService:BindActionAtPriority("PopscotchStick", onStick, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Thumbstick1)
 
-local touch = TouchControls.new(popscotch.hud.gui, {
+touch = TouchControls.new(popscotch.hud.gui, {
 	setHeld = function(direction, on)
 		sources.touch[direction] = on
 	end,
@@ -174,7 +186,7 @@ local function modeFor(inputType: Enum.UserInputType): string?
 	end
 	return nil
 end
-local function setMode(mode: string?)
+function setMode(mode: string?)
 	if not mode then
 		return
 	end
@@ -185,6 +197,10 @@ local function setMode(mode: string?)
 	popscotch:setInputMode(mode)
 end
 UserInputService.LastInputTypeChanged:Connect(function(inputType)
+	-- Pressing H for a clean shot mustn't flip the emulated phone over to keyboard prompts.
+	if cleanShot and inputType == Enum.UserInputType.Keyboard then
+		return
+	end
 	setMode(modeFor(inputType))
 end)
 if GuiService:IsTenFootInterface() or (UserInputService.GamepadEnabled and not UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled) then

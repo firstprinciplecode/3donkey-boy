@@ -1,13 +1,15 @@
+import chevronIcon from './assets/touch/chevron.svg';
+import jumpIcon from './assets/touch/jump.svg';
 import type { Input } from './input';
+
+const arrow = (side: string, code: string) =>
+  `<span class="touch__arrow touch__arrow--${side}" data-dir="${code}"><img src="${chevronIcon}" alt="" /></span>`;
 
 const MARKUP = `
 <div class="touch__pad" data-pad aria-label="Direction pad">
-  <span class="touch__arrow touch__arrow--up" data-dir="ArrowUp"></span>
-  <span class="touch__arrow touch__arrow--down" data-dir="ArrowDown"></span>
-  <span class="touch__arrow touch__arrow--left" data-dir="ArrowLeft"></span>
-  <span class="touch__arrow touch__arrow--right" data-dir="ArrowRight"></span>
+  ${arrow('up', 'ArrowUp')}${arrow('down', 'ArrowDown')}${arrow('left', 'ArrowLeft')}${arrow('right', 'ArrowRight')}
 </div>
-<button type="button" class="touch__jump" data-code="Space">Jump</button>
+<button type="button" class="touch__jump" data-code="Space" aria-label="Jump"><img src="${jumpIcon}" alt="" /></button>
 <div class="touch__menu">
   <button type="button" class="touch__small" data-code="KeyP" aria-label="Pause">II</button>
   <button type="button" class="touch__small" data-code="KeyM" aria-label="Mute">&#9835;</button>
