@@ -11,12 +11,13 @@ import { Ghost } from './entities/ghost';
 import { Item, makeLetter } from './entities/items';
 import { Player } from './entities/player';
 import { Totem } from './entities/totem';
+import { TOTEM_NAMES } from './entities/totemLooks';
 import { Frame } from './frame';
 import { castleMonster, rainbowBanner, rainbowTrail, steppedCloud } from './posterScenery';
 import { dropParts, jetParts, ledgeParts } from './hazards';
 import { Level } from './level';
 import { LEVELS } from './levels/defs';
-import type { CrawlerLook, DecorKind, DropLook } from './levels/skins';
+import type { CrawlerLook, DecorKind, DropLook, TotemLook } from './levels/skins';
 import type { SkinName } from './levels/types';
 import { springParts } from './obstacles';
 import {
@@ -387,8 +388,14 @@ const sections: { title: string; cells: Entry[] }[] = [
     title: 'Ground monsters',
     cells: [
       ...CRAWLER_NAMES.map(([look, name]) => ({ name, object: crawler(look) })),
-      { name: 'spike totem', object: new Totem(level, { ring: 0, from: [0, 0], to: [0, 0] }, 0).group },
     ],
+  },
+  {
+    title: 'Totems',
+    cells: (Object.keys(TOTEM_NAMES) as TotemLook[]).map((look) => ({
+      name: TOTEM_NAMES[look],
+      object: new Totem(level, { ring: 0, from: [0, 0], to: [0, 0] }, 0, look).group,
+    })),
   },
   {
     title: 'Pickups',

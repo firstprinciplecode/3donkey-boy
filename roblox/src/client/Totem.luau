@@ -4,55 +4,52 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared.Config)
+local TotemLooks = require(Shared.TotemLooks)
 
 local Voxel = require(script.Parent.Voxel)
 
-local C = Config.COLORS
 local STUD = Config.STUD
 local TOTEM = Config.TOTEM
-local CONE_STEPS = 3
-
--- { group, size, centre in the group's frame, colour }. The face is on the outward (+z) side.
-local PARTS = {}
-local function add(group: string, sx: number, sy: number, sz: number, color: Color3, x: number, y: number, z: number)
-	table.insert(PARTS, { group, Vector3.new(sx, sy, sz), Vector3.new(x, y, z), color })
-end
--- Stepped stand-in for the web's cones, standing on `yBottom`.
-local function cone(group: string, radius: number, height: number, color: Color3, x: number, yBottom: number, z: number, steps: number?)
-	local n = steps or CONE_STEPS
-	local step = height / n
-	for i = 0, n - 1 do
-		local w = 2 * radius * (1 - i / n)
-		add(group, w, step, w, color, x, yBottom + (i + 0.5) * step, z)
-	end
-end
-
-for i, x in { -0.22, 0.22 } do
-	local leg = if i == 1 then "legL" else "legR"
-	add(leg, 0.2, 0.55, 0.22, C.black, 0, 0, 0)
-	add(leg, 0.28, 0.1, 0.34, C.cream, 0, -0.23, 0.04)
-	add("pupil", 0.1, 0.12, 0.05, C.black, x, 1.3, 0.43)
-end
-add("body", 0.96, 1.1, 0.8, C.black, 0, 1.1, 0)
-add("body", 0.76, 0.3, 0.66, C.charcoal, 0, 1.78, 0)
-cone("body", 0.2, 0.62, C.cream, -0.26, 1.93, 0)
-cone("body", 0.2, 0.62, C.cream, 0.26, 1.93, 0)
-cone("body", 0.1, 0.3, C.pink, 0, 1.93, 0)
-add("body", 0.26, 0.26, 0.04, C.pink, -0.22, 1.32, 0.41)
-add("body", 0.26, 0.26, 0.04, C.pink, 0.22, 1.32, 0.41)
-add("body", 0.58, 0.2, 0.04, C.red, 0, 0.88, 0.41)
-for i = 0, 3 do
-	cone("body", 0.06, 0.12, C.cream, -0.21 + i * 0.14, 0.9, 0.43, 2)
-end
 
 local LEG_X = { legL = -0.22, legR = 0.22 }
+
+-- Flattens a look into { group, size, centre in the group's frame, colour }, with each leg part
+-- repeated for both legs and cones turned into stepped stacks standing on their `at`.
+local function flatten(look: string)
+	local parts = {}
+	for _, p in TotemLooks[look] or TotemLooks.spike do
+		local groups = if p.group == "leg" then { "legL", "legR" } else { p.group }
+		for _, group in groups do
+			if p.shape == "box" then
+				table.insert(parts, { group, p.size, p.at, p.color })
+			else
+				local radius, height = p.size.X, p.size.Y
+				local n = if radius < 0.08 then 2 else 3
+				local step = height / n
+				for i = 0, n - 1 do
+					local w = 2 * radius * (1 - i / n)
+					table.insert(parts, { group, Vector3.new(w, step, w), p.at + Vector3.new(0, (i + 0.5) * step, 0), p.color })
+				end
+			end
+		end
+	end
+	return parts
+end
+
+local PARTS_BY_LOOK = {}
+local function partsFor(look: string)
+	PARTS_BY_LOOK[look] = PARTS_BY_LOOK[look] or flatten(look)
+	return PARTS_BY_LOOK[look]
+end
 
 local Totem = {}
 Totem.__index = Totem
 
-function Totem.new(level, patrol, speed: number, parent: Instance)
+function Totem.new(level, patrol, speed: number, parent: Instance, look: string?)
 	local self = setmetatable({}, Totem)
+	self.spec = partsFor(look or "spike")
 	self.level = level
 	self.ring = patrol.ring
 	self.s0 = level:sOf(patrol.ring, patrol.from[1], patrol.from[2])
@@ -81,7 +78,7 @@ function Totem.new(level, patrol, speed: number, parent: Instance)
 	self.model = Instance.new("Model")
 	self.model.Name = "Totem"
 	self.parts = {}
-	for _, spec in PARTS do
+	for _, spec in self.spec do
 		table.insert(self.parts, Voxel.part(self.model, spec[2], spec[4]))
 	end
 	self.cframes = table.create(#self.parts)
@@ -164,7 +161,7 @@ function Totem:render()
 	local sx, sy = 1 + k * 0.12, 1 - k * 0.18
 	local root = CFrame.new(self.base * STUD) * CFrame.Angles(0, self.side * math.pi / 2, 0)
 	local body = root * CFrame.Angles(0, 0, if walking then math.sin(self.t * 9) * 0.04 else 0)
-	for i, spec in PARTS do
+	for i, spec in self.spec do
 		local group, at = spec[1], spec[3]
 		local frame
 		if group == "body" or group == "pupil" then

@@ -134,6 +134,16 @@ for _ = 1, 120 * 6 do
 end
 totem:render()
 assert(hopped, "totem should hop within six seconds")
+for skin, look in Skins do
+	assert(require({ __module = "shared/TotemLooks" })[look.totem], `{skin} has no totem look "{look.totem}"`)
+	local themed = Totem.new(level, level.def.totems[1], 1.4, workspace, look.totem)
+	themed:update(1 / 60, obstacles)
+	themed:render()
+	themed:destroy()
+end
+for i, def in Levels do
+	assert(def.totems and #def.totems > 0, `level {i} has no totem`)
+end
 
 -- A hedgehog paces its stretch, curling into a ball now and then.
 local Crawler = require({ __module = "client/Crawler" })
@@ -455,11 +465,11 @@ popscotch.barrels:render(1 / 60)
 assert(ball.radius > 0.42 and ball.radius <= 0.42 * 1.85 + 1e-9, `snowballs grow as they roll ({ball.radius})`)
 assert(math.abs(ball.parts[1].Size.X - ball.radius * 2 * 2) < 0.05, "the snowball is drawn at its size")
 
--- Serpent tomb: fire jets erupt on a beat, snakes rear up, boulders.
+-- Serpent tomb: fire jets erupt on a beat, snakes rear up, boulders, a mummy on the back of the ground ring.
 popscotch.round = 6
 popscotch:_startRound(true)
 assert(popscotch.level.def.name == "serpent tomb" and popscotch.barrels.look == "boulder", "level 6 is serpent tomb")
-assert(#popscotch.crawlers == 5 and #popscotch.hazards.jets == 5 and #popscotch.totems == 0, "tomb has snakes and jets, no totem")
+assert(#popscotch.crawlers == 5 and #popscotch.hazards.jets == 5 and #popscotch.totems == 1, "tomb has snakes, jets and a mummy")
 local tombHaz = popscotch.hazards
 local erupted, jetDanger = 0, false
 for _ = 1, 120 * 4 do

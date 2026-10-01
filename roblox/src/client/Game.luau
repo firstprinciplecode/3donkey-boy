@@ -347,8 +347,9 @@ function Game:_spawnTotems()
 	end
 	table.clear(self.totems)
 	local speed = TOTEM.speed * self.barrels.speedMul
+	local look = Skins[self.level.def.skin].totem
 	for _, patrol in self.level.def.totems or {} do
-		table.insert(self.totems, Totem.new(self.level, patrol, speed, self.enemies))
+		table.insert(self.totems, Totem.new(self.level, patrol, speed, self.enemies, look))
 	end
 end
 

@@ -448,6 +448,7 @@ local TOMB = {
 		{ ring = 3, from = { 0, 4 }, to = { 0, 9 } },
 		{ ring = 4, from = { 0, -6 }, to = { 3, 6 } },
 	},
+	totems = { { ring = 0, from = { 2, -8 }, to = { 2, 2 } } },
 }
 
 -- Summer volcano: lava jets, falling lava rocks, scorpions, spring jumps, a switch gate and a key door. Uses everything.

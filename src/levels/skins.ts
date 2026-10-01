@@ -26,6 +26,7 @@ export type DecorKind =
   | 'pottree';
 
 export type CrawlerLook = 'hedgehog' | 'penguin' | 'snake' | 'scorpion';
+export type TotemLook = 'spike' | 'gummy' | 'cactus' | 'scarecrow' | 'yeti' | 'mummy' | 'golem';
 export type DropLook = 'acorn' | 'icicle' | 'spike' | 'lavarock';
 export type RelicLook = 'pumpkin' | 'idol' | 'present';
 export type ProjectileLook = 'barrel' | 'snowball' | 'tumbleweed' | 'pumpkin' | 'lavarock' | 'boulder' | 'gumball';
@@ -49,6 +50,8 @@ export interface Skin {
   island: { top: number; bands: readonly number[] };
   balloons: readonly number[];
   crawler: CrawlerLook;
+  /** Look of the level's hopping totems; size, hitbox and hop are the same for all of them. */
+  totem: TotemLook;
   drop: DropLook;
   /** What the boss throws; only the look changes, the physics and hitbox stay the same. */
   projectile: ProjectileLook;
@@ -93,6 +96,7 @@ export const SKINS: Record<SkinName, Skin> = {
     island: { top: COLORS.grass, bands: RAINBOW },
     balloons: [COLORS.red, COLORS.yellow, COLORS.teal],
     crawler: 'hedgehog',
+    totem: 'spike',
     drop: 'acorn',
     projectile: 'barrel',
     relic: { look: 'idol', name: 'idol' },
@@ -112,6 +116,7 @@ export const SKINS: Record<SkinName, Skin> = {
     island: { top: COLORS.cream, bands: [COLORS.pink, COLORS.cream, COLORS.purple] },
     balloons: [COLORS.pink, COLORS.purple, COLORS.cyan],
     crawler: 'hedgehog',
+    totem: 'gummy',
     drop: 'acorn',
     projectile: 'gumball',
     relic: { look: 'present', name: 'present' },
@@ -131,6 +136,7 @@ export const SKINS: Record<SkinName, Skin> = {
     island: { top: COLORS.sand, bands: [COLORS.orange, COLORS.tan, 0xc4553a] },
     balloons: [COLORS.red, COLORS.orange, COLORS.blue],
     crawler: 'snake',
+    totem: 'cactus',
     drop: 'spike',
     projectile: 'tumbleweed',
     relic: { look: 'idol', name: 'idol' },
@@ -150,6 +156,7 @@ export const SKINS: Record<SkinName, Skin> = {
     island: { top: COLORS.orange, bands: [COLORS.brown, COLORS.maple, COLORS.yellow] },
     balloons: [COLORS.maple, COLORS.yellow, COLORS.teal],
     crawler: 'hedgehog',
+    totem: 'scarecrow',
     drop: 'acorn',
     projectile: 'pumpkin',
     relic: { look: 'pumpkin', name: 'pumpkin' },
@@ -169,6 +176,7 @@ export const SKINS: Record<SkinName, Skin> = {
     island: { top: COLORS.snow, bands: [COLORS.ice, COLORS.iceDark, COLORS.blue] },
     balloons: [COLORS.red, COLORS.teal, COLORS.yellow],
     crawler: 'penguin',
+    totem: 'yeti',
     drop: 'icicle',
     projectile: 'snowball',
     relic: { look: 'present', name: 'present' },
@@ -188,6 +196,7 @@ export const SKINS: Record<SkinName, Skin> = {
     island: { top: COLORS.sandstone, bands: [COLORS.gold, COLORS.teal, COLORS.sandstoneDark] },
     balloons: [COLORS.gold, COLORS.teal, COLORS.red],
     crawler: 'snake',
+    totem: 'mummy',
     drop: 'spike',
     projectile: 'boulder',
     relic: { look: 'idol', name: 'idol' },
@@ -207,6 +216,7 @@ export const SKINS: Record<SkinName, Skin> = {
     island: { top: COLORS.grass, bands: [COLORS.basalt, COLORS.lava, COLORS.basaltDark] },
     balloons: [COLORS.lava, COLORS.yellow, COLORS.teal],
     crawler: 'scorpion',
+    totem: 'golem',
     drop: 'lavarock',
     projectile: 'lavarock',
     relic: { look: 'idol', name: 'idol' },

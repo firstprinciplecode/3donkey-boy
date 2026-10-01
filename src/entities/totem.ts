@@ -1,33 +1,41 @@
 import * as THREE from 'three';
-import { COLORS, TOTEM } from '../config';
+import { TOTEM } from '../config';
 import { mod, sideYaw, type Level } from '../level';
+import type { TotemLook } from '../levels/skins';
 import type { PatrolDef } from '../levels/types';
 import type { ObstacleEnv } from '../obstacles';
 import { box, cone } from '../voxel';
+import { TOTEM_LOOKS, type TotemPart } from './totemLooks';
 
 type Phase = 'walk' | 'crouch' | 'hop';
 
-/** Legs, black body, cream horns and a toothy face on the outward (+z) side. */
-export function buildTotemRig(): { root: THREE.Group; body: THREE.Group; legs: THREE.Mesh[]; pupils: THREE.Mesh[] } {
+const LEG_X = 0.22;
+const HIP_Y = 0.28;
+
+function mesh(p: TotemPart): THREE.Mesh {
+  const [x, y, z] = p.at;
+  return p.shape === 'box' ? box(p.size[0], p.size[1], p.size[2], p.color, x, y, z) : cone(p.size[0], p.size[1], p.color, x, y, z);
+}
+
+/** Two legs and a body for the given theme's look, face on the outward (+z) side. */
+export function buildTotemRig(look: TotemLook = 'spike'): {
+  root: THREE.Group;
+  body: THREE.Group;
+  legs: THREE.Group[];
+  pupils: { mesh: THREE.Mesh; x: number }[];
+} {
+  const parts = TOTEM_LOOKS[look];
   const root = new THREE.Group();
   const body = new THREE.Group();
-  const legs = [-0.22, 0.22].map((x) => box(0.2, 0.55, 0.22, COLORS.black, x, 0.28, 0));
-  const feet = [-0.22, 0.22].map((x) => box(0.28, 0.1, 0.34, COLORS.cream, x, 0.05, 0.04));
-  legs.forEach((leg, i) => leg.add(feet[i]));
-  feet.forEach((f) => f.position.set(0, -0.23, 0.04));
-  body.add(
-    box(0.96, 1.1, 0.8, COLORS.black, 0, 1.1, 0),
-    box(0.76, 0.3, 0.66, COLORS.charcoal, 0, 1.78, 0),
-    cone(0.2, 0.62, COLORS.cream, -0.26, 1.93, 0),
-    cone(0.2, 0.62, COLORS.cream, 0.26, 1.93, 0),
-    cone(0.1, 0.3, COLORS.pink, 0, 1.93, 0),
-    box(0.26, 0.26, 0.04, COLORS.pink, -0.22, 1.32, 0.41),
-    box(0.26, 0.26, 0.04, COLORS.pink, 0.22, 1.32, 0.41),
-    box(0.58, 0.2, 0.04, COLORS.red, 0, 0.88, 0.41),
-  );
-  for (let i = 0; i < 4; i++) body.add(cone(0.06, 0.12, COLORS.cream, -0.21 + i * 0.14, 0.9, 0.43));
-  const pupils = [-0.22, 0.22].map((x) => box(0.1, 0.12, 0.05, COLORS.black, x, 1.3, 0.43));
-  body.add(...pupils);
+  const legs = [-LEG_X, LEG_X].map((x) => {
+    const leg = new THREE.Group();
+    leg.position.set(x, HIP_Y, 0);
+    leg.add(...parts.filter((p) => p.group === 'leg').map(mesh));
+    return leg;
+  });
+  body.add(...parts.filter((p) => p.group === 'body').map(mesh));
+  const pupils = parts.filter((p) => p.group === 'pupil').map((p) => ({ mesh: mesh(p), x: p.at[0] }));
+  body.add(...pupils.map((p) => p.mesh));
   root.add(...legs, body);
   return { root, body, legs, pupils };
 }
@@ -54,7 +62,7 @@ export class Totem {
   private readonly s0: number;
   private readonly length: number;
   private readonly speed: number;
-  private readonly rig = buildTotemRig();
+  private readonly rig: ReturnType<typeof buildTotemRig>;
   private progress: number;
   private dir: 1 | -1 = 1;
   private phase: Phase = 'walk';
@@ -63,8 +71,9 @@ export class Totem {
   private t = Math.random() * 10;
   private hop = 0;
 
-  constructor(level: Level, patrol: PatrolDef, speed: number) {
+  constructor(level: Level, patrol: PatrolDef, speed: number, look: TotemLook = 'spike') {
     this.level = level;
+    this.rig = buildTotemRig(look);
     this.ring = patrol.ring;
     this.s0 = level.sOf(patrol.ring, patrol.from[0], patrol.from[1]);
     const s1 = level.sOf(patrol.ring, patrol.to[0], patrol.to[1]);
@@ -109,13 +118,13 @@ export class Totem {
 
     const { body, legs, pupils } = this.rig;
     const stride = this.phase === 'walk' ? Math.sin(this.t * 9) : 0;
-    legs[0].position.y = 0.28 + Math.max(0, stride) * 0.12;
-    legs[1].position.y = 0.28 + Math.max(0, -stride) * 0.12;
+    legs[0].position.y = HIP_Y + Math.max(0, stride) * 0.12;
+    legs[1].position.y = HIP_Y + Math.max(0, -stride) * 0.12;
     const tuck = this.phase === 'hop' ? 0.55 : 1;
     for (const leg of legs) leg.scale.y = tuck;
     body.scale.set(1 + squash * 0.12, 1 - squash * 0.18, 1 + squash * 0.12);
     body.rotation.z = this.phase === 'walk' ? Math.sin(this.t * 9) * 0.04 : 0;
-    for (const p of pupils) p.position.x = Math.sign(p.position.x) * 0.22 + this.dir * 0.06;
+    for (const p of pupils) p.mesh.position.x = p.x + this.dir * 0.06;
     this.place();
   }
 

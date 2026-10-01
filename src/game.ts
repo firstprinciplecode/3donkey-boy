@@ -394,7 +394,8 @@ export class Game {
   private spawnTotems(): void {
     this.totemLayer.clear();
     const speed = TOTEM.speed * this.speedMul;
-    this.totems = (this.level.def.totems ?? []).map((p) => new Totem(this.level, p, speed));
+    const look = SKINS[this.level.def.skin].totem;
+    this.totems = (this.level.def.totems ?? []).map((p) => new Totem(this.level, p, speed, look));
     for (const t of this.totems) this.totemLayer.add(t.group);
   }
 

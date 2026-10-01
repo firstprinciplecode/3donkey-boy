@@ -97,7 +97,7 @@ bring lower light, stars, and glowing windows, lanterns, and balloons.
 - **Fire jets.** Vents rumble, then erupt on a beat. Wait for the flame to drop.
 - **Falling drops.** Icicles, acorns, stalactites, and lava rocks shake loose when you walk underneath.
 - **Ground monsters.** Hedgehogs, penguins, snakes, and scorpions pace the rings. Jump them for 200. Snakes and scorpions rear up; penguins and hedgehogs dash.
-- **Spike totems.** Horned black monsters from the poster. They're too tall to jump, but every couple of seconds they crouch and hop straight up. Run underneath mid-hop for 300, or smash one with the hammer for 800.
+- **Totems.** Big monsters that are too tall to jump, but every couple of seconds they crouch and hop straight up. Run underneath mid-hop for 300, or smash one with the hammer for 800. Each theme has its own: the horned spike totem (meadow), a gummy bear (candy hills), a cactus bandit (desert arcade), a pumpkin scarecrow (harvest woods), a yeti (frost peak), a mummy (serpent tomb) and a lava golem (volcano isle). They all share one size and hop, so only the look changes; the parts live in `src/entities/totemLooks.ts`.
 - **Relic seals.** Some summits stay sealed until every pumpkin or idol on the level is collected.
 
 ### What the boss throws
