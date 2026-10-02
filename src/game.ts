@@ -926,7 +926,7 @@ export class Game {
 
   private pause(): void {
     this.setState('paused');
-    this.hud.showMessage('Paused', byInput('Press P to resume', 'Tap II to resume', 'Press start to resume'));
+    this.hud.showMessage('Paused', byInput('Press P to resume', 'Tap jump to resume', 'Press start to resume'));
   }
 
   private resume(): void {

@@ -38,7 +38,6 @@ body {
   --fx-top: rgba(255, 255, 255, 0.28);
   --fx-bottom: rgba(255, 110, 90, 0.2);
   --stars: 0;
-  --hud-shade: rgba(255, 255, 255, 0.4);
   color: var(--text);
   background: radial-gradient(ellipse at 50% 30%, var(--sky-a) 0%, var(--sky-b) 55%, var(--sky-c) 100%);
 }
@@ -56,7 +55,6 @@ body[data-time='dusk'] {
   --fx-top: rgba(255, 220, 190, 0.18);
   --fx-bottom: rgba(255, 90, 70, 0.26);
   --stars: 0.35;
-  --hud-shade: rgba(255, 236, 220, 0.4);
 }
 body[data-time='dusk'][data-skin='candy'] { --sky-a: #ffd3e4; --sky-b: #d99ac8; --sky-c: #7d68b0; }
 body[data-time='dusk'][data-skin='desert'] { --sky-a: #ffcf8a; --sky-b: #f08a6a; --sky-c: #8a4f7a; }
@@ -72,7 +70,6 @@ body[data-time='night'] {
   --fx-top: rgba(150, 170, 255, 0.08);
   --fx-bottom: rgba(60, 40, 120, 0.3);
   --stars: 1;
-  --hud-shade: rgba(10, 12, 32, 0.55);
 }
 body[data-time='night'][data-skin='candy'] { --sky-a: #45315f; --sky-b: #2a1d46; --sky-c: #170f2b; }
 body[data-time='night'][data-skin='desert'] { --sky-a: #42305a; --sky-b: #251a3c; --sky-c: #120d22; }
@@ -280,7 +277,8 @@ body[data-skin='volcano'] .weather span {
   pointer-events: none;
 }
 
-/* Two single-row bars: live stats on top, level context at the bottom. */
+/* Lives sit top left and the bonus top right, with the score between them. The level name
+   stays centred at the bottom. Roblox keeps its own layout, because its menu owns the top left. */
 .hud {
   position: absolute;
   left: 0;
@@ -288,27 +286,33 @@ body[data-skin='volcano'] .weather span {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 16px;
-  min-height: 60px;
-  padding: 10px 24px;
-  font-size: 15px;
-  letter-spacing: 0.02em;
+  padding: 0 24px;
+  pointer-events: none;
 }
 
 .hud--top {
-  top: 0;
-  background: linear-gradient(to bottom, var(--hud-shade), transparent);
+  top: calc(10px + env(safe-area-inset-top));
 }
 
 .hud--bottom {
-  bottom: 0;
-  background: linear-gradient(to top, var(--hud-shade), transparent);
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
 }
 
-.hud__cell {
+.hud__score {
+  font-size: clamp(26px, 3.4vw, 36px);
+  letter-spacing: 0.02em;
+  color: #fff;
+  -webkit-text-stroke: 0.07em var(--ink);
+  paint-order: stroke fill;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud__cluster {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   white-space: nowrap;
 }
 
@@ -316,100 +320,70 @@ body[data-skin='volcano'] .weather span {
   justify-self: start;
 }
 
-.hud__center {
-  justify-self: center;
-}
-
 .hud__right {
   justify-self: end;
 }
 
-.hud__label {
-  opacity: 0.75;
-}
-
-.hud__value {
-  font-size: 28px;
-  font-variant-numeric: tabular-nums;
-}
-
-.hud__value--sm {
-  font-size: 17px;
-}
-
 .hud__level-name {
-  margin-left: 4px;
-  padding: 1px 7px;
+  justify-self: center;
+  padding: 4px 14px;
   border-radius: 999px;
   background: var(--ink);
-  color: var(--cream);
-  font-size: 12px;
+  color: #fff;
+  font-size: 13px;
 }
 
-body[data-time='night'] .hud__level-name {
-  background: var(--cream);
-  color: var(--ink);
+.hud__star {
+  width: 20px;
+  height: 19px;
 }
 
 .hud__bonus {
-  display: inline-block;
-  min-width: 3.4em;
-  padding: 1px 8px;
-  border: 3px solid var(--ink);
-  border-radius: 6px;
-  background: var(--yellow);
-  color: var(--ink);
-  text-align: center;
+  color: #ffd000;
+  font-size: 20px;
+  letter-spacing: 0.01em;
+  -webkit-text-stroke: 0.09em var(--ink);
+  paint-order: stroke fill;
   font-variant-numeric: tabular-nums;
 }
 
 .hud__bonus--low {
-  background: var(--pink);
-  color: var(--cream);
+  color: var(--pink);
   animation: pulse 0.6s ease-in-out infinite alternate;
 }
 
 .hud__lives {
   display: flex;
-  gap: 4px;
+  gap: 5px;
 }
 
 .life {
   display: inline-grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border: 3px solid #4f8d1c;
   border-radius: 50%;
   background: var(--green);
-  color: var(--cream);
-  font-size: 11px;
-  text-shadow: 0 1px 0 var(--ink), 1px 0 0 var(--ink), -1px 0 0 var(--ink), 0 -1px 0 var(--ink);
-  box-shadow: 0 2px 0 rgba(27, 27, 34, 0.35);
+  color: #fff;
+  font-size: 8px;
 }
 
 .hud__letters {
   display: flex;
-  gap: 2px;
-  margin-left: 6px;
+  gap: 3px;
 }
 
 .hud__letters span {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 26px;
-  border: 2px dashed currentColor;
-  border-radius: 5px;
-  font-size: 15px;
-  opacity: 0.35;
+  color: #fff;
+  font-size: 16px;
+  opacity: 0.65;
+  -webkit-text-stroke: 0.09em var(--ink);
+  paint-order: stroke fill;
 }
 
 .hud__letters span.on {
-  border: 3px solid var(--ink);
-  background: var(--yellow);
-  color: var(--ink);
-  box-shadow: 2px 2px 0 var(--orange);
+  color: #ffd000;
   opacity: 1;
   animation: pop-in 0.3s ease-out;
 }
@@ -434,7 +408,7 @@ body[data-time='night'] .hud__level-name {
   position: absolute;
   transform: translate(-50%, -50%);
   font-size: 18px;
-  color: var(--cream);
+  color: #fff;
   -webkit-text-stroke: 5px var(--ink);
   paint-order: stroke fill;
   white-space: nowrap;
@@ -473,7 +447,7 @@ body[data-time='night'] .hud__level-name {
 .banner__sub {
   margin-top: 8px;
   font-size: clamp(18px, 2.6vw, 28px);
-  color: var(--cream);
+  color: #fff;
   -webkit-text-stroke: 6px var(--ink);
   paint-order: stroke fill;
 }
@@ -552,6 +526,24 @@ body[data-time='night'] .hud__level-name {
   animation: pulse 0.9s ease-in-out infinite alternate;
 }
 
+/* Anything drawn straight on the game, with no plate behind it, is white with an ink border.
+   Keycaps opt out: they have their own plate. */
+.overlay__teaser,
+.overlay__sub,
+.overlay__hint,
+.controls,
+.board__label,
+.board__row,
+.board__empty {
+  color: #fff;
+  -webkit-text-stroke: 0.08em var(--ink);
+  paint-order: stroke fill;
+}
+
+kbd {
+  -webkit-text-stroke: 0;
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -591,7 +583,6 @@ kbd {
 .overlay__hint {
   max-width: 560px;
   font-size: 14px;
-  opacity: 0.75;
 }
 
 .overlay--scores .title {
@@ -609,7 +600,6 @@ kbd {
 .board__label {
   font-size: 13px;
   letter-spacing: 0.04em;
-  opacity: 0.7;
 }
 
 .board {
@@ -630,7 +620,6 @@ kbd {
 }
 
 .board__rank {
-  opacity: 0.55;
   text-align: right;
 }
 
@@ -647,7 +636,7 @@ kbd {
 }
 
 .board__empty {
-  opacity: 0.7;
+  color: #fff;
 }
 
 .initials__slots {
@@ -689,35 +678,26 @@ kbd {
 
 @media (max-width: 640px) {
   .hud {
-    gap: 8px;
-    min-height: 48px;
-    padding: 6px 12px;
-    font-size: 12px;
+    padding: 0 12px;
   }
 
-  .hud__value {
-    font-size: 20px;
-  }
-
-  .hud__value--sm {
-    font-size: 14px;
-  }
-
-  .hud--top .hud__left .hud__label,
-  .hud__level-name {
-    display: none;
+  .hud__score {
+    font-size: 22px;
   }
 
   .life {
-    width: 26px;
-    height: 26px;
-    font-size: 8px;
+    width: 22px;
+    height: 22px;
+    border-width: 2px;
+    font-size: 6px;
   }
 
   .hud__letters span {
-    width: 16px;
-    height: 20px;
-    font-size: 11px;
+    font-size: 13px;
+  }
+
+  .hud__bonus {
+    font-size: 16px;
   }
 
   .board {
@@ -773,19 +753,13 @@ body[data-input='touch'] .touch {
   display: block;
 }
 .touch__pad,
-.touch__jump,
-.touch__small {
+.touch__jump {
   position: absolute;
   pointer-events: auto;
   touch-action: none;
   color: var(--ink);
   font-family: var(--font);
   -webkit-tap-highlight-color: transparent;
-}
-.touch__small {
-  border: 4px solid var(--ink);
-  background: color-mix(in srgb, var(--cream) 70%, transparent);
-  box-shadow: 0 4px 0 var(--ink);
 }
 /* Frosted glass circles. The pad and jump centres share one line, 150px up from the bottom. */
 .touch__pad,
@@ -836,22 +810,4 @@ body[data-input='touch'] .touch {
 .touch__jump.on {
   background: rgb(255 255 255 / 60%);
   transform: scale(0.94);
-}
-.touch__menu {
-  position: absolute;
-  top: calc(68px + env(safe-area-inset-top));
-  right: calc(16px + env(safe-area-inset-right));
-  display: flex;
-  gap: 10px;
-}
-.touch__small {
-  position: static;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  font-size: 16px;
-}
-.touch__small.on {
-  transform: translateY(3px);
-  box-shadow: 0 1px 0 var(--ink);
 }

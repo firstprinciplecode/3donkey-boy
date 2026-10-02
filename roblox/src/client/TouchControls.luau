@@ -1,6 +1,6 @@
--- On-screen pad and buttons for touch screens, ported from src/touch.ts: a direction pad on the
--- left, a big jump button on the right, and pause and mute up by the stats. They feed the same
--- actions as the keyboard and are shown only while the player is using touch.
+-- On-screen controls for touch screens, ported from src/touch.ts: a direction pad on the left and
+-- a big jump button on the right. Pausing is the Roblox menu, which auto-pauses, and jump resumes.
+-- They feed the same actions as the keyboard and are shown only while the player is using touch.
 
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,7 +9,6 @@ local UserInputService = game:GetService("UserInputService")
 local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
 
 local HudKit = require(script.Parent.HudKit)
-local ImageAssets = require(script.Parent.ImageAssets)
 
 local C = Config.COLORS
 -- Fraction of the pad's radius the thumb has to travel before a direction engages.
@@ -57,22 +56,6 @@ local function hitTarget(parent: Instance, size: number): (Frame, Frame)
 	return wrap, face
 end
 
--- The Figma jumping figure once it's uploaded, a drawn stand-in until then.
-local function jumpIcon(parent: Instance)
-	if ImageAssets.jump ~= "" then
-		local icon = Instance.new("ImageLabel")
-		icon.BackgroundTransparency = 1
-		icon.AnchorPoint = Vector2.new(0.5, 0.5)
-		icon.Position = UDim2.fromScale(0.5, 0.5)
-		icon.Size = UDim2.fromOffset(22, 24)
-		icon.Image = ImageAssets.jump
-		icon.Parent = parent
-		return
-	end
-	local mark = HudKit.jumpMark(parent)
-	Instance.new("UIScale", mark).Scale = 0.52
-end
-
 function TouchControls.new(gui: Instance, handlers: Handlers)
 	local self = setmetatable({}, TouchControls)
 	self.handlers = handlers
@@ -110,64 +93,17 @@ function TouchControls.new(gui: Instance, handlers: Handlers)
 	jumpWrap.AnchorPoint = Vector2.new(0.5, 0.5)
 	jumpWrap.Position = UDim2.new(1, -JUMP_IN, 1, -CENTRE_UP)
 	self.jumpWrap = jumpWrap
-	jumpIcon(jump)
+	HudKit.jumpMark(jump, 2.2)
 	self:_button(jump, "jump")
-
-	local menu = HudKit.row(root, 4, 44)
-	menu.AnchorPoint = Vector2.new(1, 0.5)
-	menu.Position = UDim2.new(1, -12, 0, 29)
-	local function alignMenu()
-		local band = 0
-		local inset = (GuiService :: any).TopbarInset
-		if typeof(inset) == "Rect" then
-			band = inset.Height
-		end
-		if band <= 0 then
-			band = GuiService:GetGuiInset().Y
-		end
-		menu.Position = UDim2.new(1, -12, 0, (if band > 0 then band else 58) / 2)
-	end
-	alignMenu()
-	pcall(function()
-		GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(alignMenu)
-	end)
-
-	local pause = Instance.new("TextButton")
-	pause.BackgroundTransparency = 1
-	pause.BorderSizePixel = 0
-	pause.AutoButtonColor = false
-	pause.Font = HudKit.FONT
-	pause.TextSize = 22
-	pause.TextColor3 = C.black
-	pause.Text = "II"
-	pause.Size = UDim2.fromOffset(44, 44)
-	pause.LayoutOrder = 1
-	pause.Parent = menu
-	self:_button(pause, "pause")
-
-	local speakerButton = Instance.new("TextButton")
-	speakerButton.BackgroundTransparency = 1
-	speakerButton.BorderSizePixel = 0
-	speakerButton.AutoButtonColor = false
-	speakerButton.Text = ""
-	speakerButton.Size = UDim2.fromOffset(44, 44)
-	speakerButton.LayoutOrder = 2
-	speakerButton.Parent = menu
-	local _, slash = HudKit.speaker(speakerButton)
-	self.speakerSlash = slash
-	self:_button(speakerButton, "mute")
 
 	self:_wirePad()
 	return self
 end
 
-function TouchControls:setMuted(muted: boolean)
-	if self.speakerSlash then
-		self.speakerSlash.Visible = muted
-	end
-end
+-- Touch has no mute button: the Roblox menu's volume covers it.
+function TouchControls:setMuted(_muted: boolean) end
 
--- Hides just the direction pad and jump button, leaving pause and mute, for clean screenshots.
+-- Hides the direction pad and jump button, for clean screenshots.
 function TouchControls:setPadHidden(hidden: boolean)
 	self.padWrap.Visible = not hidden
 	self.jumpWrap.Visible = not hidden

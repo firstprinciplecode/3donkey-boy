@@ -54,7 +54,9 @@ function boot(): void {
 
   let last = performance.now();
   const frame = (now: number) => {
-    const dt = Math.min((now - last) / 1000, MAX_FRAME_DT);
+    // A stalled frame can report a timestamp behind the previous one. Rewinding the clock
+    // there snaps the game-over view backward a quarter turn, which reads as flicker.
+    const dt = Math.min(Math.max(0, (now - last) / 1000), MAX_FRAME_DT);
     last = now;
     if (!manual) {
       input.poll();

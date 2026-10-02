@@ -15,6 +15,8 @@ local HudKit = require(script.Parent.HudKit)
 local C = Config.COLORS
 local INK = HudKit.INK
 local CREAM = HudKit.CREAM
+local WHITE = Color3.new(1, 1, 1)
+local GOLD = Color3.fromRGB(255, 208, 0)
 local text = HudKit.text
 local fitText = HudKit.fitText
 
@@ -29,7 +31,7 @@ local TOPBAR = 58
 local PROMPTS = {
 	start = { keys = "Press space to start", touch = "Tap jump to start", pad = "Press A to start" },
 	again = { keys = "Press space to play again", touch = "Tap jump to play again", pad = "Press A to play again" },
-	resume = { keys = "Press P to resume", touch = "Tap II to resume", pad = "Press X to resume" },
+	resume = { keys = "Press P to resume", touch = "Tap jump to resume", pad = "Press X to resume" },
 	keep = {
 		keys = "Space keeps your initials · Arrows or a letter key change them",
 		touch = "Jump keeps your initials · The pad changes them",
@@ -93,8 +95,6 @@ end
 function Hud.new(playerGui: Instance, levelName: string)
 	local self = setmetatable({}, Hud)
 	self.mode = "keys"
-	self.time = "day"
-	self.themed = {} :: { TextLabel }
 	self.clock = 0
 	self.viewport = Vector2.zero
 
@@ -128,10 +128,10 @@ function Hud.new(playerGui: Instance, levelName: string)
 	return self
 end
 
--- Text that turns cream at night, like the web's --text.
-function Hud:_themed(l: TextLabel, dim: number?): TextLabel
-	l.TextTransparency = dim or 0
-	table.insert(self.themed, l)
+-- Copy drawn straight on the game, with no plate behind it: white letters, ink border.
+function Hud:_plain(l: TextLabel): TextLabel
+	l.TextColor3 = WHITE
+	HudKit.outline(l, math.clamp(l.TextSize / 10, 1.5, 3))
 	return l
 end
 
@@ -163,63 +163,44 @@ function Hud:_buildTopBar()
 		GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(alignWithTopbar)
 	end)
 
-	self:_themed(fitText(top, "Score", 15, 1), 0.25)
-	self.scoreValue = self:_themed(fitText(top, "0", 28, 2))
-	self:_themed(fitText(top, "pt", 15, 3), 0.25)
-	local hiGap = Instance.new("Frame")
-	hiGap.BackgroundTransparency = 1
-	hiGap.Size = UDim2.fromOffset(16, 1)
-	hiGap.LayoutOrder = 4
-	hiGap.Parent = top
-	self:_themed(fitText(top, "Hi", 15, 5), 0.25)
-	self.hiValue = self:_themed(fitText(top, "0", 20, 6))
+	self.scoreValue = fitText(top, "0 PTS", 22, 1, WHITE)
+	HudKit.contrastOutline(self.scoreValue, 2.5)
 	self.topBar = top
 end
 
--- Lives and the 1-U-P letters sit under the direction pad. The bonus is its own cluster under Jump.
+-- 1-Up coins and the 1-U-P letters sit under the direction pad. The bonus is its own cluster under Jump.
 function Hud:_buildStatusCluster()
-	local cluster = HudKit.row(self.gui, 10, 22)
+	local cluster = HudKit.row(self.gui, 12, 28)
 	cluster.Name = "Status"
 	cluster.AnchorPoint = Vector2.new(0, 1)
-	cluster.Position = UDim2.new(0, 28, 1, -12)
+	cluster.Position = UDim2.new(0, 30, 1, -12)
 	cluster.ZIndex = 3
 	self.statusCluster = cluster
 
-	local lives = HudKit.row(cluster, 6, 22)
+	local lives = HudKit.row(cluster, 9, 28)
 	lives.LayoutOrder = 1
 	self.lifeBadges = {}
 	for i = 1, Config.GAME_RULES.maxLives do
-		local dot = Instance.new("Frame")
-		dot.LayoutOrder = i
-		dot.Size = UDim2.fromOffset(12, 12)
-		dot.BackgroundColor3 = C.grass
-		dot.BorderSizePixel = 0
-		dot.Parent = lives
-		Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-		self.lifeBadges[i] = dot
+		self.lifeBadges[i] = HudKit.lifeBadge(lives, i, 21)
 	end
 
-	local letters = HudKit.row(cluster, 2, 22)
+	local letters = HudKit.row(cluster, 2, 28)
 	letters.LayoutOrder = 2
 	self.chips = {}
 	for i, ch in { "1", "U", "P" } do
-		local label = self:_themed(fitText(letters, ch, 16, i), 0.55)
+		local label = fitText(letters, ch, 16, i, WHITE)
+		HudKit.contrastOutline(label, 1.5)
 		self.chips[i] = label
 	end
 
-	local bonus = HudKit.row(self.gui, 6, 22)
+	local bonus = HudKit.row(self.gui, 5, 22)
 	bonus.Name = "Bonus"
 	bonus.AnchorPoint = Vector2.new(0.5, 1)
 	bonus.Position = UDim2.new(1, -80, 1, -14)
 	bonus.ZIndex = 3
-	local mark = Instance.new("Frame")
-	mark.LayoutOrder = 1
-	mark.Size = UDim2.fromOffset(8, 8)
-	mark.BackgroundColor3 = C.yellow
-	mark.BorderSizePixel = 0
-	mark.Parent = bonus
-	Instance.new("UICorner", mark).CornerRadius = UDim.new(1, 0)
-	self.bonusValue = self:_themed(fitText(bonus, "", 16, 2))
+	HudKit.star(bonus, 17, 1)
+	self.bonusValue = fitText(bonus, "", 14, 2, GOLD)
+	HudKit.outline(self.bonusValue, 2)
 end
 
 function Hud:_buildBottomBar(levelName: string)
@@ -233,20 +214,16 @@ function Hud:_buildBottomBar(levelName: string)
 	bottom.Parent = self.gui
 	self.bottomBar = bottom
 
-	local centre = HudKit.row(bottom, 8, 34)
-	centre.AnchorPoint = Vector2.new(0.5, 0)
-	centre.Position = UDim2.fromScale(0.5, 0)
-	self:_themed(fitText(centre, "Lvl", 15, 1), 0.25)
-	self.levelValue = self:_themed(fitText(centre, "1", 17, 2))
-	local pill = text(centre, Hud.levelTitle(levelName), 12, CREAM)
-	pill.LayoutOrder = 3
+	local pill = text(bottom, Hud.levelTitle(levelName), 11, WHITE)
+	pill.AnchorPoint = Vector2.new(0.5, 1)
+	pill.Position = UDim2.new(0.5, 0, 1, -6)
 	pill.BackgroundColor3 = INK
 	pill.BackgroundTransparency = 0
 	pill.AutomaticSize = Enum.AutomaticSize.X
-	pill.Size = UDim2.fromOffset(0, 20)
+	pill.Size = UDim2.fromOffset(0, 21)
 	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, 8)
-	pad.PaddingRight = UDim.new(0, 8)
+	pad.PaddingLeft = UDim.new(0, 15)
+	pad.PaddingRight = UDim.new(0, 15)
 	pad.Parent = pill
 	Instance.new("UICorner", pill).CornerRadius = UDim.new(1, 0)
 	self.levelPill = pill
@@ -272,7 +249,7 @@ function Hud:_buildBanner()
 	heading.LayoutOrder = 1
 	heading.Size = UDim2.new(1, 0, 0, 72)
 	HudKit.outline(heading, 5)
-	local sub = text(banner, "", 24, CREAM)
+	local sub = text(banner, "", 24, WHITE)
 	sub.LayoutOrder = 2
 	sub.Size = UDim2.new(1, 0, 0, 32)
 	HudKit.outline(sub, 3)
@@ -328,11 +305,11 @@ function Hud:_buildCard()
 	HudKit.outline(heading, 5)
 	self.heading = heading
 
-	self.teaser = self:_themed(text(panel, "How high can you climb?", 32))
+	self.teaser = self:_plain(text(panel, "How high can you climb?", 32))
 	self.teaser.LayoutOrder = 3
 	self.teaser.Size = UDim2.fromOffset(760, 40)
 
-	self.sub = self:_themed(text(panel, "", 20))
+	self.sub = self:_plain(text(panel, "", 20))
 	self.sub.LayoutOrder = 4
 	self.sub.Size = UDim2.fromOffset(760, 28)
 	self.subScale = self:_scaled(self.sub)
@@ -343,7 +320,7 @@ function Hud:_buildCard()
 end
 
 function Hud:_caption(parent: Instance, words: string, order: number): TextLabel
-	return self:_themed(fitText(parent, words, 16, order))
+	return self:_plain(fitText(parent, words, 16, order))
 end
 
 -- The controls line under the title, one version per input mode.
@@ -438,10 +415,10 @@ function Hud:_buildBoard(panel: Instance)
 	stack.Parent = wrap
 	self.boardWrap = wrap
 
-	local label = self:_themed(text(wrap, "Hi-score", 14), 0.3)
+	local label = self:_plain(text(wrap, "Hi-score", 14))
 	label.LayoutOrder = 0
 	label.Size = UDim2.fromOffset(300, 22)
-	local empty = self:_themed(text(wrap, "No scores yet", 17), 0.3)
+	local empty = self:_plain(text(wrap, "No scores yet", 17))
 	empty.LayoutOrder = 1
 	empty.Size = UDim2.fromOffset(300, 24)
 	self.boardEmpty = empty
@@ -453,14 +430,14 @@ function Hud:_buildBoard(panel: Instance)
 		row.LayoutOrder = 1 + i
 		row.Size = UDim2.fromOffset(240, 22)
 		row.Parent = wrap
-		local rank = self:_themed(text(row, tostring(i), 16), 0.45)
+		local rank = self:_plain(text(row, tostring(i), 16))
 		rank.Size = UDim2.fromOffset(28, 22)
 		rank.TextXAlignment = Enum.TextXAlignment.Right
-		local name = self:_themed(text(row, "", 16))
+		local name = self:_plain(text(row, "", 16))
 		name.Position = UDim2.fromOffset(44, 0)
 		name.Size = UDim2.fromOffset(70, 22)
 		name.TextXAlignment = Enum.TextXAlignment.Left
-		local score = self:_themed(text(row, "", 16))
+		local score = self:_plain(text(row, "", 16))
 		score.Position = UDim2.fromOffset(120, 0)
 		score.Size = UDim2.fromOffset(120, 22)
 		score.TextXAlignment = Enum.TextXAlignment.Right
@@ -487,7 +464,7 @@ function Hud:_buildInitials(panel: Instance)
 		letter.Size = UDim2.fromScale(1, 1)
 		self.slots[i] = { face = face, letter = letter, scale = self:_scaled(slot) }
 	end
-	local hint = self:_themed(text(wrap, "", 14), 0.25)
+	local hint = self:_plain(text(wrap, "", 14))
 	hint.AnchorPoint = Vector2.new(0.5, 0)
 	hint.Position = UDim2.new(0.5, 0, 0, 88)
 	hint.Size = UDim2.fromOffset(760, 22)
@@ -497,20 +474,18 @@ end
 
 -- Live stats ------------------------------------------------------------------------------------
 
-function Hud:setLevel(index: number, name: string)
-	self.levelValue.Text = tostring(index)
+function Hud:setLevel(_index: number, name: string)
 	self.levelPill.Text = Hud.levelTitle(name)
 end
 
 function Hud:setRound(_round: number) end
 
 function Hud:setScore(score: number)
-	self.scoreValue.Text = Hud.formatScore(score)
+	self.scoreValue.Text = `{math.max(0, math.floor(score))} PTS`
 end
 
-function Hud:setHi(score: number)
-	self.hiValue.Text = Hud.formatScore(score)
-end
+-- The best score lives on the title board now, not in the live stats.
+function Hud:setHi(_score: number) end
 
 function Hud:setLives(lives: number)
 	for i, badge in self.lifeBadges do
@@ -520,27 +495,21 @@ end
 
 function Hud:setLetters(held: { boolean })
 	self.letterHeld = held
-	local ink = if self.time == "night" then CREAM else INK
 	for i, chip in self.chips do
 		local on = held[i] == true
-		chip.TextColor3 = if on then C.yellow else ink
-		chip.TextTransparency = if on then 0 else 0.55
+		HudKit.paint(chip, if on then GOLD else WHITE)
+		chip.TextTransparency = if on then 0 else 0.35
 	end
 end
 
 function Hud:setBonus(bonus: number)
 	self.bonus = bonus
 	self.bonusValue.Text = tostring(bonus)
-	self.bonusValue.TextColor3 = if bonus <= BONUS_LOW then C.pink else C.yellow
+	self.bonusValue.TextColor3 = if bonus <= BONUS_LOW then C.pink else GOLD
 end
 
--- Night turns the ink text cream and darkens the veil, like the web's --text and --veil.
+-- Night darkens the veil. The copy stays white with an ink border either way.
 function Hud:setTime(time: string)
-	self.time = time
-	local color = if time == "night" then CREAM else INK
-	for _, l in self.themed do
-		l.TextColor3 = color
-	end
 	local veil = VEIL[time] or VEIL.day
 	self.card.BackgroundColor3 = veil[1]
 	self.card.BackgroundTransparency = veil[2]
@@ -596,7 +565,7 @@ function Hud:popup(words: string, worldPos: Vector3)
 		return
 	end
 	-- This ScreenGui ignores the top-bar inset, so it shares WorldToViewportPoint's origin.
-	local popup = text(self.popups, words, 18, CREAM)
+	local popup = text(self.popups, words, 18, WHITE)
 	popup.AnchorPoint = Vector2.new(0.5, 0.5)
 	popup.Size = UDim2.fromOffset(300, 24)
 	popup.Position = UDim2.fromOffset(screen.X, screen.Y)
@@ -637,13 +606,11 @@ function Hud:_paintBoard()
 		return
 	end
 	self.boardEmpty.Visible = #board == 0
-	local base = if self.time == "night" then CREAM else INK
 	for i, row in self.boardRows do
 		local entry = board[i]
 		row.frame.Visible = entry ~= nil
 		if entry then
-			local mine = view.highlight == i
-			local color = if mine then C.pink else base
+			local color = if view.highlight == i then C.pink else WHITE
 			row.name.Text = string.gsub(entry.name, "(.)", "%1 "):sub(1, -2)
 			row.score.Text = Hud.formatScore(entry.score)
 			row.name.TextColor3 = color

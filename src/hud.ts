@@ -1,31 +1,22 @@
+import starIcon from './assets/hud/star.svg';
 import type { HiScoreEntry } from './hiscore';
 import { formatScore, levelTitle } from './utils';
 
 // Static markup only; all runtime values are written with textContent.
 const MARKUP = `
 <header class="hud hud--top">
-  <div class="hud__cell hud__left">
-    <span class="hud__label">Player 1</span>
+  <div class="hud__cluster hud__left">
     <div class="hud__lives" data-lives></div>
     <div class="hud__letters" data-letters aria-label="letters collected"><span>1</span><span>U</span><span>P</span></div>
   </div>
-  <div class="hud__cell hud__center">
-    <span class="hud__label">Score</span><span class="hud__value" data-score>0</span><span class="hud__label">pt</span>
-  </div>
-  <div class="hud__cell hud__right">
-    <span class="hud__label">Bonus</span><span class="hud__bonus" data-bonus>5000</span>
+  <span class="hud__score" data-score>0 PTS</span>
+  <div class="hud__cluster hud__right">
+    <img class="hud__star" src="${starIcon}" alt="" />
+    <span class="hud__bonus" data-bonus>5000</span>
   </div>
 </header>
 <footer class="hud hud--bottom">
-  <div class="hud__cell hud__left">
-    <span class="hud__label">Level</span><span class="hud__value hud__value--sm" data-level>1</span><span class="hud__level-name" data-level-name></span>
-  </div>
-  <div class="hud__cell hud__center">
-    <span class="hud__label">Round</span><span class="hud__value hud__value--sm" data-round>1</span>
-  </div>
-  <div class="hud__cell hud__right">
-    <span class="hud__label">Hi</span><span class="hud__value hud__value--sm" data-hi>0</span>
-  </div>
+  <span class="hud__level-name" data-level-name></span>
 </footer>
 <div class="popups" data-popups></div>
 <div class="banner" data-banner>
@@ -86,10 +77,7 @@ function query<T extends HTMLElement>(root: HTMLElement, selector: string): T {
 
 export class Hud {
   private readonly score: HTMLElement;
-  private readonly hi: HTMLElement;
   private readonly bonus: HTMLElement;
-  private readonly round: HTMLElement;
-  private readonly level: HTMLElement;
   private readonly levelName: HTMLElement;
   private readonly lives: HTMLElement;
   private readonly letters: HTMLElement;
@@ -113,10 +101,7 @@ export class Hud {
   constructor(root: HTMLElement) {
     root.innerHTML = MARKUP;
     this.score = query(root, '[data-score]');
-    this.hi = query(root, '[data-hi]');
     this.bonus = query(root, '[data-bonus]');
-    this.round = query(root, '[data-round]');
-    this.level = query(root, '[data-level]');
     this.levelName = query(root, '[data-level-name]');
     this.lives = query(root, '[data-lives]');
     this.letters = query(root, '[data-letters]');
@@ -148,19 +133,15 @@ export class Hud {
   }
 
   setScore(n: number): void {
-    this.score.textContent = formatScore(n);
+    this.score.textContent = `${Math.max(0, Math.floor(n))} PTS`;
   }
 
-  setHi(n: number): void {
-    this.hi.textContent = formatScore(n);
-  }
+  /** The best score lives on the title board, not in the live stats. */
+  setHi(_n: number): void {}
 
-  setRound(n: number): void {
-    this.round.textContent = String(n);
-  }
+  setRound(_n: number): void {}
 
-  setLevel(n: number, name: string): void {
-    this.level.textContent = String(n);
+  setLevel(_n: number, name: string): void {
     this.levelName.textContent = levelTitle(name);
   }
 

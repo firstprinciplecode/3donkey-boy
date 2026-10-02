@@ -47,6 +47,36 @@ function HudKit.outline(l: TextLabel, thickness: number, color: Color3?): UIStro
 	return stroke
 end
 
+local WHITE = Color3.new(1, 1, 1)
+local contrastStrokes: { [TextLabel]: UIStroke } = setmetatable({}, { __mode = "k" }) :: any
+
+local function luminance(color: Color3): number
+	local raw = color :: any
+	local r, g, b = raw.R or raw.r, raw.G or raw.g, raw.B or raw.b
+	-- Real Color3 channels are 0..1. The smoke double stores 0..255.
+	if r > 1 or g > 1 or b > 1 then
+		r, g, b = r / 255, g / 255, b / 255
+	end
+	return 0.299 * r + 0.587 * g + 0.114 * b
+end
+
+-- Type that sits straight on the game gets the opposite colour round it, so it reads on any
+-- background: light letters take an ink outline, dark ones a white one. Recolour it with `paint`.
+function HudKit.contrastOutline(l: TextLabel, thickness: number?): UIStroke
+	local stroke = HudKit.outline(l, thickness or math.clamp(l.TextSize / 12, 1, 3))
+	contrastStrokes[l] = stroke
+	HudKit.paint(l, l.TextColor3)
+	return stroke
+end
+
+function HudKit.paint(l: TextLabel, color: Color3)
+	l.TextColor3 = color
+	local stroke = contrastStrokes[l]
+	if stroke then
+		stroke.Color = if luminance(color) > 0.55 then HudKit.INK else WHITE
+	end
+end
+
 -- The outline has to sit on a frame. A stroke on a TextLabel traces the glyphs instead of the box.
 function HudKit.plate(parent: Instance, color: Color3, radius: number, border: number?): Frame
 	local plate = Instance.new("Frame")
@@ -127,7 +157,6 @@ function HudKit.arrow(parent: Instance, direction: string, size: number?, color:
 	return holder
 end
 
--- A little figure mid-jump, arms up and legs apart, above a short ground line.
 -- A thin open chevron, two rounded strokes meeting at a tip, pointing `direction`.
 function HudKit.chevron(parent: Instance, direction: string, leg: number, thickness: number): Frame
 	local reach = leg * math.cos(math.rad(45))
@@ -157,76 +186,39 @@ function HudKit.chevron(parent: Instance, direction: string, leg: number, thickn
 	return holder
 end
 
-function HudKit.jumpMark(parent: Instance): Frame
+-- The Figma runner from src/assets/touch/jump.svg, traced as rounded strokes in its 14.8 × 15.8
+-- viewBox and drawn `scale` pixels per unit.
+function HudKit.jumpMark(parent: Instance, scale: number): Frame
 	local root = Instance.new("Frame")
 	root.BackgroundTransparency = 1
 	root.AnchorPoint = Vector2.new(0.5, 0.5)
 	root.Position = UDim2.fromScale(0.5, 0.5)
-	root.Size = UDim2.fromOffset(40, 46)
+	root.Size = UDim2.fromOffset(14.8 * scale, 15.8 * scale)
 	root.Parent = parent
-	local function bar(x: number, y: number, w: number, h: number, rotation: number, transparency: number?)
+	local function stroke(x1: number, y1: number, x2: number, y2: number, width: number)
+		local dx, dy = x2 - x1, y2 - y1
 		local b = Instance.new("Frame")
 		b.BackgroundColor3 = HudKit.INK
-		b.BackgroundTransparency = transparency or 0
 		b.BorderSizePixel = 0
 		b.AnchorPoint = Vector2.new(0.5, 0.5)
-		b.Position = UDim2.fromOffset(x, y)
-		b.Size = UDim2.fromOffset(w, h)
-		b.Rotation = rotation
+		b.Position = UDim2.fromOffset((x1 + x2) / 2 * scale, (y1 + y2) / 2 * scale)
+		b.Size = UDim2.fromOffset((math.sqrt(dx * dx + dy * dy) + width) * scale, width * scale)
+		b.Rotation = math.deg(math.atan2(dy, dx))
 		b.Parent = root
 		Instance.new("UICorner", b).CornerRadius = UDim.new(1, 0)
-		return b
 	end
-	bar(20, 7, 9, 9, 0)
-	bar(20, 20, 6, 13, 0)
-	bar(13, 13, 4, 12, -35)
-	bar(27, 13, 4, 12, 35)
-	bar(16, 32, 4, 12, 25)
-	bar(24, 32, 4, 12, -25)
-	bar(20, 44, 22, 3, 0, 0.45)
+	stroke(8.72, 1.65, 8.72, 1.65, 3.29) -- head
+	stroke(13.81, 4.6, 11.3, 6.3, 1.97) -- front arm
+	stroke(11.3, 6.3, 5.2, 4.55, 1.97) -- shoulders
+	stroke(5.2, 4.55, 2.2, 6.25, 1.97) -- back arm
+	stroke(7.5, 6.4, 5.9, 10.4, 1.97) -- torso
+	stroke(5.6, 10.86, 1.3, 10.86, 1.97) -- back leg
+	stroke(6.4, 9.1, 9.4, 8.95, 1.97) -- thigh
+	stroke(9.4, 8.95, 12.17, 11.18, 1.97) -- shin
+	stroke(0.79, 15.01, 12.8, 15.01, 1.58) -- ground
 	return root
 end
 
--- A speaker mark. `slash` is shown when the sound is off.
-function HudKit.speaker(parent: Instance): (Frame, Frame)
-	local root = Instance.new("Frame")
-	root.BackgroundTransparency = 1
-	root.Size = UDim2.fromScale(1, 1)
-	root.Parent = parent
-
-	local body = Instance.new("Frame")
-	body.BackgroundColor3 = HudKit.INK
-	body.BorderSizePixel = 0
-	body.AnchorPoint = Vector2.new(0, 0.5)
-	body.Position = UDim2.fromScale(0.18, 0.5)
-	body.Size = UDim2.fromOffset(7, 10)
-	body.Parent = root
-
-	local function wave(xScale: number, height: number)
-		local bar = Instance.new("Frame")
-		bar.BackgroundColor3 = HudKit.INK
-		bar.BorderSizePixel = 0
-		bar.AnchorPoint = Vector2.new(0.5, 0.5)
-		bar.Position = UDim2.fromScale(xScale, 0.5)
-		bar.Size = UDim2.fromOffset(3, height)
-		bar.Parent = root
-		Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
-	end
-	wave(0.55, 8)
-	wave(0.72, 14)
-
-	local slash = Instance.new("Frame")
-	slash.BackgroundColor3 = HudKit.INK
-	slash.BorderSizePixel = 0
-	slash.AnchorPoint = Vector2.new(0.5, 0.5)
-	slash.Position = UDim2.fromScale(0.5, 0.5)
-	slash.Size = UDim2.fromOffset(3, 22)
-	slash.Rotation = 40
-	slash.Visible = false
-	slash.Parent = root
-	Instance.new("UICorner", slash).CornerRadius = UDim.new(1, 0)
-	return root, slash
-end
 function HudKit.keycap(parent: Instance, text: string, order: number, arrow: string?): Frame
 	local width = if arrow then 32 elseif #text <= 1 then 32 else 18 + #text * 9
 	local wrap, face = HudKit.raised(parent, HudKit.CREAM, UDim2.fromOffset(width, 34), 7, 3, 3)
@@ -240,18 +232,33 @@ function HudKit.keycap(parent: Instance, text: string, order: number, arrow: str
 	return wrap
 end
 
--- Green 1-Up coin for the lives row.
-function HudKit.lifeBadge(parent: Instance, order: number): Frame
-	local plate = HudKit.plate(parent, C.grass, 17, 3)
-	plate.LayoutOrder = order
-	plate.Size = UDim2.fromOffset(32, 32)
-	local ring = plate:FindFirstChildOfClass("UIStroke")
-	if ring then
-		ring.Color = Color3.fromRGB(79, 141, 28)
-	end
-	local badge = HudKit.text(plate, "1-Up", 10, HudKit.CREAM)
+-- Green 1-Up coin for the lives row: `size` across the face, with a darker ring drawn outside it.
+function HudKit.lifeBadge(parent: Instance, order: number, size: number): Frame
+	local coin = Instance.new("Frame")
+	coin.LayoutOrder = order
+	coin.Size = UDim2.fromOffset(size, size)
+	coin.BackgroundColor3 = Color3.fromRGB(140, 198, 63)
+	coin.BorderSizePixel = 0
+	coin.Parent = parent
+	Instance.new("UICorner", coin).CornerRadius = UDim.new(1, 0)
+	local ring = Instance.new("UIStroke")
+	ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	ring.Color = Color3.fromRGB(79, 141, 28)
+	ring.Thickness = 3
+	ring.Parent = coin
+	local badge = HudKit.text(coin, "1-Up", 8, WHITE)
 	badge.Size = UDim2.fromScale(1, 1)
-	return plate
+	return coin
+end
+
+-- The bonus star: a yellow glyph with an ink outline, from the Figma HUD.
+function HudKit.star(parent: Instance, size: number, order: number): TextLabel
+	local star = HudKit.text(parent, "★", size, Color3.fromRGB(255, 208, 0))
+	star.Font = Enum.Font.GothamBlack
+	star.LayoutOrder = order
+	star.Size = UDim2.fromOffset(size, size)
+	HudKit.outline(star, 1.5)
+	return star
 end
 
 -- A horizontal row that lays its children out left to right in LayoutOrder.

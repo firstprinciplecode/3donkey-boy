@@ -9,11 +9,7 @@ const MARKUP = `
 <div class="touch__pad" data-pad aria-label="Direction pad">
   ${arrow('up', 'ArrowUp')}${arrow('down', 'ArrowDown')}${arrow('left', 'ArrowLeft')}${arrow('right', 'ArrowRight')}
 </div>
-<button type="button" class="touch__jump" data-code="Space" aria-label="Jump"><img src="${jumpIcon}" alt="" /></button>
-<div class="touch__menu">
-  <button type="button" class="touch__small" data-code="KeyP" aria-label="Pause">II</button>
-  <button type="button" class="touch__small" data-code="KeyM" aria-label="Mute">&#9835;</button>
-</div>`;
+<button type="button" class="touch__jump" data-code="Space" aria-label="Jump"><img src="${jumpIcon}" alt="" /></button>`;
 
 /** Fraction of the pad's radius the thumb must travel before a direction engages. */
 const ENGAGE = 0.3;
@@ -28,7 +24,8 @@ function capture(el: HTMLElement, pointerId: number): void {
 }
 
 /**
- * On-screen pad and buttons for touch screens, feeding the same key codes as the keyboard.
+ * On-screen pad and jump button for touch screens, feeding the same key codes as the keyboard.
+ * Pausing is the browser leaving the tab, which auto-pauses, and jump resumes. Mute stays on the M key.
  * CSS shows them only while the input mode is `touch`.
  */
 export function mountTouchControls(input: Input): HTMLElement {

@@ -17,6 +17,14 @@ export interface CameraGoal {
 const SHAKE_MAX = 0.35;
 const SHAKE_DECAY = 1.8;
 const SHAKE_FREQ = 38;
+/** Once the camera is this close it snaps, so a resting view is the same picture every frame. */
+const REST = 1e-4;
+
+function rest(current: number, target: number, lambda: number, dt: number): number {
+  if (Math.abs(target - current) <= REST) return target;
+  const next = damp(current, target, lambda, dt);
+  return Math.abs(target - next) <= REST ? target : next;
+}
 
 /** Renderer, lights and an orthographic camera that orbits the pyramid. */
 export class Stage {
@@ -115,14 +123,14 @@ export class Stage {
   follow(goal: CameraGoal, dt: number): void {
     const k = 4;
     this.focus.set(
-      damp(this.focus.x, goal.focus.x, k, dt),
-      damp(this.focus.y, goal.focus.y, k, dt),
-      damp(this.focus.z, goal.focus.z, k, dt),
+      rest(this.focus.x, goal.focus.x, k, dt),
+      rest(this.focus.y, goal.focus.y, k, dt),
+      rest(this.focus.z, goal.focus.z, k, dt),
     );
     this.azimuth = goal.azimuth;
-    this.polar = damp(this.polar, goal.polar, 3, dt);
-    this.zoom = damp(this.zoom, goal.zoom, 3, dt);
-    this.distance = damp(this.distance, goal.distance, 3, dt);
+    this.polar = rest(this.polar, goal.polar, 3, dt);
+    this.zoom = rest(this.zoom, goal.zoom, 3, dt);
+    this.distance = rest(this.distance, goal.distance, 3, dt);
     this.settle(dt);
   }
 
