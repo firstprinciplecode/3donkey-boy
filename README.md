@@ -156,6 +156,58 @@ Jev needs `TYPESAFE_API_KEY` or `JEV_API_KEY`. If neither is set, it reads them 
 (`--seed`), so a run replays exactly. Decisions, probabilities and latency are logged to
 `artifacts/bot/<run>/`, with a `summary.json` of clears and causes of death per level.
 
+### Steam
+
+`steam/` is the desktop build: the same game bundle running in a locked-down Electron
+window, with Steamworks for achievements, stats, rich presence and Steam Cloud. It is its own npm
+package, so the web install never downloads Electron.
+
+```bash
+npm install --prefix steam
+npm run steam:start          # build the bundle and open it in Electron
+npm run steam:dist           # steam/release/win-unpacked and steam/release/linux-unpacked
+npm run steam:achievements   # the list to enter on the partner site
+npm --prefix steam run upload  # SteamPipe upload; see steam/scripts/upload.sh for the env vars
+```
+
+On Linux, the dev build needs `--no-sandbox` when user namespaces are restricted (Ubuntu 24.04,
+containers): `cd steam && npx electron . --no-sandbox`. The packaged build adds it itself.
+
+Without a running Steam client the game logs a warning and plays without Steam features. Set
+`POPSCOTCH_DEV_URL=http://localhost:5173` with `npm run dev -- --mode steam` running to load the
+Vite dev server instead of the built bundle.
+
+How the desktop build differs from the web:
+
+- `vite build --mode steam` writes only the game page to `steam/build/web/`. The analytics
+  tag and `public/` (the 29 MB promo video) are left out, and the code isn't down-levelled.
+  `src/platform/` holds the Steam side; the web bundle tree-shakes it out.
+- The page loads from `app://popscotch/`, so localStorage persists. The main process proxies
+  `/api/scores` to popscotch.fun, so Steam and browser players share one top 10. Offline, the
+  game keeps its local table as before.
+- It starts fullscreen. F11 or Alt+Enter toggles, and the choice is remembered. A Steam Deck stays
+  fullscreen and starts with gamepad prompts. Q or Y quits from the title, pause and game-over screens.
+  The game pauses when the window loses focus, and the mouse pointer hides when idle.
+- Gamepad presses can start audio (Chromium's autoplay rule otherwise needs a key or click),
+  and Linux ignores Chromium's GPU blocklist so Mesa drivers get hardware WebGL.
+- The page has no Node access, a strict CSP and no network except the score proxy. It can't
+  navigate or open windows, and every bridge call is validated again in the main process.
+  Electron fuses turn off run-as-node, `NODE_OPTIONS` and `--inspect`. On Windows the app
+  archive is also integrity-checked.
+- Builds are unpacked folders (Steam handles install and updates), with Chromium trimmed to one
+  locale and Steamworks binaries for that platform only. The icon is drawn in code by `steam/scripts/icon.cjs`.
+
+Partner-site setup before the first upload:
+
+1. Put the app id in `steam/src/config.ts` (it's Valve's test app, 480, until then).
+2. Create a Windows depot and a Linux depot. Launch options are `popscotch.exe` on Windows and
+   `popscotch` on Linux; that one is a launcher script that adds `--no-sandbox`, which Steam's
+   Linux runtime needs. Choose Steam Linux Runtime 3.0 for the Linux build.
+3. Add the achievements from `npm run steam:achievements`. Add two INT stats: `best_score`
+   (set by the game, max only) and `rounds_cleared` (increment).
+4. Upload `steam/steamworks/rich_presence_english.vdf` under Rich Presence localization.
+5. Turn on Steam Cloud with a small quota (one file, `popscotch-save.json`, under 4 KB).
+
 ## Structure
 
 ```
@@ -187,9 +239,19 @@ src/
   audio.ts           synthesized sound effects and the shared WebAudio bus
   music.ts           original synth loop, sequenced in code
   input.ts textures.ts voxel.ts utils.ts
+  gameEvents.ts      moments the game reports outward (achievements, rich presence)
+  platform/          web vs Steam: achievements, cloud save, presence, quit
 scripts/
   validate-levels.ts  runs validateLevel on every level
   sim-routes.ts       bot walks each level's intended route with real physics
+steam/
+  src/main.ts        Electron entry: Chromium switches, Steam init, window
+  src/protocol.ts    app:// file server, CSP and the /api/scores proxy
+  src/ipc.ts         validated bridge calls from the page to Steamworks
+  src/steam.ts       null-safe Steamworks wrapper (steamworks.js)
+  src/preload.ts     exposes the bridge as window.popscotch
+  src/window.ts      fullscreen window, F11 / Alt+Enter, navigation lockdown
+  electron-builder.yml, scripts/ (icon, Linux launcher, SteamPipe upload)
 ```
 
 In dev builds the running game is exposed as `window.__game`, and level problems are

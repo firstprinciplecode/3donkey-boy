@@ -17,7 +17,11 @@
     "roblox:smoke": "roblox/tools/smoke.sh",
     "roblox:audio": "node --import tsx roblox/tools/render-audio.ts",
     "bot:state": "node --import tsx scripts/bot/state-demo.ts",
-    "bot:play": "node --import tsx scripts/bot/play.ts"
+    "bot:play": "node --import tsx scripts/bot/play.ts",
+    "steam:web": "tsc && vite build --mode steam",
+    "steam:start": "npm run steam:web && npm --prefix steam start",
+    "steam:dist": "npm run steam:web && npm --prefix steam run dist",
+    "steam:achievements": "node --import tsx scripts/steam-achievements.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",

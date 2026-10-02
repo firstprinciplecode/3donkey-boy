@@ -3,6 +3,7 @@ import { createBackdrop, createForeground, mountPaperGrain } from './backdrop';
 import { Game } from './game';
 import { Hud } from './hud';
 import { Input } from './input';
+import { platform } from './platform';
 import { Stage } from './stage';
 import { mountTouchControls } from './touch';
 
@@ -21,7 +22,8 @@ function showFatal(message: string): void {
   document.body.appendChild(el);
 }
 
-function boot(): void {
+async function boot(): Promise<void> {
+  await platform.init();
   createBackdrop(element('backdrop'));
   createForeground(element('foreground'));
   mountPaperGrain(element('fx'));
@@ -39,11 +41,17 @@ function boot(): void {
   input.onModeChange = (mode) => {
     document.body.dataset.input = mode;
   };
-  if (window.matchMedia('(pointer: coarse)').matches) input.setMode('touch');
+  if (platform.prefersGamepad) input.setMode('pad');
+  else if (platform.kind === 'web' && window.matchMedia('(pointer: coarse)').matches) input.setMode('touch');
   document.body.dataset.input = input.mode;
   mountTouchControls(input);
 
-  const game = new Game(stage, new Hud(element('hud')), input);
+  const hud = new Hud(element('hud'));
+  hud.showQuit = platform.quit !== null;
+  const game = new Game(stage, hud, input);
+  game.onEvent = (event) => platform.onGameEvent(event);
+  game.onQuit = platform.quit;
+  platform.onInterrupt(() => game.autoPause());
   if (import.meta.env.DEV) Object.assign(window, { __game: game, __input: input });
 
   /** While a test bot drives the game it advances frames itself; the loop only keeps drawing. */
@@ -70,4 +78,4 @@ function boot(): void {
   });
 }
 
-boot();
+void boot();

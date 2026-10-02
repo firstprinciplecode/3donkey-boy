@@ -1,0 +1,10 @@
+"lang"
+{
+	"Language"	"english"
+	"Tokens"
+	{
+		"#Title"	"On the title screen"
+		"#Climbing"	"Climbing %level% · Round %round%"
+		"#GameOver"	"Game over · %score% pt"
+	}
+}
