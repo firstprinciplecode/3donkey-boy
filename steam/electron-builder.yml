@@ -1,0 +1,58 @@
+# Unpacked builds only: Steam ships a folder per depot and handles install, updates and compression.
+appId: fun.popscotch.game
+productName: Popscotch
+executableName: popscotch
+copyright: Copyright © Thomas Petersen
+
+directories:
+  output: release
+  # icon.png is drawn by scripts/icon.cjs during `npm run build`.
+  buildResources: resources
+
+files:
+  - package.json
+  - build/**/*
+  - "!build/**/*.map"
+  - "!**/node_modules/@types/**"
+  - "!**/node_modules/steamworks.js/*.d.ts"
+  - "!**/node_modules/steamworks.js/README.md"
+
+asar: true
+# Native Steamworks binaries have to sit on disk next to steam_api.
+asarUnpack:
+  - "**/node_modules/steamworks.js/dist/**"
+# steamworks.js ships prebuilt N-API binaries; nothing to rebuild against Electron.
+npmRebuild: false
+# Chromium's UI strings are only used for its own menus and dialogs, which the game never shows.
+electronLanguages:
+  - en-US
+
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  grantFileProtocolExtraPrivileges: false
+
+afterPack: scripts/after-pack.cjs
+
+win:
+  target: dir
+  files:
+    - "!**/node_modules/steamworks.js/dist/{osx,linux64}/**"
+
+linux:
+  target: dir
+  category: Game
+  # `popscotch` is the launcher script from scripts/after-pack.cjs.
+  executableName: popscotch-bin
+  files:
+    - "!**/node_modules/steamworks.js/dist/{osx,win64}/**"
+
+mac:
+  target: dir
+  category: public.app-category.arcade-games
+  files:
+    - "!**/node_modules/steamworks.js/dist/{win64,linux64}/**"

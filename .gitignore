@@ -14,3 +14,8 @@ roblox/audio/
 *.rbxl.lock
 *.rbxlx.lock
 sourcemap.json
+
+# Steam desktop build output (npm run steam:dist)
+steam/build/
+steam/release/
+steam/resources/icon.png
