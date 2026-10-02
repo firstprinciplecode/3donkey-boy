@@ -109,6 +109,8 @@ export class Hud {
   private readonly slots: HTMLElement;
   private readonly initialsHint: HTMLElement;
   private bannerTimer = 0;
+  /** The title prompt also says how to quit (desktop build). */
+  showQuit = false;
 
   constructor(root: HTMLElement) {
     root.innerHTML = MARKUP;
@@ -188,7 +190,11 @@ export class Hud {
   showTitle(board: HiScoreEntry[]): void {
     this.title.hidden = false;
     this.heading.hidden = true;
-    this.sub.replaceChildren(byInput('Press space to start', 'Tap jump to start', 'Press A to start'));
+    this.sub.replaceChildren(
+      this.showQuit
+        ? byInput('Space starts · Q quits', 'Tap jump to start', 'A starts · Y quits')
+        : byInput('Press space to start', 'Tap jump to start', 'Press A to start'),
+    );
     this.controlsList.hidden = false;
     this.hint.hidden = false;
     this.initialsEl.hidden = true;

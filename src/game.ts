@@ -19,6 +19,7 @@ import {
 } from './config';
 import { Cascades } from './cascades';
 import { Combo } from './combo';
+import type { GameEvent, SmashTarget } from './gameEvents';
 import { orbSpots } from './levels/orbs';
 import { Totem } from './entities/totem';
 import { BarrelManager, barrelCentreY, createBarrelPile } from './entities/barrels';
@@ -92,6 +93,10 @@ export class Game {
   private practice = false;
   /** Space on the initials screen is held until the shared table answers. */
   private savingScore = false;
+  /** Achievements and rich presence listen here. */
+  onEvent: (event: GameEvent) => void = () => {};
+  /** Set where the game can close itself (the desktop build); adds Q / Y to quit from menus. */
+  onQuit: (() => void) | null = null;
 
   private readonly stage: Stage;
   private readonly hud: Hud;
@@ -225,6 +230,8 @@ export class Game {
         if (this.input.consume('Space')) {
           unlockAudio();
           this.startGame();
+        } else if (this.quitPressed()) {
+          this.onQuit?.();
         } else if (import.meta.env.DEV) {
           let pick = 0;
           for (let n = 1; n <= Math.min(9, LEVELS.length); n++) {
@@ -244,6 +251,7 @@ export class Game {
         break;
       case 'paused':
         if (this.input.consume('KeyP') || this.input.consume('Escape') || this.input.consume('Space')) this.resume();
+        else if (this.quitPressed()) this.onQuit?.();
         break;
       case 'dying':
         if (this.stateTime >= DEATH_TIME) {
@@ -259,6 +267,7 @@ export class Game {
         break;
       case 'gameover':
         if (this.stateTime > 1 && this.input.consume('Space')) this.startGame();
+        else if (this.quitPressed()) this.onQuit?.();
         break;
     }
 
@@ -269,6 +278,14 @@ export class Game {
   /** Called when the tab is hidden so the player doesn't die while away. */
   autoPause(): void {
     if (this.state === 'playing') this.pause();
+  }
+
+  private quitPressed(): boolean {
+    return this.onQuit !== null && (this.input.consume('KeyQ') || this.input.consume('GamepadY'));
+  }
+
+  private emit(event: GameEvent): void {
+    if (!this.practice) this.onEvent(event);
   }
 
   private setState(state: GameState): void {
@@ -338,6 +355,7 @@ export class Game {
     this.hud.setScore(0);
     this.hud.setLives(this.lives);
     this.hud.hideOverlay();
+    this.emit({ type: 'runStart' });
     this.startRound(true);
   }
 
@@ -380,6 +398,7 @@ export class Game {
       READY_TIME * 1000 + (tip ? 900 : 0),
       `Level ${this.levelIndex + 1} · ${levelTitle(def.name)}${when}${tip}`,
     );
+    this.emit({ type: 'roundStart', level: this.levelIndex + 1, levelName: def.name, round: this.round });
     this.setState('ready');
   }
 
@@ -562,11 +581,19 @@ export class Game {
     return sphereHitsCylinder(x, y, z, r, p.x, p.y, p.z, PLAYER_SIZE.halfWidth, PLAYER_SIZE.height);
   }
 
-  private smash(x: number, y: number, z: number, points: number, colors: readonly number[] = SPLINTERS): void {
+  private smash(
+    target: SmashTarget,
+    x: number,
+    y: number,
+    z: number,
+    points: number,
+    colors: readonly number[] = SPLINTERS,
+  ): void {
     this.particles.burst(x, y, z, colors, 14, 5);
     this.addScore(points, new THREE.Vector3(x, y, z), 0.8);
     this.hitStop(0.06, 0.35);
     sfx.smash();
+    this.emit({ type: 'smash', target });
   }
 
   private checkCollisions(): void {
@@ -582,7 +609,7 @@ export class Game {
       if (this.hitsPlayer(b.pos.x, cy, b.pos.z, br * 0.8)) {
         if (!armed) return this.die();
         this.barrels.smash(b);
-        this.smash(b.pos.x, cy, b.pos.z, SCORE.smashBarrel, PROJECTILES[b.look].burst);
+        this.smash('barrel', b.pos.x, cy, b.pos.z, SCORE.smashBarrel, PROJECTILES[b.look].burst);
         continue;
       }
       const clearedAbove =
@@ -609,7 +636,7 @@ export class Game {
       if (!armed) return this.die();
       this.fireLayer.remove(f.group);
       this.fires.splice(i, 1);
-      this.smash(f.position.x, f.position.y, f.position.z, SCORE.smashFire);
+      this.smash('fire', f.position.x, f.position.y, f.position.z, SCORE.smashFire);
     }
 
     for (let i = this.ghosts.length - 1; i >= 0; i--) {
@@ -618,7 +645,7 @@ export class Game {
       if (!armed) return this.die();
       this.ghostLayer.remove(g.group);
       this.ghosts.splice(i, 1);
-      this.smash(g.position.x, g.position.y, g.position.z, SCORE.smashGhost);
+      this.smash('ghost', g.position.x, g.position.y, g.position.z, SCORE.smashGhost);
     }
 
     for (let i = this.crawlers.length - 1; i >= 0; i--) {
@@ -628,7 +655,7 @@ export class Game {
         if (!armed) return this.die();
         this.crawlerLayer.remove(c.group);
         this.crawlers.splice(i, 1);
-        this.smash(cp.x, cp.y, cp.z, SCORE.smashCrawler);
+        this.smash('crawler', cp.x, cp.y, cp.z, SCORE.smashCrawler);
         continue;
       }
       if (p.grounded) c.scored = false;
@@ -648,7 +675,7 @@ export class Game {
         if (!armed) return this.die();
         this.totemLayer.remove(t.group);
         this.totems.splice(i, 1);
-        this.smash(tp.x, tp.y, tp.z, SCORE.smashTotem);
+        this.smash('totem', tp.x, tp.y, tp.z, SCORE.smashTotem);
         continue;
       }
       const floor = this.level.tierTop(t.ring);
@@ -657,6 +684,7 @@ export class Game {
       if (!t.scored && passedUnder) {
         t.scored = true;
         this.addJumpScore(SCORE.underTotem, pp, 2);
+        this.emit({ type: 'underTotem' });
       }
     }
 
@@ -692,6 +720,7 @@ export class Game {
       this.popup('1-U-P! extra life', c.x, c.y + 0.8, c.z);
       this.particles.burst(c.x, c.y, c.z, RAINBOW, 30, 6);
       sfx.spelled();
+      this.emit({ type: 'spelled' });
       return;
     }
     this.addScore(SCORE.letter);
@@ -734,6 +763,7 @@ export class Game {
         this.popup('Hammer!', c.x, c.y + 0.6, c.z);
         this.particles.burst(c.x, c.y, c.z, [COLORS.charcoal, COLORS.yellow], 12, 4);
         sfx.hammer();
+        this.emit({ type: 'hammer' });
         break;
       case 'key':
         this.obstacles.unlockKeyDoors();
@@ -761,6 +791,7 @@ export class Game {
   private addScore(points: number, at?: THREE.Vector3, lift = 0): void {
     this.score += points;
     this.hud.setScore(this.score);
+    this.emit({ type: 'score', score: this.score });
     if (this.score > this.hiScore) {
       this.hiScore = this.score;
       this.hud.setHi(this.hiScore);
@@ -775,6 +806,7 @@ export class Game {
     this.addScore(points);
     this.popup(mult > 1 ? `${points} pt x${mult}` : `${points} pt`, at.x, at.y + lift, at.z);
     sfx.score(mult);
+    if (mult > 1) this.emit({ type: 'combo', multiplier: mult });
   }
 
   private hitStop(seconds: number, shake: number): void {
@@ -798,6 +830,7 @@ export class Game {
     this.hitStop(0.12, 0.6);
     this.lives -= 1;
     this.hud.setLives(this.lives);
+    this.emit({ type: 'lifeLost' });
     const pp = this.player.position;
     this.particles.burst(pp.x, pp.y + 0.8, pp.z, [COLORS.orange, COLORS.cyan, COLORS.yellow], 18, 5);
     if (fell) sfx.fall();
@@ -814,6 +847,7 @@ export class Game {
     this.particles.burst(this.goalBase.x, this.goalBase.y, this.goalBase.z, RAINBOW, 30, 7);
     sfx.clear();
     this.hud.banner('Round clear!', CLEAR_TIME * 1000, `Bonus ${this.bonus}`);
+    this.emit({ type: 'roundClear', levelName: this.level.def.name, round: this.round, time: this.time });
   }
 
   private updateClear(dt: number): void {
@@ -832,6 +866,7 @@ export class Game {
 
   private gameOver(): void {
     sfx.gameOver();
+    this.emit({ type: 'gameOver', score: this.score });
     if (this.practice || insertionIndex(this.board, this.score) === null) return this.showGameOver(null);
     const known = loadPlayerName();
     if (known && bestFor(this.board, known) >= this.score) {
@@ -905,6 +940,7 @@ export class Game {
       const remote = await submitScore(name, this.score);
       const placed = remote ?? insertScore(this.board, name, this.score);
       if (!placed) {
+        this.emit({ type: 'scoreSaved', rank: null });
         this.showGameOver(null);
         return;
       }
@@ -913,6 +949,7 @@ export class Game {
       this.hiScore = topScore(this.board);
       this.hud.setHi(this.hiScore);
       if (placed.improved) sfx.score();
+      this.emit({ type: 'scoreSaved', rank: placed.index });
       this.showGameOver(placed.index);
     } finally {
       this.savingScore = false;
@@ -926,7 +963,12 @@ export class Game {
 
   private pause(): void {
     this.setState('paused');
-    this.hud.showMessage('Paused', byInput('Press P to resume', 'Tap II to resume', 'Press start to resume'));
+    this.hud.showMessage(
+      'Paused',
+      this.onQuit
+        ? byInput('P resumes · Q quits', 'Tap II to resume', 'Start resumes · Y quits')
+        : byInput('Press P to resume', 'Tap II to resume', 'Press start to resume'),
+    );
   }
 
   private resume(): void {

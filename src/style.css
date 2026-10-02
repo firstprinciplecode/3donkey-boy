@@ -855,3 +855,9 @@ body[data-input='touch'] .touch {
   transform: translateY(3px);
   box-shadow: 0 1px 0 var(--ink);
 }
+
+/* Desktop build: the pointer hides while the mouse is still. */
+body.cursor-idle,
+body.cursor-idle * {
+  cursor: none;
+}

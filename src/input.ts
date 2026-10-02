@@ -8,6 +8,7 @@ export type InputMode = 'keys' | 'touch' | 'pad';
 const PAD_BUTTONS: Record<number, string> = {
   0: 'Space', // A / cross: jump, confirm
   1: 'Space', // B / circle
+  3: 'GamepadY', // Y / triangle: quit from menus, desktop build only
   8: 'KeyM', // back / select: mute
   9: 'KeyP', // start: pause
   12: 'ArrowUp',

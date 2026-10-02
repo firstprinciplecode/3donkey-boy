@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin, type UserConfig } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { handleScoreRequest } from './server/scores.mjs';
 import { SONG_ORDER, songError, type SongTheme } from './src/song-data';
@@ -54,23 +54,32 @@ async function handleSongSave(req: IncomingMessage, res: ServerResponse): Promis
 
 const page = (name: string) => fileURLToPath(new URL(name, import.meta.url));
 
-export default defineConfig({
-  plugins: [
-    {
-      name: 'popscotch-scores',
-      configureServer(server) {
-        server.middlewares.use((req, res, next) => {
-          const path = req.url?.split('?')[0];
-        if (path === '/api/songs' && req.method === 'PUT') {
-          void handleSongSave(req, res).catch(next);
-          return;
-        }
-        if (path !== '/api/scores') return next();
-        void handleScoreRequest(req, res).catch(next);
-        });
-      },
-    },
-  ],
+/** Strips the web analytics tag: the desktop build doesn't phone home. */
+const stripAnalytics: Plugin = {
+  name: 'popscotch-strip-analytics',
+  transformIndexHtml: (html) =>
+    html
+      .replace(/\s*<meta name="uplink-ga4-measurement-id"[^>]*>/, '')
+      .replace(/\s*<script src="\/analytics\.js"><\/script>/, ''),
+};
+
+const scoresApi: Plugin = {
+  name: 'popscotch-scores',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const path = req.url?.split('?')[0];
+      if (path === '/api/songs' && req.method === 'PUT') {
+        void handleSongSave(req, res).catch(next);
+        return;
+      }
+      if (path !== '/api/scores') return next();
+      void handleScoreRequest(req, res).catch(next);
+    });
+  },
+};
+
+const webConfig: UserConfig = {
+  plugins: [scoresApi],
   build: {
     rollupOptions: {
       input: {
@@ -80,4 +89,24 @@ export default defineConfig({
       },
     },
   },
-});
+};
+
+/**
+ * `--mode steam`: the desktop bundle for steam/. Game page only, no promo video from public/,
+ * and no down-levelling since it only ever runs in Electron's Chromium.
+ */
+const steamConfig: UserConfig = {
+  plugins: [scoresApi, stripAnalytics],
+  publicDir: false,
+  build: {
+    outDir: page('./steam/build/web'),
+    emptyOutDir: true,
+    target: 'esnext',
+    modulePreload: { polyfill: false },
+    // One local file loads faster than split chunks; the web size warning doesn't apply.
+    chunkSizeWarningLimit: 1024,
+    rollupOptions: { input: { main: page('./index.html') } },
+  },
+};
+
+export default defineConfig(({ mode }) => (mode === 'steam' ? steamConfig : webConfig));
