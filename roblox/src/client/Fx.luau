@@ -76,6 +76,7 @@ end
 function Fx.new(gui: Instance)
 	local self = setmetatable({}, Fx)
 	self.t = 0
+	self.poster = true
 	self.top, self.topGradient = fadeStrip(gui, true, 0.18)
 	self.bottom, self.bottomGradient = fadeStrip(gui, false, 0.32)
 	self:setTime("day")
@@ -126,9 +127,28 @@ function Fx:setTime(time: string)
 	})
 end
 
+-- The blurred edge ghosts and near blur only suit the far poster camera; up close the blur would
+-- swallow the runner, so both go away while the camera chases.
+function Fx:setPoster(on: boolean)
+	if on == self.poster then
+		return
+	end
+	self.poster = on
+	self.focus.Enabled = on
+	if not on then
+		for k = 1, #self.parts do
+			self.frames[k] = Voxel.HIDDEN
+		end
+		workspace:BulkMoveTo(self.parts, self.frames, Enum.BulkMoveMode.FireCFrameChanged)
+	end
+end
+
 -- Re-places the ghosts in front of the camera; call after the camera has moved this frame.
 function Fx:update(dt: number)
 	self.t += dt
+	if not self.poster then
+		return
+	end
 	local camera = workspace.CurrentCamera
 	if not camera or not camera.CFrame or not camera.FieldOfView then
 		return

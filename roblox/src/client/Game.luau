@@ -15,10 +15,12 @@ local VoxelBuilder = require(Shared.VoxelBuilder)
 local World = require(Shared.World)
 
 local Audio = require(script.Parent.Audio)
+local Avatar = require(script.Parent.Avatar)
 local Backdrop = require(script.Parent.Backdrop)
 local Barrels = require(script.Parent.Barrels)
 local Boss = require(script.Parent.Boss)
 local CameraRig = require(script.Parent.CameraRig)
+local Collision = require(script.Parent.Collision)
 local Combo = require(script.Parent.Combo)
 local Crawler = require(script.Parent.Crawler)
 local Hazards = require(script.Parent.Hazards)
@@ -39,6 +41,7 @@ local BARREL = Config.BARREL
 local C = Config.COLORS
 local CRAWLER = Config.CRAWLER
 local FIRE = Config.FIRE
+local FREE = Config.FREE_ROAM
 local GAME_RULES = Config.GAME_RULES
 local GHOST = Config.GHOST
 local HAMMER = Config.HAMMER
@@ -91,8 +94,11 @@ function Game.new(playerGui: Instance)
 	self.initials = { "A", "A", "A" }
 	self.initialCursor = 1
 	self.returning = false
-	self.player = Player.new(first)
+	self.player = if FREE.enabled then Avatar.new(first) else Player.new(first)
 	self.rig = Rig.new(workspace)
+	if FREE.enabled then
+		self.rig.model.Parent = nil
+	end
 	self.cameraRig = CameraRig.new()
 	self.boss = Boss.new(workspace, first)
 	self.barrels = Barrels.new(first, workspace)
@@ -182,6 +188,9 @@ function Game:_loadLevel(index: number)
 	local skin = Skins[level.def.skin]
 	self.level = level
 	self.world, self.worldGlow = World.build(level, workspace)
+	if FREE.enabled then
+		Collision.build(level, self.world)
+	end
 	self.backdrop = Backdrop.new(level, skin, workspace)
 	self.weather:setSkin(level.def.skin)
 	-- New scenery is built unlit, so the next time of day has to be applied in full.
@@ -261,6 +270,9 @@ function Game:_setState(state: string)
 	self.state = state
 	self.stateT = 0
 	self.accumulator = 0
+	if FREE.enabled then
+		self.player:setFrozen(state ~= "playing")
+	end
 	if state == "playing" then
 		self.audio:startMusic()
 	else
@@ -1076,9 +1088,12 @@ function Game:_frame(dt: number)
 	self.hazards:render()
 	self.particles:update(dt)
 	self.items:update(dt)
-	self.rig:update(dt, self.player)
+	if not FREE.enabled then
+		self.rig:update(dt, self.player)
+	end
 	self.cameraRig:update(dt, self:_focus())
-	self.backdrop:update(dt, self.cameraRig.azimuth, self.cameraRig.focus)
+	self.backdrop:update(dt, self.cameraRig:sceneryAzimuth(), self.cameraRig.focus)
+	self.fx:setPoster(not self.cameraRig:isFree())
 
 	if self.goal then
 		self.goalSpin += dt * (if self.state == "clear" then 12 else 1.6)

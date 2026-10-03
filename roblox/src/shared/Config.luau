@@ -5,7 +5,8 @@ end
 local Config = {}
 
 -- Gameplay runs in the web build's units; everything is scaled by this when placed in the world.
-Config.STUD = 2
+-- 4 makes a terrace about two and a half Roblox avatars deep, so a real avatar fits the pyramid.
+Config.STUD = 4
 
 Config.hex = hex
 
@@ -60,6 +61,18 @@ local C = Config.COLORS
 Config.RAINBOW = { C.red, C.orange, C.yellow, C.grass, C.teal, C.blue, C.purple }
 
 Config.PLAYER_SIZE = { halfWidth = 0.32, height = 1.5 }
+
+-- Free roam: the player's own avatar walks the pyramid with Roblox's controls and camera, on an
+-- invisible collision shell, instead of the scripted climber on the rings. Sizes are in studs.
+-- The avatar runs at the scripted climber's pace (PHYSICS.moveSpeed), so barrels stay as hard to dodge.
+Config.FREE_ROAM = {
+	enabled = true,
+	-- Roblox's default; clears a barrel but stays under the shortest tier (12 studs), so ladders
+	-- are the only way up.
+	jumpHeight = 7.2,
+	-- The rail round the ground terrace, well over a jump.
+	railHeight = 30,
+}
 
 Config.BARREL = {
 	radius = 0.42,
@@ -208,7 +221,8 @@ Config.CAMERA = {
 	turnDuration = 0.45,
 	turnHysteresis = 0.35,
 	-- Roblox has no orthographic camera, so a far camera with a narrow field of view stands in for one.
-	distance = 140,
+	-- Studs; scales with the world so the framing doesn't change.
+	distance = 70 * Config.STUD,
 	minHalfHeight = 8.5,
 	minHalfWidth = 11,
 }

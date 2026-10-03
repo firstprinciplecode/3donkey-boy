@@ -1,5 +1,8 @@
 -- Shows one face of the pyramid at a time and snaps a quarter turn at corners, like src/stage.ts.
+-- In free roam, play uses Roblox's own camera on the avatar; the title and game over keep the
+-- whole-pyramid showcase.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -12,6 +15,8 @@ local STUD = Config.STUD
 local POLAR = math.rad(CAMERA.polarDeg)
 local YAW_BIAS = math.rad(CAMERA.yawBiasDeg)
 local FOLLOW = 4
+local FREE = Config.FREE_ROAM
+local FREE_FOV = 70
 -- Screen shake (src/stage.ts): trauma stacks to 1 and decays; the jolt grows with its square.
 local SHAKE_MAX = 0.35
 local SHAKE_DECAY = 1.8
@@ -39,6 +44,17 @@ function CameraRig.new()
 	return self
 end
 
+-- True while Roblox's camera follows the avatar instead of this rig framing the pyramid.
+function CameraRig:isFree(): boolean
+	return FREE.enabled and not self.showcase
+end
+
+-- Direction the scenery should clear out of the way of, or nil when nothing needs hiding: Roblox's
+-- camera stays close to the avatar, inside the ring of scenery.
+function CameraRig:sceneryAzimuth(): number?
+	return if self:isFree() then nil else self.azimuth
+end
+
 -- Adds screen shake; `amount` stacks up to 1.
 function CameraRig:shake(amount: number)
 	self.trauma = math.min(1, self.trauma + amount)
@@ -58,7 +74,7 @@ end
 -- Starts a turn once the player is clearly round a corner, so the view doesn't flicker on the edge.
 -- Returns true when a turn starts.
 function CameraRig:watch(x: number, z: number): boolean
-	if self.turn then
+	if self.turn or FREE.enabled then
 		return false
 	end
 	local side, offset, radius = Level.squareCoords(x, z)
@@ -117,6 +133,13 @@ function CameraRig:update(dt: number, target: Vector3?)
 		self:_apply()
 		return
 	end
+	if self:isFree() then
+		if target then
+			self.focus = target
+		end
+		self:_apply()
+		return
+	end
 	if not target then
 		self:_apply()
 		return
@@ -143,6 +166,18 @@ function CameraRig:_apply()
 	-- Roblox can swap the Camera object after the player joins, so never cache it.
 	local camera = workspace.CurrentCamera
 	if not camera then
+		return
+	end
+	if self:isFree() then
+		if camera.CameraType ~= Enum.CameraType.Custom then
+			camera.CameraType = Enum.CameraType.Custom
+			camera.FieldOfView = FREE_FOV
+		end
+		local character = Players.LocalPlayer.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid and camera.CameraSubject ~= humanoid then
+			camera.CameraSubject = humanoid
+		end
 		return
 	end
 	camera.CameraType = Enum.CameraType.Scriptable

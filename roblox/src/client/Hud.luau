@@ -17,6 +17,7 @@ local INK = HudKit.INK
 local CREAM = HudKit.CREAM
 local WHITE = Color3.new(1, 1, 1)
 local GOLD = Color3.fromRGB(255, 208, 0)
+local FREE = Config.FREE_ROAM.enabled
 local text = HudKit.text
 local fitText = HudKit.fitText
 
@@ -359,13 +360,20 @@ function Hud:_buildControls(panel: Instance)
 			g.Parent = keys
 		end)
 	end
-	key("", "left")
-	key("", "right")
-	words("Run")
-	gap()
-	key("", "up")
-	key("", "down")
-	words("Climb ladders")
+	if FREE then
+		for _, letter in { "w", "a", "s", "d" } do
+			key(letter)
+		end
+		words("Move · Walk into a ladder to climb")
+	else
+		key("", "left")
+		key("", "right")
+		words("Run")
+		gap()
+		key("", "up")
+		key("", "down")
+		words("Climb ladders")
+	end
 	gap()
 	key("space")
 	words("Jump")
@@ -378,14 +386,14 @@ function Hud:_buildControls(panel: Instance)
 	local touch = HudKit.row(holder, 24, 40)
 	touch.AnchorPoint = Vector2.new(0.5, 0)
 	touch.Position = UDim2.fromScale(0.5, 0)
-	self:_caption(touch, "Left pad: run and climb", 1)
+	self:_caption(touch, if FREE then "Thumbstick: move and climb" else "Left pad: run and climb", 1)
 	self:_caption(touch, "Right button: jump", 2)
 
 	local pad = HudKit.row(holder, 6, 40)
 	pad.AnchorPoint = Vector2.new(0.5, 0)
 	pad.Position = UDim2.fromScale(0.5, 0)
-	HudKit.keycap(pad, "d-pad", 1)
-	self:_caption(pad, "or stick: run and climb", 2)
+	HudKit.keycap(pad, if FREE then "stick" else "d-pad", 1)
+	self:_caption(pad, if FREE then "Move and climb" else "or stick: run and climb", 2)
 	local g = Instance.new("Frame")
 	g.BackgroundTransparency = 1
 	g.Size = UDim2.fromOffset(10, 1)

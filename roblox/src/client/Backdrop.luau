@@ -432,13 +432,13 @@ function Backdrop:destroy()
 	self.model:Destroy()
 end
 
--- `azimuth` is the camera's direction from the focus (see CameraRig).
-function Backdrop:update(dt: number, azimuth: number, focus: Vector3)
+-- `azimuth` is the camera's direction from the focus (see CameraRig), or nil to show everything.
+function Backdrop:update(dt: number, azimuth: number?, focus: Vector3)
 	self.t += dt
 
 	for i, sector in self.sectors do
 		local centre = (i - 0.5) / SECTORS * 2 * math.pi
-		local show = angleDiff(centre, azimuth) >= HIDE_WITHIN
+		local show = azimuth == nil or angleDiff(centre, azimuth) >= HIDE_WITHIN
 		if show ~= self.sectorShown[i] then
 			self.sectorShown[i] = show
 			sector.Parent = if show then self.model else nil
@@ -449,7 +449,7 @@ function Backdrop:update(dt: number, azimuth: number, focus: Vector3)
 	for _, f in self.critters do
 		f.angle += f.speed * dt
 		local x, z = math.sin(f.angle) * f.radius, math.cos(f.angle) * f.radius
-		local shown = angleDiff(angleOf(x, z), azimuth) >= HIDE_WITHIN
+		local shown = azimuth == nil or angleDiff(angleOf(x, z), azimuth) >= HIDE_WITHIN
 		local y = f.height + math.sin(self.t * 1.3 + f.angle * 3) * 0.8
 		local body = CFrame.new(Vector3.new(x, y, z) * STUD) * CFrame.Angles(0, f.angle + (if f.speed > 0 then math.pi / 2 else -math.pi / 2), 0)
 		local flap = math.sin(self.t * 10 + f.radius) * 0.6

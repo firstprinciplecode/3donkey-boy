@@ -292,7 +292,7 @@ local half = barrels.list[1]
 assert(math.abs(half.radius - 0.42 * 1.15 * 0.75) < 1e-9 and half.split, "halves are 0.75x and don't split again")
 local halfParts = half.parts
 barrels:clear()
-assert(math.abs(halfParts[1].Size.X - 0.42 * 1.15 * 2 * 2) < 1e-6, "pooled halves are restored to full size")
+assert(math.abs(halfParts[1].Size.X - 0.42 * 1.15 * 2 * require({ __module = "shared/Config" }).STUD) < 1e-6, "pooled halves are restored to full size")
 barrels.onSplit = nil
 print("candy obstacle, item and barrel checks passed")
 
@@ -366,6 +366,17 @@ rs.Create = function() return { Play = function() end, Completed = { Once = func
 rs.GetGuiInset = function() return vec(0, 0, 0), vec(0, 0, 0) end
 workspace.CurrentCamera = setmetatable({ _attrs = {}, ViewportSize = { X = 1280, Y = 720 } }, Obj)
 function workspace.CurrentCamera:WorldToViewportPoint() return vec(0, 0, 1), true end
+
+-- Free roam: every level's invisible shell builds, with one climbable truss per ladder.
+local Collision = require({ __module = "client/Collision" })
+for i = 1, #Levels do
+	local trusses = counts.TrussPart or 0
+	Collision.build(Level.new(Levels[i]), workspace)
+	assert((counts.TrussPart or 0) - trusses == #Levels[i].ladders, `{Levels[i].name} has a truss per ladder`)
+end
+print("collision shells built")
+-- The game below runs before any avatar has loaded.
+rs.LocalPlayer = { CharacterAdded = { Connect = function() end } }
 local Game = require({ __module = "client/Game" })
 local popscotch = Game.new(setmetatable({ _attrs = {} }, Obj))
 popscotch:start()
@@ -463,7 +474,7 @@ for _ = 1, 120 * 6 do
 end
 popscotch.barrels:render(1 / 60)
 assert(ball.radius > 0.42 and ball.radius <= 0.42 * 1.85 + 1e-9, `snowballs grow as they roll ({ball.radius})`)
-assert(math.abs(ball.parts[1].Size.X - ball.radius * 2 * 2) < 0.05, "the snowball is drawn at its size")
+assert(math.abs(ball.parts[1].Size.X - ball.radius * 2 * require({ __module = "shared/Config" }).STUD) < 0.05, "the snowball is drawn at its size")
 
 -- Serpent tomb: fire jets erupt on a beat, snakes rear up, boulders, a mummy on the back of the ground ring.
 popscotch.round = 6

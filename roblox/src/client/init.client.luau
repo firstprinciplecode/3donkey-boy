@@ -7,16 +7,21 @@
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 
+local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
 local Game = require(script.Game)
 local TouchControls = require(script.TouchControls)
 
 local MAX_FRAME_DT = 1 / 20
 local STICK_DEAD_ZONE = 0.45
 local DIRECTIONS = { "left", "right", "up", "down" }
+-- In free roam Roblox moves the avatar, so these still reach its controls after we've seen them.
+local FREE = Config.FREE_ROAM.enabled
+local SHARED_WITH_AVATAR = { left = true, right = true, up = true, down = true, jump = true }
 
 -- Single-player for now: the chat window and player list only cover the score and bonus.
 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
@@ -83,6 +88,7 @@ end
 
 local touch
 local setMode: (string?) -> ()
+local inputMode = "keys"
 local cleanShot = false
 
 local function press(action: string, letter: string?)
@@ -128,6 +134,9 @@ local function onButton(_, inputState: Enum.UserInputState, input: InputObject)
 	elseif action and set[action] ~= nil then
 		set[action] = false
 	end
+	if FREE and action and SHARED_WITH_AVATAR[action] then
+		return Enum.ContextActionResult.Pass
+	end
 	return Enum.ContextActionResult.Sink
 end
 
@@ -146,7 +155,7 @@ local function onStick(_, _state: Enum.UserInputState, input: InputObject)
 		end
 		sources.stick[direction] = now[direction]
 	end
-	return Enum.ContextActionResult.Sink
+	return if FREE then Enum.ContextActionResult.Pass else Enum.ContextActionResult.Sink
 end
 
 local codes = {}
@@ -190,11 +199,21 @@ function setMode(mode: string?)
 	if not mode then
 		return
 	end
-	touch:setVisible(mode == "touch")
+	-- Free roam uses Roblox's own thumbstick and jump button instead of ours.
+	touch:setVisible(mode == "touch" and not FREE)
 	if mode ~= "touch" then
 		release(sources.touch)
 	end
+	inputMode = mode
 	popscotch:setInputMode(mode)
+end
+-- Roblox's touch jump button doesn't go through our bindings, so it starts and resumes the game here.
+if FREE then
+	UserInputService.JumpRequest:Connect(function()
+		if inputMode == "touch" then
+			press("jump")
+		end
+	end)
 end
 UserInputService.LastInputTypeChanged:Connect(function(inputType)
 	-- Pressing H for a clean shot mustn't flip the emulated phone over to keyboard prompts.

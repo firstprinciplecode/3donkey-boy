@@ -11,7 +11,7 @@
 
     "Players": {
       "$properties": {
-        "CharacterAutoLoads": false
+        "CharacterAutoLoads": true
       }
     },
 
@@ -23,8 +23,8 @@
 
     "StarterPlayer": {
       "$properties": {
-        "DevTouchMovementMode": "Scriptable",
-        "DevComputerMovementMode": "Scriptable"
+        "DevTouchMovementMode": "UserChoice",
+        "DevComputerMovementMode": "UserChoice"
       },
       "StarterPlayerScripts": {
         "Client": {
