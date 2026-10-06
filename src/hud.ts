@@ -1,23 +1,30 @@
+import pauseIcon from './assets/hud/pause.svg';
+import starLargeIcon from './assets/hud/star-desktop.svg';
 import starIcon from './assets/hud/star.svg';
+import volumeIcon from './assets/hud/volume.svg';
 import type { HiScoreEntry } from './hiscore';
 import { formatScore, levelTitle } from './utils';
 
 // Static markup only; all runtime values are written with textContent.
 const MARKUP = `
-<header class="hud hud--top">
-  <div class="hud__cluster hud__left">
-    <div class="hud__lives" data-lives></div>
+<div class="hud">
+  <span class="hud__round not-touch" data-round>Round 1</span>
+  <span class="hud__score"><span data-score>0</span> <span class="not-touch">Points</span><span class="only-touch">Pts</span></span>
+  <div class="hud__cluster hud__status">
     <div class="hud__letters" data-letters aria-label="letters collected"><span>1</span><span>U</span><span>P</span></div>
+    <div class="hud__lives" data-lives></div>
   </div>
-  <span class="hud__score" data-score>0 PTS</span>
-  <div class="hud__cluster hud__right">
-    <img class="hud__star" src="${starIcon}" alt="" />
+  <div class="hud__cluster hud__bonus-wrap">
+    <img class="hud__star hud__star--large not-touch" src="${starLargeIcon}" alt="" />
+    <img class="hud__star only-touch" src="${starIcon}" alt="" />
     <span class="hud__bonus" data-bonus>5000</span>
   </div>
-</header>
-<footer class="hud hud--bottom">
+  <div class="hud__buttons not-touch">
+    <button type="button" class="hud__button hud__button--pause" data-tap="KeyP" aria-label="Pause"><img src="${pauseIcon}" alt="" /></button>
+    <button type="button" class="hud__button hud__button--sound" data-tap="KeyM" data-sound aria-label="Mute"><img src="${volumeIcon}" alt="" /></button>
+  </div>
   <span class="hud__level-name" data-level-name></span>
-</footer>
+</div>
 <div class="popups" data-popups></div>
 <div class="banner" data-banner>
   <div class="banner__text" data-banner-text></div>
@@ -76,6 +83,10 @@ function query<T extends HTMLElement>(root: HTMLElement, selector: string): T {
 }
 
 export class Hud {
+  /** Called with a key code when a HUD button (pause, sound) is pressed. */
+  onTap: ((code: string) => void) | null = null;
+  private readonly round: HTMLElement;
+  private readonly soundButton: HTMLElement;
   private readonly score: HTMLElement;
   private readonly bonus: HTMLElement;
   private readonly levelName: HTMLElement;
@@ -100,6 +111,8 @@ export class Hud {
 
   constructor(root: HTMLElement) {
     root.innerHTML = MARKUP;
+    this.round = query(root, '[data-round]');
+    this.soundButton = query(root, '[data-sound]');
     this.score = query(root, '[data-score]');
     this.bonus = query(root, '[data-bonus]');
     this.levelName = query(root, '[data-level-name]');
@@ -130,16 +143,32 @@ export class Hud {
       span.style.setProperty('--i', String(i));
       this.title.appendChild(span);
     });
+
+    // Mouse focus would let Space click the button again, so the buttons never take focus.
+    root.addEventListener('mousedown', (e) => {
+      if ((e.target as Element).closest('[data-tap]')) e.preventDefault();
+    });
+    root.addEventListener('click', (e) => {
+      const button = (e.target as Element).closest<HTMLElement>('[data-tap]');
+      if (button?.dataset.tap) this.onTap?.(button.dataset.tap);
+    });
   }
 
   setScore(n: number): void {
-    this.score.textContent = `${Math.max(0, Math.floor(n))} PTS`;
+    this.score.textContent = String(Math.max(0, Math.floor(n)));
   }
 
   /** The best score lives on the title board, not in the live stats. */
   setHi(_n: number): void {}
 
-  setRound(_n: number): void {}
+  setRound(n: number): void {
+    this.round.textContent = `Round ${n}`;
+  }
+
+  setMuted(muted: boolean): void {
+    this.soundButton.classList.toggle('hud__button--off', muted);
+    this.soundButton.setAttribute('aria-label', muted ? 'Unmute' : 'Mute');
+  }
 
   setLevel(_n: number, name: string): void {
     this.levelName.textContent = levelTitle(name);

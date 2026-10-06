@@ -381,76 +381,64 @@
   },
   "tomb": {
     "title": "Serpent Tomb",
-    "mode": "Ionian",
-    "bpm": 146,
+    "mode": "Aeolian",
+    "bpm": 48,
     "voices": [
-      "sawtooth",
-      "square"
+      "square",
+      "sine"
     ],
-    "detune": 9,
+    "detune": 2,
     "bars": [
       {
-        "lead": "D4 F#4 A4 D5 A4 F#4 D4 F#4 A4 D5 F#5 D5 A4 F#4 A4 D5",
+        "lead": "D5 . . . . . . . F5 . . . . . . .",
         "root": "D2"
       },
       {
-        "lead": "B3 D4 F#4 B4 F#4 D4 B3 D4 F#4 B4 D5 B4 F#4 D4 F#4 B4",
-        "root": "B2"
+        "lead": "F5 . . . . . . . E5 . . . . . . .",
+        "root": "C2"
       },
       {
-        "lead": "G3 B3 D4 G4 D4 B3 G3 B3 D4 G4 B4 G4 D4 B3 D4 G4",
-        "root": "G2"
+        "lead": "D5 . . . . . . . Bb4 . . . . . . .",
+        "root": "Bb2"
       },
       {
-        "lead": "A3 C#4 E4 A4 E4 C#4 A3 C#4 E4 A4 C#5 A4 E4 C#4 E4 A4",
+        "lead": "C#5 . . . . . . . . . . . D5 . . .",
         "root": "A2"
       },
       {
-        "lead": "F#5 . . E5 D5 . . A4 . . D5 . E5 . F#5 .",
+        "lead": "A4 . . . . . . . D5 . . . C5 . . .",
         "root": "D2"
       },
       {
-        "lead": "G5 . . F#5 E5 . . B4 . . D5 . E5 . B4 .",
-        "root": "B2"
-      },
-      {
-        "lead": "D5 . . C#5 B4 . . G4 . . B4 . D5 . G5 .",
+        "lead": "Bb4 . . . . . . . A4 . . . . . . .",
         "root": "G2"
       },
       {
-        "lead": "E5 . . . C#5 . . . A4 . B4 . C#5 . E5 .",
+        "lead": "G4 . . . . . . . Bb4 . . . A4 . . .",
+        "root": "C2"
+      },
+      {
+        "lead": "A4 . . . . . . . D4 . . . . . . .",
+        "root": "D2"
+      },
+      {
+        "lead": "D4 . . . . . . . F4 . . . . . . .",
+        "root": "D2"
+      },
+      {
+        "lead": "F4 . . . . . . . E4 . . . . . . .",
+        "root": "C2"
+      },
+      {
+        "lead": "D4 . . . . . . . Bb3 . . . . . . .",
+        "root": "Bb2"
+      },
+      {
+        "lead": "C#4 . . . . . . . . . . . D4 . . .",
         "root": "A2"
       },
       {
-        "lead": "F#5 . . E5 D5 . . A4 . . D5 . E5 . F#5 .",
-        "root": "D2"
-      },
-      {
-        "lead": "G5 . . F#5 E5 . . B4 . . D5 . E5 . B4 .",
-        "root": "B2"
-      },
-      {
-        "lead": "D5 . . C#5 B4 . . G4 . . B4 . D5 . G5 .",
-        "root": "G2"
-      },
-      {
-        "lead": "A5 . G5 . F#5 . E5 . C#5 . A4 . E5 . . .",
-        "root": "A2"
-      },
-      {
-        "lead": "D4 F#4 A4 D5 A4 F#4 D4 F#4 A4 D5 F#5 D5 A4 F#4 A4 D5",
-        "root": "D2"
-      },
-      {
-        "lead": "B3 D4 F#4 B4 F#4 D4 B3 D4 F#4 B4 D5 B4 F#4 D4 F#4 B4",
-        "root": "B2"
-      },
-      {
-        "lead": "G3 B3 D4 G4 D4 B3 G3 B3 D4 G4 B4 G4 D4 B3 D4 G4",
-        "root": "G2"
-      },
-      {
-        "lead": "D5 . A4 . F#4 . D4 . . . . . . . . .",
+        "lead": "D4 . . . . . . . . . . . . . . .",
         "root": "D2"
       }
     ]

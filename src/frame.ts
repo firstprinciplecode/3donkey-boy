@@ -38,6 +38,21 @@ export class Frame {
     vb.cone(x, yBottom, z, radius, height, color);
   }
 
+  world(u: number, y: number, v: number): { x: number; y: number; z: number } {
+    const { x, z } = this.at(u, v);
+    return { x, y, z };
+  }
+
+  ball(vb: VoxelBuilder, u: number, y: number, v: number, radius: number, color: number): void {
+    const { x, z } = this.at(u, v);
+    vb.ball(x, y, z, radius, color);
+  }
+
+  cylinder(vb: VoxelBuilder, u: number, yBottom: number, v: number, radius: number, height: number, color: number): void {
+    const { x, z } = this.at(u, v);
+    vb.cylinder(x, yBottom, z, radius, height, color);
+  }
+
   private at(u: number, v: number): { x: number; z: number } {
     const t = TANGENTS[this.side];
     const n = NORMALS[this.side];

@@ -26,6 +26,18 @@ local BOARD_ROWS = 10
 local BONUS_LOW = 1000
 -- Desktop topbar height, for when Roblox hasn't reported the inset yet.
 local TOPBAR = 58
+-- The desktop layout from the web HUD, in pixels on a 1000-wide screen.
+local DESK = {
+	side = 24,
+	bottom = 16,
+	row = 30,
+	statText = 26,
+	coin = 28,
+	coinText = 10,
+	bonusText = 22,
+	star = 24,
+	pillText = 13,
+}
 
 -- One line per input mode, like the web's byInput().
 local PROMPTS = {
@@ -72,11 +84,9 @@ local function logoMarkup(): string
 	return table.concat(parts)
 end
 
--- "candy hills" -> "Candy Hills"
+-- "candy hills" -> "CANDY HILLS"
 function Hud.levelTitle(name: string): string
-	return (string.gsub(name, "(%a)([%w]*)", function(first, rest)
-		return string.upper(first) .. rest
-	end))
+	return string.upper(name)
 end
 
 -- Plain total, grouped by thousands: 1800 -> "1,800".
@@ -121,6 +131,11 @@ function Hud.new(playerGui: Instance, levelName: string)
 	popups.Parent = gui
 	self.popups = popups
 
+	self.alignWithTopbar()
+	pcall(function()
+		GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(self.alignWithTopbar)
+	end)
+
 	self:setLives(Config.GAME_RULES.lives)
 	self:setBonus(Config.GAME_RULES.bonusStart)
 	self:setScore(0)
@@ -147,45 +162,56 @@ function Hud:_buildTopBar()
 	top.AnchorPoint = Vector2.new(0.5, 0.5)
 	top.ZIndex = 3
 	self.topScale = self:_scaled(top)
+
+	local round = fitText(self.gui, "Round 1", DESK.statText, 1, WHITE)
+	round.Name = "Round"
+	round.AnchorPoint = Vector2.new(0, 0.5)
+	round.ZIndex = 3
+	HudKit.contrastOutline(round, 2.5)
+	self.roundLabel = round
+	self.roundScale = self:_scaled(round)
+
 	local function alignWithTopbar()
 		local band = 0
 		local inset = (GuiService :: any).TopbarInset
 		if typeof(inset) == "Rect" then
 			band = inset.Height
+			self.topbarLeft = inset.Min.X
+			self.topbarRight = inset.Max.X
 		end
 		if band <= 0 then
 			band = GuiService:GetGuiInset().Y
 		end
-		top.Position = UDim2.new(0.5, 0, 0, (if band > 0 then band else TOPBAR) / 2)
+		self.topbarY = (if band > 0 then band else TOPBAR) / 2
+		top.Position = UDim2.new(0.5, 0, 0, self.topbarY)
+		self:_layout()
 	end
-	alignWithTopbar()
-	pcall(function()
-		GuiService:GetPropertyChangedSignal("TopbarInset"):Connect(alignWithTopbar)
-	end)
 
-	self.scoreValue = fitText(top, "0 PTS", 22, 1, WHITE)
+	self.scoreValue = fitText(top, "0 PTS", 14, 1, WHITE)
 	HudKit.contrastOutline(self.scoreValue, 2.5)
 	self.topBar = top
+	self.alignWithTopbar = alignWithTopbar
 end
 
--- 1-Up coins and the 1-U-P letters sit under the direction pad. The bonus is its own cluster under Jump.
+-- Touch: 1-Up coins and the 1-U-P letters sit under the direction pad and the bonus under Jump,
+-- like the Figma phone frame. Desktop: the coins go top right and the bonus bottom right.
 function Hud:_buildStatusCluster()
 	local cluster = HudKit.row(self.gui, 12, 28)
 	cluster.Name = "Status"
-	cluster.AnchorPoint = Vector2.new(0, 1)
-	cluster.Position = UDim2.new(0, 30, 1, -12)
 	cluster.ZIndex = 3
 	self.statusCluster = cluster
+	self.statusScale = self:_scaled(cluster)
 
 	local lives = HudKit.row(cluster, 9, 28)
-	lives.LayoutOrder = 1
+	self.livesRow = lives
 	self.lifeBadges = {}
+	self.lifeLabels = {}
 	for i = 1, Config.GAME_RULES.maxLives do
-		self.lifeBadges[i] = HudKit.lifeBadge(lives, i, 21)
+		self.lifeBadges[i], self.lifeLabels[i] = HudKit.lifeBadge(lives, i, 21)
 	end
 
 	local letters = HudKit.row(cluster, 2, 28)
-	letters.LayoutOrder = 2
+	self.lettersRow = letters
 	self.chips = {}
 	for i, ch in { "1", "U", "P" } do
 		local label = fitText(letters, ch, 16, i, WHITE)
@@ -195,10 +221,10 @@ function Hud:_buildStatusCluster()
 
 	local bonus = HudKit.row(self.gui, 5, 22)
 	bonus.Name = "Bonus"
-	bonus.AnchorPoint = Vector2.new(0.5, 1)
-	bonus.Position = UDim2.new(1, -80, 1, -14)
 	bonus.ZIndex = 3
-	HudKit.star(bonus, 17, 1)
+	self.bonusRow = bonus
+	self.bonusScale = self:_scaled(bonus)
+	self.bonusStar = HudKit.star(bonus, 17, 1)
 	self.bonusValue = fitText(bonus, "", 14, 2, GOLD)
 	HudKit.outline(self.bonusValue, 2)
 end
@@ -208,25 +234,128 @@ function Hud:_buildBottomBar(levelName: string)
 	bottom.Name = "BottomBar"
 	bottom.BackgroundTransparency = 1
 	bottom.AnchorPoint = Vector2.new(0.5, 1)
-	bottom.Position = UDim2.new(0.5, 0, 1, -8)
 	bottom.Size = UDim2.new(1, -40, 0, 34)
 	bottom.ZIndex = 3
 	bottom.Parent = self.gui
 	self.bottomBar = bottom
+	self.bottomScale = self:_scaled(bottom)
 
 	local pill = text(bottom, Hud.levelTitle(levelName), 11, WHITE)
 	pill.AnchorPoint = Vector2.new(0.5, 1)
-	pill.Position = UDim2.new(0.5, 0, 1, -6)
 	pill.BackgroundColor3 = INK
 	pill.BackgroundTransparency = 0
 	pill.AutomaticSize = Enum.AutomaticSize.X
-	pill.Size = UDim2.fromOffset(0, 21)
 	local pad = Instance.new("UIPadding")
-	pad.PaddingLeft = UDim.new(0, 15)
-	pad.PaddingRight = UDim.new(0, 15)
 	pad.Parent = pill
 	Instance.new("UICorner", pill).CornerRadius = UDim.new(1, 0)
 	self.levelPill = pill
+	self.pillPad = pad
+
+	-- Desktop only: pause and sound, bottom left. Clicks don't change the input mode.
+	local buttons = HudKit.row(self.gui, 20, 30)
+	buttons.Name = "Buttons"
+	buttons.AnchorPoint = Vector2.new(0, 1)
+	buttons.ZIndex = 3
+	self.buttons = buttons
+	self.buttonsScale = self:_scaled(buttons)
+	local function button(order: number, action: string, draw: (Instance) -> CanvasGroup): CanvasGroup
+		local b = Instance.new("TextButton")
+		b.Name = action
+		b.Text = ""
+		b.AutoButtonColor = false
+		b.BackgroundTransparency = 1
+		b.LayoutOrder = order
+		b.Size = UDim2.fromOffset(30, 30)
+		b.Parent = buttons
+		b.Activated:Connect(function()
+			if self.onPress then
+				self.onPress(action)
+			end
+		end)
+		return draw(b)
+	end
+	button(1, "pause", HudKit.pauseMark)
+	self.soundMark = button(2, "mute", HudKit.speakerMark)
+end
+
+-- Places the live stats for the input mode: the Figma phone layout for touch, the web's desktop
+-- layout otherwise. Called on mode, screen and topbar changes.
+function Hud:_layout()
+	if not self.levelPill then
+		return
+	end
+	local touch = self.mode == "touch"
+	local width = if self.viewport then self.viewport.X else 0
+	local y = self.topbarY or TOPBAR / 2
+
+	self.roundLabel.Visible = not touch
+	self.buttons.Visible = self.mode == "keys"
+	self:_renderScore()
+	local function size(l: TextLabel, px: number)
+		l.TextSize = px
+		l.Size = UDim2.fromOffset(0, math.ceil(px * 1.4))
+	end
+	size(self.scoreValue, if touch then 14 else DESK.statText)
+
+	local status, lives, letters = self.statusCluster, self.livesRow, self.lettersRow
+	local coin = if touch then 21 else DESK.coin
+	for i, badge in self.lifeBadges do
+		badge.Size = UDim2.fromOffset(coin, coin)
+		self.lifeLabels[i].TextSize = if touch then 8 else DESK.coinText
+	end
+	if touch then
+		status.AnchorPoint = Vector2.new(0, 1)
+		status.Position = UDim2.new(0, 30, 1, -12)
+		lives.LayoutOrder, letters.LayoutOrder = 1, 2
+	else
+		-- Left of anything Roblox puts on the right of the topbar.
+		local right = if self.topbarRight and self.topbarRight > 0 and width > 0
+			then math.max(DESK.side, width - self.topbarRight + 12)
+			else DESK.side
+		status.AnchorPoint = Vector2.new(1, 0.5)
+		status.Position = UDim2.new(1, -right, 0, y)
+		lives.LayoutOrder, letters.LayoutOrder = 2, 1
+		-- Right of the Roblox menu buttons.
+		local left = math.max(DESK.side, (self.topbarLeft or 0) + 16)
+		self.roundLabel.Position = UDim2.new(0, left, 0, y)
+	end
+
+	local bonus = self.bonusRow
+	size(self.bonusValue, if touch then 14 else DESK.bonusText)
+	local star = if touch then 17 else DESK.star
+	self.bonusStar.TextSize = star
+	self.bonusStar.Size = UDim2.fromOffset(star, star)
+	if touch then
+		bonus.AnchorPoint = Vector2.new(0.5, 1)
+		bonus.Position = UDim2.new(1, -80, 1, -14)
+	else
+		bonus.AnchorPoint = Vector2.new(1, 0.5)
+		bonus.Position = UDim2.new(1, -DESK.side, 1, -DESK.bottom - DESK.row / 2)
+	end
+
+	local pill = self.levelPill
+	local pillHeight = if touch then 21 else DESK.row
+	pill.TextSize = if touch then 11 else DESK.pillText
+	pill.Size = UDim2.fromOffset(0, pillHeight)
+	self.pillPad.PaddingLeft = UDim.new(0, if touch then 15 else 22)
+	self.pillPad.PaddingRight = self.pillPad.PaddingLeft
+	if touch then
+		self.bottomBar.Position = UDim2.new(0.5, 0, 1, -8)
+		pill.Position = UDim2.new(0.5, 0, 1, -6)
+	else
+		self.bottomBar.Position = UDim2.new(0.5, 0, 1, -DESK.bottom)
+		pill.Position = UDim2.new(0.5, 0, 1, 0)
+	end
+	self.buttons.Position = UDim2.new(0, DESK.side, 1, -DESK.bottom)
+end
+
+function Hud:_renderScore()
+	local unit = if self.mode == "touch" then "PTS" else "POINTS"
+	self.scoreValue.Text = `{self.scoreNumber or 0} {unit}`
+end
+
+function Hud:setMuted(muted: boolean)
+	self.soundMark.GroupTransparency = if muted then 0.65 else 0
 end
 
 function Hud:_buildBanner()
@@ -293,11 +422,14 @@ function Hud:_buildCard()
 	shadow.Size = UDim2.fromScale(1, 1)
 	shadow.Position = UDim2.fromOffset(0, 8)
 	shadow.TextTransparency = 0.78
-	local logo = text(logoHold, logoMarkup(), 84)
+	local logo = text(logoHold, "", 84)
 	logo.RichText = true
+	-- Set after `text`, which upper-cases and would break the lowercase rich-text tags.
+	logo.Text = logoMarkup()
 	logo.Size = UDim2.fromScale(1, 1)
 	HudKit.outline(logo, 6)
 	self.logo = logoHold
+	self.logoText = logo
 
 	local heading = text(panel, "", 64, C.orange)
 	heading.LayoutOrder = 2
@@ -478,10 +610,13 @@ function Hud:setLevel(_index: number, name: string)
 	self.levelPill.Text = Hud.levelTitle(name)
 end
 
-function Hud:setRound(_round: number) end
+function Hud:setRound(round: number)
+	self.roundLabel.Text = `ROUND {round}`
+end
 
 function Hud:setScore(score: number)
-	self.scoreValue.Text = `{math.max(0, math.floor(score))} PTS`
+	self.scoreNumber = math.max(0, math.floor(score))
+	self:_renderScore()
 end
 
 -- The best score lives on the title board now, not in the live stats.
@@ -527,19 +662,29 @@ function Hud:setInputMode(mode: string)
 		return
 	end
 	self.mode = mode
+	self:_layout()
+	self:_fitStats()
 	self:_render()
+end
+
+-- Desktop stats shrink with narrow windows like the score does. Touch keeps the phone sizes.
+function Hud:_fitStats()
+	local scale = if self.mode == "touch" then 1 else self.topScale.Scale
+	for _, s in { self.roundScale, self.statusScale, self.bonusScale, self.bottomScale, self.buttonsScale } do
+		s.Scale = scale
+	end
 end
 
 function Hud:_prompt(key: string): string
 	local set = PROMPTS[key]
-	return if set then set[self.mode] or set.keys else key
+	return string.upper(if set then set[self.mode] or set.keys else key)
 end
 
 -- Banner, popups ------------------------------------------------------------------------------
 
 function Hud:show(heading: string, sub: string)
-	self.bannerHeading.Text = heading
-	self.bannerSub.Text = sub
+	self.bannerHeading.Text = string.upper(heading)
+	self.bannerSub.Text = string.upper(sub)
 	self.bannerSub.Visible = sub ~= ""
 	if not self.banner.Visible then
 		self.banner.Visible = true
@@ -565,7 +710,7 @@ function Hud:popup(words: string, worldPos: Vector3)
 		return
 	end
 	-- This ScreenGui ignores the top-bar inset, so it shares WorldToViewportPoint's origin.
-	local popup = text(self.popups, words, 18, WHITE)
+	local popup = text(self.popups, string.upper(words), 18, WHITE)
 	popup.AnchorPoint = Vector2.new(0.5, 0.5)
 	popup.Size = UDim2.fromOffset(300, 24)
 	popup.Position = UDim2.fromOffset(screen.X, screen.Y)
@@ -639,11 +784,11 @@ function Hud:_render()
 	if kind == "title" then
 		self.sub.Text = self:_prompt("start")
 	elseif kind == "gameover" then
-		self.heading.Text = "Game over"
-		self.sub.Text = `Score {Hud.formatScore(view.score)} pt · {self:_prompt("again")}`
+		self.heading.Text = "GAME OVER"
+		self.sub.Text = `SCORE {Hud.formatScore(view.score)} PT · {self:_prompt("again")}`
 	elseif kind == "initials" then
-		self.heading.Text = if view.returning then "New personal best!" else "Enter your initials"
-		self.sub.Text = `{Hud.formatScore(view.score)} pt`
+		self.heading.Text = if view.returning then "NEW PERSONAL BEST!" else "ENTER YOUR INITIALS"
+		self.sub.Text = `{Hud.formatScore(view.score)} PT`
 		self.initialsHint.Text = self:_prompt(if view.returning then "keep" else "enter")
 		for i, slot in self.slots do
 			slot.letter.Text = view.letters[i] or "A"
@@ -652,7 +797,7 @@ function Hud:_render()
 		end
 		self.cursor = view.cursor
 	elseif kind == "message" then
-		self.heading.Text = view.heading
+		self.heading.Text = string.upper(view.heading)
 		self.sub.Text = self:_prompt(view.sub)
 	end
 	self:_paintBoard()
@@ -714,6 +859,8 @@ function Hud:update(dt: number)
 		self.panelScale.Scale = self.fit
 		self.topScale.Scale = math.clamp(size.X / 1000, 0.6, 1)
 		self.bannerScale.Scale = self.fit
+		self:_layout()
+		self:_fitStats()
 	end
 	local swing = (math.sin(self.clock * math.pi / 0.9) + 1) / 2
 	self.subScale.Scale = 1 + 0.06 * swing

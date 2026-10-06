@@ -54,6 +54,8 @@ export class Player {
   /** Index of the vine being swung on, or -1. */
   private vine = -1;
   private regrabT = 0;
+  /** Time left to jump after running off an edge. */
+  private coyoteT = 0;
   private d = 0;
   private side = 0;
   private facing = 1;
@@ -109,6 +111,11 @@ export class Player {
     return this.state === 'ground';
   }
 
+  /** Whether a jump pressed now would take off: on the floor, on a rope, or just off an edge. */
+  get canJump(): boolean {
+    return this.state === 'ground' || this.state === 'swing' || (this.state === 'air' && this.coyoteT > 0);
+  }
+
   private get onVerticalPart(): boolean {
     return this.path !== null && this.path.isVertical(this.d);
   }
@@ -123,6 +130,7 @@ export class Player {
     this.path = null;
     this.vine = -1;
     this.regrabT = 0;
+    this.coyoteT = 0;
     this.facing = 1;
     this.moving = false;
     this.inPit = false;
@@ -162,7 +170,9 @@ export class Player {
       grabbed: false,
     };
     this.regrabT = Math.max(0, this.regrabT - dt);
+    this.coyoteT = Math.max(0, this.coyoteT - dt);
     if (this.state === 'ground') this.stepGround(dt, c, env, result);
+    else if (this.state === 'air' && c.jump && this.coyoteT > 0) this.coyoteJump(result);
     else if (this.state === 'air') this.stepAir(dt, env, result);
     else if (this.state === 'ladder') this.stepLadder(dt, c, result);
     else if (this.state === 'swing') this.stepSwing(c, env, result);
@@ -218,6 +228,7 @@ export class Player {
     if (env.carry(this.ring, this.s) === null) {
       this.state = 'air';
       this.vy = 0;
+      this.coyoteT = PHYSICS.coyoteTime;
     } else if (this.onSpring(env)) {
       this.launch(result);
     }
@@ -226,6 +237,15 @@ export class Player {
   /** Pads only fire when you run onto them, so you can stand on one without bouncing forever. */
   private onSpring(env: ObstacleEnv): boolean {
     return Math.abs(this.vs) > 0.5 && env.spring(this.ring, this.s);
+  }
+
+  /** A late jump just after running off an edge, taken from the lip you left. */
+  private coyoteJump(result: StepResult): void {
+    this.coyoteT = 0;
+    this.inPit = false;
+    this.y = this.level.tierTop(this.ring);
+    this.vy = PHYSICS.jumpVelocity;
+    result.jumped = true;
   }
 
   private launch(result: StepResult): void {

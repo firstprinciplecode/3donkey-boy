@@ -1,27 +1,3 @@
-// Static decorative SVG (no runtime data is interpolated).
-
-const GHOST_SVG = `
-<svg viewBox="0 0 22 18" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
-  <rect x="5" y="0" width="12" height="6" fill="#6fe0da" fill-opacity=".8"/>
-  <rect x="8" y="2" width="6" height="3" fill="#2e2e38"/>
-  <rect x="4" y="6" width="14" height="8" fill="#1b1b22"/>
-  <rect x="0" y="6" width="4" height="2" fill="#1b1b22"/><rect x="1" y="8" width="3" height="2" fill="#1b1b22"/>
-  <rect x="18" y="6" width="4" height="2" fill="#1b1b22"/><rect x="18" y="8" width="3" height="2" fill="#1b1b22"/>
-  <rect x="6" y="8" width="2" height="2" fill="#ff2f7a"/><rect x="14" y="8" width="2" height="2" fill="#ff2f7a"/>
-  <rect x="7" y="11" width="1" height="2" fill="#f4f1e6"/><rect x="9" y="11" width="1" height="2" fill="#f4f1e6"/>
-  <rect x="12" y="11" width="1" height="2" fill="#f4f1e6"/><rect x="14" y="11" width="1" height="2" fill="#f4f1e6"/>
-  <rect x="5" y="14" width="1" height="2" fill="#1b1b22"/><rect x="8" y="14" width="1" height="3" fill="#1b1b22"/>
-  <rect x="11" y="14" width="1" height="2" fill="#1b1b22"/><rect x="13" y="14" width="1" height="3" fill="#1b1b22"/>
-  <rect x="16" y="14" width="1" height="2" fill="#1b1b22"/>
-</svg>`;
-
-function ghost(className: string): HTMLDivElement {
-  const el = document.createElement('div');
-  el.className = `ghost ${className}`;
-  el.innerHTML = GHOST_SVG;
-  return el;
-}
-
 const STAR_COUNT = 90;
 
 /** Twinkling stars; CSS only shows them at dusk (faint) and night. */
@@ -44,30 +20,9 @@ function stars(): HTMLDivElement {
   return layer;
 }
 
-/** A tiled grey noise, blended over the picture so the sky and the blocks share one paper grain. */
-export function mountPaperGrain(root: HTMLElement): void {
-  const size = 128;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  const image = ctx.createImageData(size, size);
-  for (let i = 0; i < image.data.length; i += 4) {
-    const n = 118 + Math.random() * 20;
-    image.data[i] = image.data[i + 1] = image.data[i + 2] = n;
-    image.data[i + 3] = 255;
-  }
-  ctx.putImageData(image, 0, 0);
-  const grain = document.createElement('div');
-  grain.className = 'paper-grain';
-  grain.style.backgroundImage = `url(${canvas.toDataURL()})`;
-  root.appendChild(grain);
-}
-
-/** Background layer: stars and far-away blurred ghosts behind the canvas (the 3D scenery does the rest). */
+/** Background layer: stars behind the canvas (the 3D scenery does the rest). */
 export function createBackdrop(root: HTMLElement): void {
-  root.append(stars(), ghost('ghost--far g-a'), ghost('ghost--far g-b'));
+  root.append(stars());
 }
 
 const FLAKE_COUNT = 40;
@@ -94,7 +49,7 @@ function weather(): HTMLDivElement {
   return layer;
 }
 
-/** Foreground layer: big out-of-focus ghosts at the edges, like the poster's depth of field. */
+/** Foreground layer: snow, leaves or embers, depending on the level. */
 export function createForeground(root: HTMLElement): void {
-  root.append(weather(), ghost('ghost--near g-c'), ghost('ghost--near g-d'), ghost('ghost--near g-e'));
+  root.append(weather());
 }

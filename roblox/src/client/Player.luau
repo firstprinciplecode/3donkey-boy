@@ -28,6 +28,8 @@ function Player.new(level)
 	-- Index of the vine being swung on, or nil.
 	self.vine = nil :: number?
 	self.regrabT = 0
+	-- Time left to jump after running off an edge.
+	self.coyoteT = 0
 	self.d = 0
 	self.side = 0
 	self.facing = 1
@@ -55,6 +57,7 @@ function Player:reset(spot)
 	self.path = nil
 	self.vine = nil
 	self.regrabT = 0
+	self.coyoteT = 0
 	self.facing = 1
 	self.moving = false
 	self.inPit = false
@@ -78,6 +81,11 @@ function Player:isClimbing(): boolean
 	return self.moving and self.state == "ladder" and self:onVerticalPart()
 end
 
+-- Whether a jump pressed now would take off: on the floor, on a rope, or just off an edge.
+function Player:canJump(): boolean
+	return self.state == "ground" or self.state == "swing" or (self.state == "air" and self.coyoteT > 0)
+end
+
 -- `env` is the level's obstacles: `carry(ring, s)` (nil over a gap), `isLadderOpen(index)`,
 -- `grip(ring, s)`, `spring(ring, s)`, `grabVine(ring, s, handY)` and `vineTip(index)`.
 function Player:step(dt: number, controls, env)
@@ -96,8 +104,11 @@ function Player:step(dt: number, controls, env)
 	}
 	self.env = env
 	self.regrabT = math.max(0, self.regrabT - dt)
+	self.coyoteT = math.max(0, self.coyoteT - dt)
 	if self.state == "ground" then
 		self:_stepGround(dt, controls, result)
+	elseif self.state == "air" and controls.jump and self.coyoteT > 0 then
+		self:_coyoteJump(result)
 	elseif self.state == "air" then
 		self:_stepAir(dt, result)
 	elseif self.state == "ladder" then
@@ -171,9 +182,19 @@ function Player:_stepGround(dt: number, c, result)
 	if self.env:carry(self.ring, self.s) == nil then
 		self.state = "air"
 		self.vy = 0
+		self.coyoteT = PHYSICS.coyoteTime
 	elseif self:_onSpring() then
 		self:_launch(result)
 	end
+end
+
+-- A late jump just after running off an edge, taken from the lip you left.
+function Player:_coyoteJump(result)
+	self.coyoteT = 0
+	self.inPit = false
+	self.y = self.level:tierTop(self.ring)
+	self.vy = PHYSICS.jumpVelocity
+	result.jumped = true
 end
 
 -- Pads only fire when you run onto them, so you can stand on one without bouncing forever.

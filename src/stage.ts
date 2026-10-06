@@ -42,6 +42,8 @@ export class Stage {
   private height = 1;
   private readonly hemi = new THREE.HemisphereLight();
   private readonly sun = new THREE.DirectionalLight();
+  private baseHemi = 1;
+  private baseSun = 1;
   private readonly right = new THREE.Vector3();
   private readonly up = new THREE.Vector3();
   private trauma = 0;
@@ -50,7 +52,10 @@ export class Stage {
   shakeScale = 1;
   private readonly grade: Grade;
 
+  private readonly container: HTMLElement;
+
   constructor(container: HTMLElement) {
+    this.container = container;
     const dpr = window.devicePixelRatio || 1;
     // Retina pixels already soften edges, so skip MSAA there and stay under 2×.
     // The scene is drawn into an offscreen target, so MSAA lives on that target.
@@ -64,7 +69,8 @@ export class Stage {
     this.renderer.setPixelRatio(Math.min(dpr, 1.5));
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.BasicShadowMap;
+    // PCF blends a few map samples per pixel, so edges come out smooth instead of stair-stepped.
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     // The sun and the pyramid stay put during a round, so the map is redrawn only when lighting changes.
     this.renderer.shadowMap.autoUpdate = false;
     this.renderer.shadowMap.needsUpdate = true;
@@ -74,7 +80,8 @@ export class Stage {
     this.setLighting(LIGHTING.day);
     sun.target.position.set(0, 8, 0);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
+    // The map is only redrawn when the lighting changes, so a bigger one costs memory, not frames.
+    sun.shadow.mapSize.set(2048, 2048);
     const sc = sun.shadow.camera;
     sc.left = -30;
     sc.right = 30;
@@ -91,9 +98,20 @@ export class Stage {
     this.applyCamera();
   }
 
+  /** Places the camera immediately. The game eases through `follow` instead. */
+  setView(goal: CameraGoal): void {
+    this.focus.copy(goal.focus);
+    this.azimuth = goal.azimuth;
+    this.polar = goal.polar;
+    this.zoom = goal.zoom;
+    this.distance = goal.distance;
+    this.applyCamera();
+  }
+
   resize(): void {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
+    const bounds = this.container.getBoundingClientRect();
+    this.width = Math.max(1, bounds.width);
+    this.height = Math.max(1, bounds.height);
     const aspect = this.width / this.height;
     const halfH = Math.max(CAMERA.minHalfHeight, CAMERA.minHalfWidth / aspect);
     const halfW = halfH * aspect;
@@ -111,13 +129,34 @@ export class Stage {
   setLighting(l: Lighting): void {
     this.hemi.color.setHex(l.skyColor);
     this.hemi.groundColor.setHex(l.groundColor);
+    this.baseHemi = l.hemiIntensity;
     this.hemi.intensity = l.hemiIntensity;
     this.sun.color.setHex(l.sunColor);
+    this.baseSun = l.sunIntensity;
     this.sun.intensity = l.sunIntensity;
     this.sun.position.set(...l.sunPosition);
     this.renderer.shadowMap.needsUpdate = true;
     // Night already carries the blue. The poster grade is for the paper-daylight pictures.
     this.grade.print = l.glow && l.sunIntensity < 1.5 ? 0.35 : l.glow ? 0.7 : 1;
+  }
+
+  /** Sizes the sun's shadow box to cover a pyramid whose base reaches `half` from the middle. */
+  fitShadows(half: number): void {
+    const reach = Math.max(30, Math.ceil(half * 1.45));
+    const sc = this.sun.shadow.camera;
+    if (sc.right === reach) return;
+    sc.left = -reach;
+    sc.right = reach;
+    sc.top = reach;
+    sc.bottom = -reach;
+    sc.updateProjectionMatrix();
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+
+  /** Scales the current sun and sky light. 1 is the level's own light, 0 is dark. */
+  dim(scale: number): void {
+    this.hemi.intensity = this.baseHemi * scale;
+    this.sun.intensity = this.baseSun * scale;
   }
 
   follow(goal: CameraGoal, dt: number): void {

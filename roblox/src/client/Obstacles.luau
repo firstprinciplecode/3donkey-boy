@@ -634,12 +634,23 @@ function Obstacles:grip(ring: number, s: number): number
 	return math.huge
 end
 
+-- Holds one ladder shut until the tomb's torch is taken; nil lets it open again.
+function Obstacles:setTorchGate(index: number?)
+	self.torchGate = index
+end
+
 function Obstacles:isLadderOpen(index: number): boolean
+	if index == self.torchGate then
+		return false
+	end
 	local lock = self.lockByLadder[index]
 	return lock == nil or lock.open
 end
 
 function Obstacles:lockKind(index: number): string?
+	if index == self.torchGate then
+		return "torch"
+	end
 	local lock = self.lockByLadder[index]
 	return if lock and not lock.open then lock.def.kind else nil
 end

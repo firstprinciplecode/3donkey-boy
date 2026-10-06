@@ -27,6 +27,9 @@ export class Input {
   private readonly virtual = new Set<string>();
   private readonly pad = new Set<string>();
   private readonly pressed = new Set<string>();
+  /** On-screen presses and quick taps this frame, so the game can tell a tap from a hold. */
+  private readonly touchPresses = new Set<string>();
+  private readonly touchTaps = new Set<string>();
   /** Maps a physical key code to the game code it stands for; see `setKeyMap`. */
   private keyMap: Readonly<Record<string, string>> = {};
   mode: InputMode = 'keys';
@@ -52,6 +55,8 @@ export class Input {
       this.virtual.clear();
       this.pad.clear();
       this.pressed.clear();
+      this.touchPresses.clear();
+      this.touchTaps.clear();
     });
   }
 
@@ -70,12 +75,33 @@ export class Input {
   /** On-screen controls: hold or release a code, with a press edge on the way down. */
   touch(code: string, down: boolean): void {
     if (down) {
-      if (!this.virtual.has(code)) this.pressed.add(code);
+      if (!this.virtual.has(code)) {
+        this.pressed.add(code);
+        this.touchPresses.add(code);
+      }
       this.virtual.add(code);
       this.setMode('touch');
     } else {
       this.virtual.delete(code);
     }
+  }
+
+  /** An on-screen control was let go quickly enough to count as a tap. */
+  touchTap(code: string): void {
+    this.touchTaps.add(code);
+  }
+
+  consumeTouchPress(code: string): boolean {
+    return this.touchPresses.delete(code);
+  }
+
+  consumeTouchTap(code: string): boolean {
+    return this.touchTaps.delete(code);
+  }
+
+  /** A one-off press from an on-screen button. Leaves the input mode alone. */
+  tap(code: string): void {
+    this.pressed.add(code);
   }
 
   /** Reads the first connected gamepad; call once per frame before the game reads input. */
@@ -136,5 +162,7 @@ export class Input {
 
   endFrame(): void {
     this.pressed.clear();
+    this.touchPresses.clear();
+    this.touchTaps.clear();
   }
 }

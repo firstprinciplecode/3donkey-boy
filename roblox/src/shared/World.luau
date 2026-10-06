@@ -199,8 +199,8 @@ end
 
 local LANTERN_SPACING = 5
 
--- Wall lanterns along the back of each terrace; they only light up at dusk and night.
-local function buildLanterns(vb, level)
+-- Calls `place` with the wall frame and height of each lantern along the back of each terrace.
+local function eachLantern(level, place: (any, number) -> ())
 	local def = level.def
 	local lanternY = math.min(2.3, def.tierHeight - 0.5)
 	for k = 0, level.ringCount - 1 do
@@ -217,15 +217,31 @@ local function buildLanterns(vb, level)
 					end
 				end
 				if not nearLadder then
-					local f = Frame.new(side, inner, offset)
-					f:box(vb, 0, y, 0.18, 0.08, 0.08, 0.36, C.charcoal)
-					f:box(vb, 0, y - 0.02, 0.36, 0.34, 0.06, 0.34, C.charcoal)
-					f:glow(vb, 0, y - 0.2, 0.36, 0.26, 0.3, 0.26, C.yellow)
+					place(Frame.new(side, inner, offset), y)
 				end
 				offset += LANTERN_SPACING
 			end
 		end
 	end
+end
+
+-- Wall lanterns along the back of each terrace; they only light up at dusk and night.
+local function buildLanterns(vb, level)
+	eachLantern(level, function(f, y)
+		f:box(vb, 0, y, 0.18, 0.08, 0.08, 0.36, C.charcoal)
+		f:box(vb, 0, y - 0.02, 0.36, 0.34, 0.06, 0.34, C.charcoal)
+		f:glow(vb, 0, y - 0.2, 0.36, 0.26, 0.3, 0.26, C.yellow)
+	end)
+end
+
+-- Where each wall lantern's flame sits, in game units.
+function World.lanternPoints(level): { Vector3 }
+	local points = {}
+	eachLantern(level, function(f, y)
+		local x, z = f:at(0, 0.36)
+		table.insert(points, Vector3.new(x, y - 0.2, z))
+	end)
+	return points
 end
 
 -- Thin glowing ribs over each neon panel, stopping short of ladders and barrel chutes.

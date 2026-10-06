@@ -6,9 +6,12 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Util = require(Shared.Util)
 
+local Torch = require(script.Parent.Torch)
 local Voxel = require(script.Parent.Voxel)
 
 local STUD = Config.STUD
+local CARRIED_TORCH_SCALE = 0.8
+local CARRIED_TORCH_AT = Vector3.new(0.42, 0.5, 0.12)
 local C = Config.COLORS
 
 local LIMB_PIVOTS = {
@@ -48,6 +51,13 @@ function Rig.new(parent: Instance)
 		table.insert(self.parts, Voxel.part(self.model, spec[2], spec[4], spec[5]))
 		table.insert(self.entries, { limb = spec[1], offset = CFrame.new(spec[3] * STUD), hammer = spec[6] == true })
 	end
+	for _, spec in Torch.LOOK do
+		table.insert(self.parts, Torch.lookPart(self.model, spec, CARRIED_TORCH_SCALE))
+		local at = CARRIED_TORCH_AT + Vector3.yAxis * spec[2] * CARRIED_TORCH_SCALE
+		table.insert(self.entries, { limb = false, offset = CFrame.new(at * STUD), torch = true })
+	end
+	-- Set by the game while the tomb's torch is held.
+	self.torchShown = false
 	self.pivots = {}
 	for limb, pivot in LIMB_PIVOTS do
 		self.pivots[limb] = CFrame.new(pivot * STUD)
@@ -119,7 +129,7 @@ function Rig:update(dt: number, player)
 	local root = CFrame.new(feet) * CFrame.Angles(0, self.heading, 0) * CFrame.Angles(0, 0, self.tilt)
 	local showHammer = player.hasHammer and not player.hammerBlink
 	for i, entry in self.entries do
-		if entry.hammer and not showHammer then
+		if (entry.hammer and not showHammer) or (entry.torch and not self.torchShown) then
 			self.cframes[i] = Voxel.HIDDEN
 		elseif entry.limb then
 			self.cframes[i] = root * self.pivots[entry.limb] * CFrame.Angles(self.angles[entry.limb], 0, 0) * entry.offset

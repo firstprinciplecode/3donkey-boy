@@ -1,5 +1,6 @@
+import '@fontsource/fredoka-one/latin-400.css';
 import './style.css';
-import { createBackdrop, createForeground, mountPaperGrain } from './backdrop';
+import { createBackdrop, createForeground } from './backdrop';
 import { Game } from './game';
 import { Hud } from './hud';
 import { Input } from './input';
@@ -24,7 +25,6 @@ function showFatal(message: string): void {
 function boot(): void {
   createBackdrop(element('backdrop'));
   createForeground(element('foreground'));
-  mountPaperGrain(element('fx'));
 
   let stage: Stage;
   try {
@@ -43,7 +43,9 @@ function boot(): void {
   document.body.dataset.input = input.mode;
   mountTouchControls(input);
 
-  const game = new Game(stage, new Hud(element('hud')), input);
+  const hud = new Hud(element('hud'));
+  hud.onTap = (code) => input.tap(code);
+  const game = new Game(stage, hud, input);
   if (import.meta.env.DEV) Object.assign(window, { __game: game, __input: input });
 
   /** While a test bot drives the game it advances frames itself; the loop only keeps drawing. */

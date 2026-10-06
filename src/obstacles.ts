@@ -109,6 +109,7 @@ export class Obstacles implements ObstacleEnv {
   private readonly vines: Vine[] = [];
   private readonly locks: Lock[] = [];
   private readonly lockByLadder = new Map<number, Lock>();
+  private torchGate: number | null = null;
   private readonly ownedMaterials: THREE.Material[] = [];
   private clock = 0;
 
@@ -257,12 +258,19 @@ export class Obstacles implements ObstacleEnv {
     return this.vines[index].tip;
   }
 
+  /** Holds one ladder shut until the tomb's torch is taken; null lets it open again. */
+  setTorchGate(index: number | null): void {
+    this.torchGate = index;
+  }
+
   isLadderOpen(index: number): boolean {
+    if (index === this.torchGate) return false;
     const lock = this.lockByLadder.get(index);
     return !lock || lock.open;
   }
 
-  lockKind(index: number): LockDef['kind'] | null {
+  lockKind(index: number): LockDef['kind'] | 'torch' | null {
+    if (index === this.torchGate) return 'torch';
     const lock = this.lockByLadder.get(index);
     return lock && !lock.open ? lock.def.kind : null;
   }

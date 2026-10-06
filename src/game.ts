@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { sfx, toggleMute, unlockAudio } from './audio';
 import { music } from './music';
-import { SkyCritters } from './background';
 import {
   BARREL,
   CAMERA,
@@ -29,7 +28,7 @@ import { Fire } from './entities/fire';
 import { Ghost } from './entities/ghost';
 import { ITEM_RADIUS, Item, LETTER_CHARS } from './entities/items';
 import { Particles } from './entities/particles';
-import { Player } from './entities/player';
+import { Player, type Controls } from './entities/player';
 import { createOneUpToken } from './entities/token';
 import type { HiScoreEntry } from './hiscore';
 import {
@@ -56,7 +55,8 @@ import { Obstacles } from './obstacles';
 import type { Stage } from './stage';
 import { lightingFor, timeForLevel, type TimeOfDay } from './timeOfDay';
 import { levelTitle, randRange, sphereHitsCylinder } from './utils';
-import { buildWorld, disposeWorld } from './world';
+import { box } from './voxel';
+import { buildWorld, disposeWorld, lanternPoints } from './world';
 
 type GameState = 'title' | 'ready' | 'playing' | 'paused' | 'dying' | 'clear' | 'initials' | 'gameover';
 
@@ -94,13 +94,31 @@ export class Game {
   private savingScore = false;
 
   private readonly stage: Stage;
+  /** Serpent Tomb: lamp light at first, then a torch by the ladder that the player carries. */
+  private torch: THREE.Group | null = null;
+  private torchLight: THREE.PointLight | null = null;
+  private torchHeld = false;
+  private torchBlackout = 0;
+  /** The lights-out line shows once per attempt. */
+  private torchDarkNoted = false;
+  private readonly carriedTorch = makeCarriedTorch();
+  private readonly torchTarget = new THREE.Vector3();
+  private readonly lampLights: THREE.PointLight[] = [];
+  private lampSpots: { x: number; y: number; z: number }[] = [];
+  private lampSpotIndex: number[] = [];
+  private lampFade: number[] = [];
+  /** Time left on a jump press that hasn't been able to take off yet. */
+  private jumpBuffer = 0;
+  /** Touch: a tap on up or down keeps climbing until you leave the ladder or tap again. */
+  private climbLatch: 'up' | 'down' | null = null;
+  /** The latch that was running when the current pad press began; tapping that way again stops it. */
+  private latchAtPress: 'up' | 'down' | null = null;
   private readonly hud: Hud;
   private readonly input: Input;
   private readonly player: Player;
   private readonly barrels: BarrelManager;
   private readonly boss = new Boss();
   private readonly particles = new Particles();
-  private readonly sky = new SkyCritters();
   private readonly levelLayer = new THREE.Group();
   private readonly itemLayer = new THREE.Group();
   private readonly ghostLayer = new THREE.Group();
@@ -146,6 +164,8 @@ export class Game {
     this.obstacles = new Obstacles(this.level);
     this.hazards = new Hazards(this.level);
     this.player = new Player(this.level);
+    this.player.group.add(this.carriedTorch);
+    this.carriedTorch.visible = false;
     this.barrels = new BarrelManager(this.level);
     this.goal = createOneUpToken(0.8);
     this.boss.group.rotation.y = Math.PI / 2;
@@ -162,7 +182,6 @@ export class Game {
       this.crawlerLayer,
       this.totemLayer,
       this.goal,
-      this.sky.group,
     );
 
     this.barrels.onDrum = (b) => {
@@ -214,7 +233,9 @@ export class Game {
     this.hintClock = Math.max(0, this.hintClock - dt);
 
     if (this.input.consume('KeyM')) {
-      this.hud.banner(toggleMute() ? 'Sound off' : 'Sound on', 900);
+      const muted = toggleMute();
+      this.hud.setMuted(muted);
+      this.hud.banner(muted ? 'Sound off' : 'Sound on', 900);
     }
 
     switch (this.state) {
@@ -303,6 +324,7 @@ export class Game {
     this.level = level;
     this.world = buildWorld(level, lightingFor(time, level.def.skin).glow);
     this.stage.setLighting(lightingFor(time, level.def.skin));
+    this.stage.fitShadows(level.tierHalf(0));
     this.obstacles = new Obstacles(level);
     this.hazards = new Hazards(level);
     this.player.level = level;
@@ -327,6 +349,117 @@ export class Game {
     document.body.dataset.time = time;
     music.setTheme(level.def.skin);
     this.hud.setLevel(i + 1, level.def.name);
+  }
+
+  /** Puts the tomb torch back beside its ladder, and restores the lamp light. */
+  private resetTorch(): void {
+    this.torchHeld = false;
+    this.torchBlackout = 0;
+    this.torchDarkNoted = false;
+    this.carriedTorch.visible = false;
+    this.stage.dim(1);
+    if (this.torch) this.stage.scene.remove(this.torch);
+    if (this.torchLight) this.stage.scene.remove(this.torchLight);
+    for (const light of this.lampLights) this.stage.scene.remove(light);
+    this.torch = null;
+    this.torchLight = null;
+    this.lampLights.length = 0;
+    this.lampSpotIndex = [];
+    this.lampFade = [];
+    this.lampSpots = [];
+    const spot = this.level.torchSpot();
+    this.obstacles.setTorchGate(spot?.ladder ?? null);
+    if (!spot) return;
+    const at = this.level.ringPoint(spot.ring, spot.s);
+    const y = this.level.tierTop(spot.ring);
+    this.torch = makeTorch();
+    this.torch.position.set(at.x, y, at.z);
+    this.torch.rotation.y = sideYaw(at.side);
+    this.torchLight = new THREE.PointLight(0xffb24a, 6, 0, 2);
+    this.torchLight.castShadow = false;
+    this.torchLight.position.set(at.x, y + 1.2, at.z);
+    this.torchTarget.copy(this.torchLight.position);
+    this.lampSpots = lanternPoints(this.level);
+    for (let i = 0; i < Math.min(8, this.lampSpots.length); i++) {
+      const light = new THREE.PointLight(0xffc85a, 0, 0, 2);
+      light.castShadow = false;
+      this.stage.scene.add(light);
+      this.lampLights.push(light);
+      this.lampSpotIndex.push(-1);
+      this.lampFade.push(0);
+    }
+    this.stage.scene.add(this.torch, this.torchLight);
+  }
+
+  private takeTorch(): void {
+    if (!this.torch || !this.torchLight || this.torchHeld) return;
+    this.torchHeld = true;
+    this.obstacles.setTorchGate(null);
+    this.torch.visible = false;
+    this.carriedTorch.visible = true;
+    const at = this.torch.position;
+    this.particles.burst(at.x, at.y + 1, at.z, [COLORS.orange, COLORS.yellow, COLORS.cream], 12, 3);
+    this.popup('Torch', at.x, at.y + 1.4, at.z);
+    sfx.pickup();
+  }
+
+  private updateTorch(dt: number): void {
+    if (!this.torchLight || !this.torch) return;
+    const dist = this.torch.position.distanceTo(this.player.position);
+    if (!this.torchHeld && this.state === 'playing' && dist < 1.15) this.takeTorch();
+    const target = this.torchHeld ? 1 : 1 - THREE.MathUtils.smoothstep(dist, 4, 11);
+    this.torchBlackout += (target - this.torchBlackout) * (1 - Math.exp(-2.2 * dt));
+    if (!this.torchDarkNoted && !this.torchHeld && this.state === 'playing' && this.torchBlackout > 0.5) {
+      this.torchDarkNoted = true;
+      this.popupAtPlayer(LIGHTS_OUT);
+    }
+    this.stage.dim(1 - this.torchBlackout * 0.94);
+    this.placeLamps(dt, 1 - this.torchBlackout);
+    const flame = this.torchHeld ? 24 : 8 + 16 * this.torchBlackout;
+    this.torchLight.intensity = flame;
+    if (!this.torchHeld) return;
+    const p = this.player.position;
+    this.torchTarget.set(p.x, p.y + 1.5, p.z);
+    this.torchLight.position.lerp(this.torchTarget, 1 - Math.exp(-10 * dt));
+  }
+
+  /** Lamp pools follow the player, then fade out as the torch blackout rises. */
+  private placeLamps(dt: number, strength: number): void {
+    if (this.lampLights.length === 0) return;
+    const p = this.player.position;
+    const wanted = this.lampSpots
+      .map((spot, index) => ({ index, dist: (spot.x - p.x) ** 2 + (spot.y - p.y) ** 2 + (spot.z - p.z) ** 2 }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, this.lampLights.length)
+      .map((entry) => entry.index);
+    const keep = new Set(wanted);
+    const claimed = new Set<number>();
+    this.lampLights.forEach((light, n) => {
+      const current = this.lampSpotIndex[n];
+      if (current >= 0 && keep.has(current)) {
+        claimed.add(current);
+        this.lampFade[n] = Math.min(1, this.lampFade[n] + dt * 1.6);
+      } else {
+        this.lampFade[n] = Math.max(0, this.lampFade[n] - dt * 1.6);
+        if (this.lampFade[n] === 0) this.lampSpotIndex[n] = -1;
+      }
+      const spotIndex = this.lampSpotIndex[n];
+      if (spotIndex >= 0) {
+        const spot = this.lampSpots[spotIndex];
+        light.position.set(spot.x, spot.y, spot.z);
+      }
+      const fade = this.lampFade[n];
+      light.intensity = 22 * fade * fade * strength;
+    });
+    for (const index of wanted) {
+      if (claimed.has(index)) continue;
+      const free = this.lampSpotIndex.findIndex((spot) => spot < 0);
+      if (free < 0) continue;
+      this.lampSpotIndex[free] = index;
+      claimed.add(index);
+      const spot = this.lampSpots[index];
+      this.lampLights[free].position.set(spot.x, spot.y, spot.z);
+    }
   }
 
   /** Dev builds only: number keys on the title screen start at that level. */
@@ -360,11 +493,14 @@ export class Game {
     this.obstacles.reset(fresh);
     this.hazards.reset();
     this.player.reset(def.playerStart);
+    this.jumpBuffer = 0;
+    this.climbLatch = null;
+    this.resetTorch();
     this.hammerTime = 0;
     music.setSpeed(this.speedMul);
     music.setHammer(false);
     this.turnTo(def.playerStart.side);
-    this.bonus = GAME_RULES.bonusStart;
+    this.bonus = GAME_RULES.bonusStart + GAME_RULES.bonusPerRing * Math.max(0, def.rings - 4);
     this.bonusClock = 0;
     this.bossClock = 1.2;
     if (fresh) this.spawnItems();
@@ -453,18 +589,23 @@ export class Game {
     }
 
     this.combo.update(dt);
-    const controls = this.input.controls();
+    const controls = this.climbControls(this.input.controls());
     const env = this.obstacles;
-    let jump = controls.jump;
+    if (controls.jump) this.jumpBuffer = PHYSICS.jumpBuffer;
     let remaining = dt;
     while (remaining > 1e-6 && this.state === 'playing') {
       const h = Math.min(PHYSICS.substep, remaining);
       remaining -= h;
+      const jump = this.jumpBuffer > 0 && this.player.canJump;
+      if (jump) this.jumpBuffer = 0;
       const result = this.player.step(h, { ...controls, jump }, env);
-      jump = false;
       if (result.jumped) sfx.jump();
       if (result.landed) sfx.land();
-      if (result.grabbed) sfx.climb();
+      if (result.grabbed) {
+        // A press buffered in mid-air shouldn't let go the moment you catch the rope.
+        this.jumpBuffer = 0;
+        sfx.climb();
+      }
       if (result.bounced) {
         sfx.spring();
         this.obstacles.boing(this.player.ring, this.player.s);
@@ -497,6 +638,8 @@ export class Game {
       this.checkCollisions();
     }
     if (this.state !== 'playing') return;
+    this.jumpBuffer = Math.max(0, this.jumpBuffer - dt);
+    if (this.player.state !== 'ladder') this.climbLatch = null;
 
     if (this.hammerTime > 0) {
       this.hammerTime -= dt;
@@ -534,6 +677,20 @@ export class Game {
     }
   }
 
+  /** Folds the touch climb latch into this frame's controls. */
+  private climbControls(controls: Controls): Controls {
+    for (const dir of ['up', 'down'] as const) {
+      const code = dir === 'up' ? 'ArrowUp' : 'ArrowDown';
+      if (this.input.consumeTouchPress(code)) {
+        this.latchAtPress = this.climbLatch;
+        this.climbLatch = null;
+      }
+      if (this.input.consumeTouchTap(code)) this.climbLatch = this.latchAtPress === dir ? null : dir;
+    }
+    if (!this.climbLatch || controls.up || controls.down) return controls;
+    return { ...controls, [this.climbLatch]: true };
+  }
+
   private hint(text: string): void {
     if (this.hintClock > 0) return;
     this.hintClock = HINT_COOLDOWN;
@@ -547,6 +704,10 @@ export class Game {
       const left = this.relicsLeft;
       const name = SKINS[this.level.def.skin].relic.name;
       this.hint(`Sealed · ${left} ${name}${left === 1 ? '' : 's'} to go!`);
+      return;
+    }
+    if (kind === 'torch') {
+      this.hint('Too dark · Take the torch!');
       return;
     }
     this.hint(kind === 'key' ? 'Locked · Find the key!' : 'Gated · Find the switch!');
@@ -942,8 +1103,8 @@ export class Game {
     }
     for (const item of this.items) if (!item.collected) item.animate(dt);
     this.particles.update(dt);
-    this.sky.update(dt);
     this.cascades?.update(dt);
+    this.updateTorch(dt);
 
     this.goal.rotation.y += dt * (this.state === 'clear' ? 12 : 1.6);
     this.goal.position.y = this.goalBase.y + Math.sin(this.clock * 2) * 0.15;
@@ -1006,6 +1167,24 @@ const SHOWCASE_POLAR = THREE.MathUtils.degToRad(CAMERA.showcasePolarDeg);
 const YAW_BIAS = THREE.MathUtils.degToRad(CAMERA.yawBiasDeg);
 const SHOWCASE_TURN_TIME = 0.8;
 const SPLINTERS = [COLORS.cream, COLORS.yellow, COLORS.orange];
+const LIGHTS_OUT = 'The lamps go out · Grab the torch!';
+
+function makeTorch(): THREE.Group {
+  const g = new THREE.Group();
+  g.add(
+    box(0.12, 0.85, 0.12, COLORS.brown, 0, 0.42, 0),
+    box(0.28, 0.32, 0.28, COLORS.orange, 0, 0.95, 0, { emissive: COLORS.orange }),
+    box(0.16, 0.2, 0.16, COLORS.yellow, 0, 1.16, 0, { emissive: COLORS.yellow }),
+  );
+  return g;
+}
+
+function makeCarriedTorch(): THREE.Group {
+  const g = makeTorch();
+  g.scale.setScalar(0.8);
+  g.position.set(0.42, 0.5, 0.12);
+  return g;
+}
 
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;

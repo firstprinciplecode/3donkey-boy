@@ -4,6 +4,7 @@ export const unitBox = new THREE.BoxGeometry(1, 1, 1);
 const unitCone = new THREE.ConeGeometry(0.5, 1, 10);
 const unitSpike = new THREE.ConeGeometry(0.5, 1, 4).rotateX(Math.PI).rotateY(Math.PI / 4);
 const unitBall = new THREE.IcosahedronGeometry(0.5, 2);
+const unitCylinder = new THREE.CylinderGeometry(0.5, 0.5, 1, 14);
 const materialCache = new Map<string, THREE.MeshLambertMaterial>();
 
 export interface MatOptions {
@@ -78,6 +79,10 @@ export class VoxelBuilder {
   private readonly sceneryBoxes: number[] = [];
   private readonly sceneryCones: number[] = [];
   private readonly sceneryGlows: number[] = [];
+  private readonly balls: number[] = [];
+  private readonly sceneryBalls: number[] = [];
+  private readonly cylinders: number[] = [];
+  private readonly sceneryCylinders: number[] = [];
   private readonly spikes: number[] = [];
 
   /** Following voxels skip the shadow map. Used for distant scenery. */
@@ -104,6 +109,18 @@ export class VoxelBuilder {
 
   cone(x: number, yBottom: number, z: number, radius: number, height: number, color: number): this {
     (this.casting ? this.cones : this.sceneryCones).push(x, yBottom + height / 2, z, radius * 2, height, radius * 2, color);
+    return this;
+  }
+
+  /** Round ball centred on `y`. Kept uniform so it maps onto a Roblox Ball part. */
+  ball(x: number, y: number, z: number, radius: number, color: number): this {
+    (this.casting ? this.balls : this.sceneryBalls).push(x, y, z, radius * 2, radius * 2, radius * 2, color);
+    return this;
+  }
+
+  /** Upright cylinder resting on `yBottom`. */
+  cylinder(x: number, yBottom: number, z: number, radius: number, height: number, color: number): this {
+    (this.casting ? this.cylinders : this.sceneryCylinders).push(x, yBottom + height / 2, z, radius * 2, height, radius * 2, color);
     return this;
   }
 
@@ -147,6 +164,10 @@ export class VoxelBuilder {
     }
     bake(this.cones, unitCone, false, true);
     bake(this.sceneryCones, unitCone, false, false);
+    bake(this.balls, unitBall, false, true);
+    bake(this.sceneryBalls, unitBall, false, false);
+    bake(this.cylinders, unitCylinder, false, true);
+    bake(this.sceneryCylinders, unitCylinder, false, false);
     bake(this.spikes, unitSpike, false, false);
     return group;
   }

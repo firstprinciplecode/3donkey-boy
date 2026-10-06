@@ -376,7 +376,6 @@ async function main(): Promise<void> {
   // Each theme: four passes, the last two with the hammer's octave-up lead. The second and fourth
   // passes are kept, so each loop starts with the echo tail of the pass before it.
   const m = music as unknown as MusicInternals & { steps: readonly unknown[] };
-  const STEPS = 256;
   const lead = 0.05;
   const songs: { skin: string; normal: Float32Array; hammer: Float32Array; loop: number }[] = [];
   for (const skin of SONG_ORDER) {
@@ -386,11 +385,12 @@ async function main(): Promise<void> {
     // Notes land on the music bus's child, which also feeds the echo. Drop the previous theme's
     // notes without unplugging that bus from the mix.
     (m.nodes as { bus: Gain }).bus.inputs = [];
-    if (m.steps.length !== STEPS) throw new Error(`${skin} has ${m.steps.length} steps, expected ${STEPS}`);
-    const loop = STEPS * m.stepDuration;
+    const steps = m.steps.length;
+    if (steps === 0) throw new Error(`${skin} has no steps`);
+    const loop = steps * m.stepDuration;
     for (let pass = 0; pass < 4; pass++) {
       music.setHammer(pass >= 2);
-      for (let i = 0; i < STEPS; i++) m.playStep(ctx, m.nodes, i, lead + (pass * STEPS + i) * m.stepDuration);
+      for (let i = 0; i < steps; i++) m.playStep(ctx, m.nodes, i, lead + (pass * steps + i) * m.stepDuration);
     }
     const loopSamples = Math.round(loop * SAMPLE_RATE);
     const at = (pass: number) => Math.round((lead + pass * loop) * SAMPLE_RATE);

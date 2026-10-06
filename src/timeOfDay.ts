@@ -13,7 +13,7 @@ export interface Lighting {
   glow: boolean;
 }
 
-export const LIGHTING: Record<TimeOfDay | 'bake', Lighting> = {
+export const LIGHTING: Record<TimeOfDay | 'bake' | 'fair' | 'crypt', Lighting> = {
   day: {
     skyColor: 0xffffff,
     groundColor: 0xa9c79a,
@@ -41,6 +41,26 @@ export const LIGHTING: Record<TimeOfDay | 'bake', Lighting> = {
     sunPosition: [30, 55, 30],
     glow: true,
   },
+  /** Bright pastel daylight. Candy Hills stays here so the pink floors do not fall into dusk. */
+  fair: {
+    skyColor: 0xfff4f8,
+    groundColor: 0xf3c4dc,
+    hemiIntensity: 1.9,
+    sunColor: 0xfff8f2,
+    sunIntensity: 2.7,
+    sunPosition: [-16, 72, 26],
+    glow: false,
+  },
+  /** Near-black ambient. A carried torch is the light that remains. */
+  crypt: {
+    skyColor: 0x141220,
+    groundColor: 0x07060c,
+    hemiIntensity: 0.12,
+    sunColor: 0x3a3858,
+    sunIntensity: 0.08,
+    sunPosition: [12, 40, 16],
+    glow: false,
+  },
   /** High, hard sun for the desert: warm and bright, with sand-coloured bounce instead of green. */
   bake: {
     skyColor: 0xfff8ee,
@@ -55,8 +75,8 @@ export const LIGHTING: Record<TimeOfDay | 'bake', Lighting> = {
 
 /**
  * Time of day moves on every round, and shifts by one each lap through the levels, so the
- * same level comes round at a different time of day on each lap. The desert stays in daylight:
- * night belongs to the later levels.
+ * same level comes round at a different time of day on each lap. The desert and Candy Hills
+ * stay in daylight, and the tomb stays at night.
  */
 export function timeForRound(round: number, levelCount: number): TimeOfDay {
   const i = round - 1;
@@ -65,11 +85,14 @@ export function timeForRound(round: number, levelCount: number): TimeOfDay {
 }
 
 export function timeForLevel(round: number, levelCount: number, skin: string): TimeOfDay {
-  if (skin === 'desert') return 'day';
+  if (skin === 'desert' || skin === 'candy') return 'day';
+  if (skin === 'tomb') return 'night';
   return timeForRound(round, levelCount);
 }
 
 export function lightingFor(time: TimeOfDay, skin: string): Lighting {
   if (skin === 'desert') return LIGHTING.bake;
+  if (skin === 'candy') return LIGHTING.fair;
+  if (skin === 'tomb') return LIGHTING.crypt;
   return LIGHTING[time];
 }

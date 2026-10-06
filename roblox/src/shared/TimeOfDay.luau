@@ -41,6 +41,26 @@ TimeOfDay.LIGHTING = {
 		glow = true,
 		stars = 1,
 	},
+	-- Bright pastel daylight. Candy Hills stays here so the pink floors do not fall into dusk.
+	fair = {
+		ClockTime = 13.2,
+		Brightness = 2.6,
+		Ambient = Color3.fromRGB(150, 120, 140),
+		OutdoorAmbient = Color3.fromRGB(230, 196, 210),
+		ColorShift_Top = hex(0xfff0f4),
+		glow = false,
+		stars = 0,
+	},
+	-- Near-black. The tomb's wall lamps are the light that remains.
+	crypt = {
+		ClockTime = 0.2,
+		Brightness = 0.05,
+		Ambient = Color3.fromRGB(8, 6, 14),
+		OutdoorAmbient = Color3.fromRGB(14, 12, 24),
+		ColorShift_Top = Color3.new(0, 0, 0),
+		glow = true,
+		stars = 1,
+	},
 	-- High, hard sun for the desert: noon, warm, and brighter than a normal day.
 	bake = {
 		ClockTime = 12.2,
@@ -70,7 +90,7 @@ local SKIES = {
 		desert = { hex(0x42305a), hex(0x251a3c), hex(0x120d22) },
 		autumn = { hex(0x3f2f4f), hex(0x261c33), hex(0x140e1d) },
 		winter = { hex(0x2f4a78), hex(0x1a2a4d), hex(0x0c142b) },
-		tomb = { hex(0x33385a), hex(0x1e2240), hex(0x0e1024) },
+		tomb = { hex(0x1a1830), hex(0x100e1c), hex(0x07060e) },
 		volcano = { hex(0x4a2238), hex(0x2b1326), hex(0x150a14) },
 	},
 }
@@ -81,10 +101,13 @@ function TimeOfDay.forRound(round: number, levelCount: number): string
 	return TimeOfDay.TIMES[(i + lap) % #TimeOfDay.TIMES + 1]
 end
 
--- The desert stays in daylight. Night belongs to the later levels.
+-- The desert and Candy Hills stay in daylight. The tomb stays night. The rest move with the round.
 function TimeOfDay.forLevel(round: number, levelCount: number, skin: string): string
-	if skin == "desert" then
+	if skin == "desert" or skin == "candy" then
 		return "day"
+	end
+	if skin == "tomb" then
+		return "night"
 	end
 	return TimeOfDay.forRound(round, levelCount)
 end
@@ -92,6 +115,12 @@ end
 function TimeOfDay.lighting(time: string, skin: string)
 	if skin == "desert" then
 		return TimeOfDay.LIGHTING.bake
+	end
+	if skin == "candy" then
+		return TimeOfDay.LIGHTING.fair
+	end
+	if skin == "tomb" then
+		return TimeOfDay.LIGHTING.crypt
 	end
 	return TimeOfDay.LIGHTING[time]
 end

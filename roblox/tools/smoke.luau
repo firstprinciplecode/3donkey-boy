@@ -31,7 +31,10 @@ end
 CFrame = { new = function() return setmetatable({}, CF) end, Angles = function() return setmetatable({}, CF) end,
 	lookAt = function() return setmetatable({}, CF) end }
 CFrame.identity = CFrame.new()
-Color3 = { fromRGB = function(r, g, b) return { r = r, g = g, b = b } end, new = function(r, g, b) return { r = r, g = g, b = b } end }
+Color3 = {
+	fromRGB = function(r, g, b) return { r = r, g = g, b = b, R = r / 255, G = g / 255, B = b / 255 } end,
+	new = function(r, g, b) return { r = r, g = g, b = b, R = r, G = g, B = b } end,
+}
 local function enumProxy() return setmetatable({}, { __index = function(t, k) local p = enumProxy(); rawset(t, k, p); return p end }) end
 Enum = enumProxy()
 UDim2 = { fromScale = function() return {} end, fromOffset = function() return {} end, new = function() return {} end }
@@ -358,6 +361,7 @@ print("audio checks passed")
 -- The whole client game: construct, start, and run a few seconds of frames.
 function Obj:WaitForChild(name) return self[name] or setmetatable({ _attrs = {} }, Obj) end
 function Obj:GetPropertyChangedSignal() return { Connect = function() end } end
+Obj.Activated = { Connect = function() end }
 TweenInfo = { new = function() return {} end }
 local U2 = { __sub = function(a) return a end, __add = function(a) return a end }
 UDim2 = { fromScale = function() return setmetatable({}, U2) end, fromOffset = function() return setmetatable({}, U2) end,
@@ -375,6 +379,24 @@ for frame = 1, 60 * 20 do
 	if frame % 90 == 0 then popscotch:pressJump() end
 end
 print("game ran 20 s, state:", popscotch.state, "score:", popscotch.score)
+do
+	local hud = popscotch.hud
+	assert(string.find(hud.logoText.Text, '<font color="', 1, true), "the logo keeps its lowercase rich-text tags")
+	hud:setScore(1500)
+	hud:setRound(3)
+	assert(hud.scoreValue.Text == "1500 POINTS" and hud.roundLabel.Text == "ROUND 3", "desktop stats read POINTS and ROUND")
+	assert(hud.roundLabel.Visible and hud.buttons.Visible, "desktop shows the round and the pause and sound buttons")
+	hud:setInputMode("touch")
+	assert(hud.scoreValue.Text == "1500 PTS", "touch score reads PTS")
+	assert(not hud.roundLabel.Visible and not hud.buttons.Visible, "touch hides the round and the buttons")
+	hud:setInputMode("pad")
+	assert(hud.roundLabel.Visible and not hud.buttons.Visible, "gamepad keeps the desktop layout without mouse buttons")
+	hud:setInputMode("keys")
+	hud:setMuted(true)
+	assert(hud.soundMark.GroupTransparency > 0, "muted dims the sound button")
+	hud:setMuted(false)
+	print("hud layout checks passed")
+end
 -- Each cleared round moves on a level, each 6% quicker; after the last it loops back to the meadow.
 for i = 2, #Levels do
 	popscotch.round = i
@@ -396,7 +418,8 @@ end
 popscotch.round = 4
 popscotch:_startRound(true)
 assert(popscotch.level.def.name == "harvest woods", "level 4 is harvest woods")
-assert(#popscotch.crawlers == 3 and #popscotch.hazards.drops == 3 and #popscotch.ghosts == 1, "harvest spawns its critters and acorns")
+local harvest = popscotch.level.def
+assert(#popscotch.crawlers == #harvest.crawlers and #popscotch.hazards.drops == #harvest.drops and #popscotch.ghosts == harvest.ghosts, "harvest spawns its critters and acorns")
 assert(popscotch.obstacles:lockKind(7) == "relics" and select(2, popscotch.items:relicsLeft()) == 3, "3 pumpkins unseal the summit")
 assert(popscotch.barrels.look == "pumpkin", "harvest throws pumpkins")
 
@@ -440,7 +463,7 @@ end
 assert(not fell and across, "letting go on the forward swing lands across the pit")
 popscotch.round = #Levels + 4
 popscotch:_startRound(true)
-assert(#popscotch.ghosts == 2, "each lap adds a ghost")
+assert(#popscotch.ghosts == Levels[4].ghosts + 1, "each lap adds a ghost")
 
 -- Frost peak: ice eases your speed in, penguins, icicles, and snowballs that grow as they roll.
 popscotch.round = 5
@@ -454,8 +477,8 @@ local skater = Player.new(frost)
 skater:reset({ ring = iceSpan.ring, side = iceSpan.side, offset = iceSpan.offset - 2 })
 skater:step(1 / 120, { right = true }, frostObs)
 assert(skater.vs > 0 and skater.vs < 1, `on ice you pick up speed gradually (vs {skater.vs})`)
-assert(#popscotch.crawlers == 3 and popscotch.crawlers[1].rig.parts[1].color == require({ __module = "shared/Config" }).COLORS.black, "frost has penguins")
-assert(#popscotch.hazards.drops == 4, "frost has four icicles")
+assert(#popscotch.crawlers == #frost.def.crawlers and popscotch.crawlers[1].rig.parts[1].color == require({ __module = "shared/Config" }).COLORS.black, "frost has penguins")
+assert(#popscotch.hazards.drops == #frost.def.drops, "frost hangs every icicle")
 popscotch.barrels:spawn(vec(0, 20, 0))
 local ball = popscotch.barrels.list[1]
 for _ = 1, 120 * 6 do
@@ -469,7 +492,8 @@ assert(math.abs(ball.parts[1].Size.X - ball.radius * 2 * 2) < 0.05, "the snowbal
 popscotch.round = 6
 popscotch:_startRound(true)
 assert(popscotch.level.def.name == "serpent tomb" and popscotch.barrels.look == "boulder", "level 6 is serpent tomb")
-assert(#popscotch.crawlers == 5 and #popscotch.hazards.jets == 5 and #popscotch.totems == 1, "tomb has snakes, jets and a mummy")
+local tombDef = popscotch.level.def
+assert(#popscotch.crawlers == #tombDef.crawlers and #popscotch.hazards.jets == #tombDef.jets and #popscotch.totems == #tombDef.totems, "tomb has snakes, jets and a mummy")
 local tombHaz = popscotch.hazards
 local erupted, jetDanger = 0, false
 for _ = 1, 120 * 4 do
@@ -489,11 +513,42 @@ for _ = 1, 120 * 8 do
 	reared = math.max(reared, snake.height)
 end
 assert(reared > 1, `snakes rear up taller ({reared})`)
+local torch = popscotch.torch
+assert(torch.active and not torch.held and #torch.lampSpots > 0, "the tomb's torch stands by the ladder, among the lamps")
+for _ = 1, 60 * 3 do
+	assert(not torch:update(1 / 60, torch.foot + Vector3.new(0, 0, 12), true), "the torch stays put from afar")
+end
+local lit = 0
+for _, lamp in torch.lamps do
+	lit += if lamp.light.Enabled then 1 else 0
+end
+assert(lit > 0 and torch.blackout < 0.05, `far from the torch the lamps are lit ({lit})`)
+assert(not torch:update(1 / 60, torch.foot, false), "the torch can't be taken outside play")
+local lampsOut = 0
+for _ = 1, 60 * 3 do
+	local _, out = torch:update(1 / 60, torch.foot + Vector3.new(0, 0, 2), true)
+	lampsOut += if out then 1 else 0
+end
+assert(lampsOut == 1, `the lights-out line shows once near the torch ({lampsOut})`)
+local tombObs = popscotch.obstacles
+assert(not tombObs:isLadderOpen(torch.ladderIndex) and tombObs:lockKind(torch.ladderIndex) == "torch", "the ground ladder waits for the torch")
+assert(torch:update(1 / 60, torch.foot, true) and torch.held, "walking into the torch picks it up")
+popscotch:_takeTorch()
+assert(tombObs:isLadderOpen(torch.ladderIndex), "taking the torch opens the ladder")
+for _ = 1, 60 * 2 do
+	torch:update(1 / 60, torch.foot, true)
+end
+assert(torch.glowOff and popscotch.worldGlow[1].part.Material ~= Enum.Material.Neon, "in the dark the scenery stops glowing")
+popscotch:_startRound(false)
+assert(not torch.held and not torch.glowOff, "a retry puts the torch back")
+assert(not tombObs:isLadderOpen(torch.ladderIndex), "a retry shuts the ladder until the torch is taken again")
+assert(popscotch.worldGlow[1].part.Material == Enum.Material.Neon, "a retry lights the scenery again")
 
 -- Volcano isle: scorpions, lava rocks that leave burning patches.
 popscotch.round = 7
 popscotch:_startRound(true)
 assert(popscotch.level.def.name == "volcano isle" and popscotch.barrels.look == "lavarock", "level 7 is volcano isle")
+assert(not popscotch.torch.active and popscotch.obstacles.torchGate == nil, "only the tomb has a torch")
 local lava = popscotch.barrels
 lava.ladderChance = 0
 local scorched = 0

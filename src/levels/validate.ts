@@ -17,6 +17,18 @@ export function validateLevel(def: LevelDef): string[] {
   if (!intIn(def.terraceDepth, 2, LIMITS.maxDepth)) err(`terraceDepth must be an integer 2..${LIMITS.maxDepth}`);
   if (!intIn(def.summitHalf, 3, 8)) err('summitHalf must be an integer 3..8');
   if (!intIn(def.tierHeight, 2, 8)) err('tierHeight must be an integer 2..8');
+  const patterns = new Set(['checker', 'gingham', 'speckle', 'rows', 'border', 'stripes']);
+  if (def.tiers && def.tiers.length !== def.rings + 1) err('tiers must cover every terrace and the summit');
+  if ((def.neon?.length ?? 0) > 8) err('at most 8 neon walls');
+  for (const wall of def.neon ?? []) {
+    if (!intIn(wall.tier, 1, def.rings) || !intIn(wall.side, 0, 3) || (wall.look !== 0 && wall.look !== 1)) err('a neon wall is out of range');
+  }
+  for (const terrace of def.tiers ?? []) {
+    const colours = [...terrace.top, ...terrace.side];
+    if (terrace.top.length < 2 || terrace.top.length > 8 || terrace.side.length < 2) err('a terrace needs a short list of colours');
+    if (terrace.pattern !== undefined && !patterns.has(terrace.pattern)) err('unknown terrace pattern');
+    if (colours.some((c) => !Number.isInteger(c) || c < 0 || c > 0xffffff)) err('a terrace colour is out of range');
+  }
   const ice = def.ice ?? [];
   const springs = def.springs ?? [];
   const vines = def.vines ?? [];

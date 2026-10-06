@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 
 /**
- * One full-screen pass that pushes the 3D picture a step toward the poster: a little more
- * contrast and candy saturation. It does not lift the blacks or roll off the highlights,
- * which is what made the first try look milky. Empty pixels stay transparent so the HTML
+ * One full-screen pass that softens the 3D picture: saturation eased back, with a touch of
+ * contrast kept so it doesn't go milky. It does not lift the blacks or roll off the highlights,
+ * which is what made an earlier try look washed out. Empty pixels stay transparent so the HTML
  * sky shows through.
  */
 const FRAGMENT = /* glsl */ `
@@ -13,8 +13,8 @@ varying vec2 vUv;
 
 vec3 grade(vec3 c) {
   float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
-  c = mix(vec3(luma), c, 1.0 + 0.14 * uPrint);
-  c = (c - vec3(0.5)) * (1.0 + 0.1 * uPrint) + vec3(0.5);
+  c = mix(vec3(luma), c, 1.0 - 0.1 * uPrint);
+  c = (c - vec3(0.5)) * (1.0 + 0.04 * uPrint) + vec3(0.5);
   return max(c, vec3(0.0));
 }
 
@@ -35,7 +35,7 @@ void main() {
 `;
 
 export class Grade {
-  /** 1 is the full poster grade. Night turns it down so the blue scene stays blue. */
+  /** 1 is the full softening. Night turns it down, since the dark scene is already muted. */
   print = 1;
   enabled = true;
 

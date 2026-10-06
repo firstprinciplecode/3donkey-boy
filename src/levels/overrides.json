@@ -1,0 +1,2467 @@
+{
+  "0": {
+    "name": "meadow",
+    "skin": "meadow",
+    "rings": 4,
+    "terraceDepth": 3,
+    "tierHeight": 4,
+    "summitHalf": 3,
+    "ladders": [
+      {
+        "ring": 0,
+        "side": 1,
+        "offset": 3
+      },
+      {
+        "ring": 0,
+        "side": 3,
+        "offset": -4
+      },
+      {
+        "ring": 1,
+        "side": 2,
+        "offset": -2
+      },
+      {
+        "ring": 1,
+        "side": 3,
+        "offset": 2
+      },
+      {
+        "ring": 2,
+        "side": 3,
+        "offset": 0
+      },
+      {
+        "ring": 3,
+        "side": 0,
+        "offset": 0
+      }
+    ],
+    "chutes": [
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": -3
+      },
+      {
+        "ring": 2,
+        "side": 1,
+        "offset": -3
+      },
+      {
+        "ring": 3,
+        "side": 2,
+        "offset": 0
+      }
+    ],
+    "playerStart": {
+      "ring": 0,
+      "side": 0,
+      "offset": -9
+    },
+    "drum": {
+      "ring": 0,
+      "side": 0,
+      "offset": -12
+    },
+    "barrelSpawn": {
+      "ring": 3,
+      "side": 1,
+      "offset": 1
+    },
+    "items": [
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 0,
+          "side": 0,
+          "offset": 0
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 0,
+          "side": 0,
+          "offset": -5
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 0,
+          "side": 1,
+          "offset": -6
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 1,
+          "side": 1,
+          "offset": 0
+        }
+      },
+      {
+        "type": "hammer",
+        "spot": {
+          "ring": 1,
+          "side": 0,
+          "offset": 4
+        }
+      },
+      {
+        "type": "oneup",
+        "spot": {
+          "ring": 2,
+          "side": 0,
+          "offset": -3
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 2,
+          "side": 3,
+          "offset": -4
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 3,
+          "side": 3,
+          "offset": 3
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 3,
+          "side": 2,
+          "offset": -2
+        }
+      },
+      {
+        "type": "letter-1",
+        "spot": {
+          "ring": 0,
+          "side": 2,
+          "offset": 0
+        }
+      },
+      {
+        "type": "letter-u",
+        "spot": {
+          "ring": 1,
+          "side": 3,
+          "offset": -7
+        }
+      },
+      {
+        "type": "letter-p",
+        "spot": {
+          "ring": 3,
+          "side": 1,
+          "offset": -2
+        }
+      }
+    ],
+    "totems": [
+      {
+        "ring": 0,
+        "from": [
+          0,
+          3
+        ],
+        "to": [
+          0,
+          11
+        ]
+      }
+    ],
+    "patrols": [
+      {
+        "ring": 1,
+        "from": [
+          0,
+          -6
+        ],
+        "to": [
+          0,
+          6
+        ]
+      },
+      {
+        "ring": 2,
+        "from": [
+          3,
+          -5
+        ],
+        "to": [
+          0,
+          5
+        ]
+      },
+      {
+        "ring": 0,
+        "from": [
+          1,
+          -8
+        ],
+        "to": [
+          1,
+          1
+        ]
+      },
+      {
+        "ring": 3,
+        "from": [
+          2,
+          -3
+        ],
+        "to": [
+          3,
+          -2
+        ]
+      }
+    ],
+    "ghosts": 1,
+    "fires": 1,
+    "pits": [
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": 0,
+        "width": 2
+      }
+    ],
+    "crumbles": [],
+    "conveyors": [
+      {
+        "ring": 1,
+        "side": 1,
+        "offset": 7,
+        "width": 4,
+        "dir": -1
+      }
+    ],
+    "platforms": [],
+    "locks": [
+      {
+        "kind": "switch",
+        "ladder": 4,
+        "switchAt": {
+          "ring": 2,
+          "side": 1,
+          "offset": 3
+        }
+      }
+    ],
+    "tiers": [
+      {
+        "top": [
+          12576106,
+          10211900,
+          7648556
+        ],
+        "side": [
+          9076066,
+          6971209
+        ],
+        "pattern": "gingham"
+      },
+      {
+        "top": [
+          16251903,
+          12577269,
+          7332058
+        ],
+        "side": [
+          2795174,
+          7332058
+        ],
+        "pattern": "checker"
+      },
+      {
+        "top": [
+          3026488,
+          4539727
+        ],
+        "side": [
+          16723834,
+          14162784
+        ]
+      },
+      {
+        "top": [
+          12576106,
+          10211900,
+          7648556
+        ],
+        "side": [
+          9076066,
+          6971209
+        ],
+        "pattern": "gingham"
+      },
+      {
+        "top": [
+          16726843,
+          16751135,
+          16765498,
+          10211900,
+          2795174,
+          2981848,
+          9326552
+        ],
+        "side": [
+          3026488,
+          4539727
+        ]
+      }
+    ]
+  },
+  "1": {
+    "name": "candy hills",
+    "skin": "candy",
+    "rings": 5,
+    "terraceDepth": 3,
+    "tierHeight": 4,
+    "summitHalf": 3,
+    "ladders": [
+      {
+        "ring": 0,
+        "side": 3,
+        "offset": 4
+      },
+      {
+        "ring": 0,
+        "side": 1,
+        "offset": -6
+      },
+      {
+        "ring": 1,
+        "side": 2,
+        "offset": 5
+      },
+      {
+        "ring": 2,
+        "side": 1,
+        "offset": 0
+      },
+      {
+        "ring": 2,
+        "side": 3,
+        "offset": 3
+      },
+      {
+        "ring": 3,
+        "side": 0,
+        "offset": 2
+      },
+      {
+        "ring": 4,
+        "side": 3,
+        "offset": 0
+      }
+    ],
+    "chutes": [
+      {
+        "ring": 1,
+        "side": 1,
+        "offset": 6
+      },
+      {
+        "ring": 2,
+        "side": 0,
+        "offset": -4
+      },
+      {
+        "ring": 3,
+        "side": 3,
+        "offset": -2
+      },
+      {
+        "ring": 4,
+        "side": 2,
+        "offset": 0
+      }
+    ],
+    "playerStart": {
+      "ring": 0,
+      "side": 0,
+      "offset": 9
+    },
+    "drum": {
+      "ring": 0,
+      "side": 0,
+      "offset": 14
+    },
+    "barrelSpawn": {
+      "ring": 4,
+      "side": 1,
+      "offset": 1
+    },
+    "items": [
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 0,
+          "side": 0,
+          "offset": -8.5
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 0,
+          "side": 3,
+          "offset": 12
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 1,
+          "side": 3,
+          "offset": -5
+        }
+      },
+      {
+        "type": "hammer",
+        "spot": {
+          "ring": 1,
+          "side": 2,
+          "offset": 0
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 1,
+          "side": 2,
+          "offset": -8
+        }
+      },
+      {
+        "type": "letter-u",
+        "spot": {
+          "ring": 2,
+          "side": 1,
+          "offset": 5
+        }
+      },
+      {
+        "type": "oneup",
+        "spot": {
+          "ring": 2,
+          "side": 3,
+          "offset": -6
+        }
+      },
+      {
+        "type": "key",
+        "spot": {
+          "ring": 3,
+          "side": 2,
+          "offset": -3
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 3,
+          "side": 0,
+          "offset": -3
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 3,
+          "side": 1,
+          "offset": 4
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 4,
+          "side": 0,
+          "offset": -2
+        }
+      },
+      {
+        "type": "letter-1",
+        "spot": {
+          "ring": 0,
+          "side": 3,
+          "offset": -6
+        }
+      },
+      {
+        "type": "letter-p",
+        "spot": {
+          "ring": 4,
+          "side": 2,
+          "offset": -2
+        }
+      }
+    ],
+    "totems": [
+      {
+        "ring": 0,
+        "from": [
+          0,
+          -4
+        ],
+        "to": [
+          0,
+          5
+        ]
+      }
+    ],
+    "patrols": [
+      {
+        "ring": 1,
+        "from": [
+          2,
+          -10
+        ],
+        "to": [
+          2,
+          10
+        ]
+      },
+      {
+        "ring": 3,
+        "from": [
+          0,
+          -6
+        ],
+        "to": [
+          1,
+          6
+        ]
+      },
+      {
+        "ring": 0,
+        "from": [
+          3,
+          -12
+        ],
+        "to": [
+          0,
+          -12
+        ]
+      },
+      {
+        "ring": 2,
+        "from": [
+          3,
+          -8
+        ],
+        "to": [
+          0,
+          8
+        ]
+      },
+      {
+        "ring": 4,
+        "from": [
+          1,
+          -3
+        ],
+        "to": [
+          2,
+          3
+        ]
+      }
+    ],
+    "ghosts": 2,
+    "fires": 2,
+    "pits": [
+      {
+        "ring": 1,
+        "side": 3,
+        "offset": -5,
+        "width": 2
+      },
+      {
+        "ring": 3,
+        "side": 1,
+        "offset": -4,
+        "width": 2
+      }
+    ],
+    "crumbles": [
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": -8.5,
+        "width": 3
+      },
+      {
+        "ring": 1,
+        "side": 2,
+        "offset": 9.5,
+        "width": 3
+      }
+    ],
+    "conveyors": [
+      {
+        "ring": 0,
+        "side": 3,
+        "offset": 10,
+        "width": 4,
+        "dir": -1
+      }
+    ],
+    "platforms": [
+      {
+        "ring": 2,
+        "side": 1,
+        "offset": 5,
+        "width": 6,
+        "platformWidth": 2,
+        "period": 4
+      }
+    ],
+    "locks": [
+      {
+        "kind": "key",
+        "ladder": 6
+      }
+    ],
+    "tiers": [
+      {
+        "top": [
+          16052710,
+          16723834
+        ],
+        "side": [
+          16757711,
+          16052710
+        ],
+        "pattern": "checker"
+      },
+      {
+        "top": [
+          16052710,
+          9367752,
+          5228960
+        ],
+        "side": [
+          9326552,
+          11833072
+        ],
+        "pattern": "gingham"
+      },
+      {
+        "top": [
+          16723834,
+          16052710,
+          16723834
+        ],
+        "side": [
+          16723834,
+          14162784
+        ],
+        "pattern": "gingham"
+      },
+      {
+        "top": [
+          16251903,
+          16723834
+        ],
+        "side": [
+          16757711,
+          16052710
+        ],
+        "pattern": "checker"
+      },
+      {
+        "top": [
+          16052710,
+          9367752,
+          5228960
+        ],
+        "side": [
+          9326552,
+          11833072
+        ],
+        "pattern": "gingham"
+      },
+      {
+        "top": [
+          16726843,
+          16751135,
+          16765498,
+          10211900,
+          2795174,
+          2981848,
+          9326552
+        ],
+        "side": [
+          3026488,
+          4539727
+        ]
+      }
+    ]
+  },
+  "2": {
+    "name": "desert arcade",
+    "skin": "desert",
+    "rings": 6,
+    "terraceDepth": 3,
+    "tierHeight": 3,
+    "summitHalf": 3,
+    "ladders": [
+      {
+        "ring": 0,
+        "side": 1,
+        "offset": -12
+      },
+      {
+        "ring": 0,
+        "side": 3,
+        "offset": 8
+      },
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": 6
+      },
+      {
+        "ring": 2,
+        "side": 1,
+        "offset": -2
+      },
+      {
+        "ring": 3,
+        "side": 0,
+        "offset": 3
+      },
+      {
+        "ring": 3,
+        "side": 2,
+        "offset": 0
+      },
+      {
+        "ring": 4,
+        "side": 1,
+        "offset": 0
+      },
+      {
+        "ring": 5,
+        "side": 0,
+        "offset": 0
+      }
+    ],
+    "chutes": [
+      {
+        "ring": 1,
+        "side": 2,
+        "offset": 5
+      },
+      {
+        "ring": 2,
+        "side": 3,
+        "offset": -5
+      },
+      {
+        "ring": 3,
+        "side": 2,
+        "offset": -6
+      },
+      {
+        "ring": 4,
+        "side": 3,
+        "offset": 3
+      },
+      {
+        "ring": 5,
+        "side": 2,
+        "offset": 0
+      }
+    ],
+    "playerStart": {
+      "ring": 0,
+      "side": 0,
+      "offset": -12
+    },
+    "drum": {
+      "ring": 0,
+      "side": 0,
+      "offset": -17
+    },
+    "barrelSpawn": {
+      "ring": 5,
+      "side": 1,
+      "offset": 1
+    },
+    "items": [
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 0,
+          "side": 0,
+          "offset": -4
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 0,
+          "side": 0,
+          "offset": 14.5
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 0,
+          "side": 1,
+          "offset": -16
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 1,
+          "side": 0,
+          "offset": 12
+        }
+      },
+      {
+        "type": "hammer",
+        "spot": {
+          "ring": 2,
+          "side": 3,
+          "offset": 0
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 2,
+          "side": 1,
+          "offset": -8
+        }
+      },
+      {
+        "type": "oneup",
+        "spot": {
+          "ring": 3,
+          "side": 2,
+          "offset": 4
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 3,
+          "side": 0,
+          "offset": 7.5
+        }
+      },
+      {
+        "type": "key",
+        "spot": {
+          "ring": 4,
+          "side": 3,
+          "offset": 0
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 4,
+          "side": 0,
+          "offset": -5
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 5,
+          "side": 0,
+          "offset": -3
+        }
+      },
+      {
+        "type": "letter-1",
+        "spot": {
+          "ring": 0,
+          "side": 3,
+          "offset": 14
+        }
+      },
+      {
+        "type": "letter-u",
+        "spot": {
+          "ring": 1,
+          "side": 1,
+          "offset": -4
+        }
+      },
+      {
+        "type": "letter-p",
+        "spot": {
+          "ring": 4,
+          "side": 2,
+          "offset": -4
+        }
+      }
+    ],
+    "totems": [
+      {
+        "ring": 2,
+        "from": [
+          0,
+          -3
+        ],
+        "to": [
+          0,
+          3
+        ]
+      }
+    ],
+    "patrols": [
+      {
+        "ring": 1,
+        "from": [
+          0,
+          -10
+        ],
+        "to": [
+          0,
+          4
+        ]
+      },
+      {
+        "ring": 3,
+        "from": [
+          3,
+          -8
+        ],
+        "to": [
+          0,
+          -2
+        ]
+      },
+      {
+        "ring": 0,
+        "from": [
+          1,
+          -8
+        ],
+        "to": [
+          1,
+          8
+        ]
+      },
+      {
+        "ring": 4,
+        "from": [
+          2,
+          -6
+        ],
+        "to": [
+          3,
+          6
+        ]
+      },
+      {
+        "ring": 2,
+        "from": [
+          2,
+          -10
+        ],
+        "to": [
+          3,
+          -10
+        ]
+      }
+    ],
+    "ghosts": 2,
+    "fires": 3,
+    "pits": [
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": -4,
+        "width": 2
+      },
+      {
+        "ring": 2,
+        "side": 0,
+        "offset": 10,
+        "width": 2
+      }
+    ],
+    "crumbles": [
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": 14.5,
+        "width": 3
+      },
+      {
+        "ring": 3,
+        "side": 1,
+        "offset": -6.5,
+        "width": 3
+      },
+      {
+        "ring": 3,
+        "side": 0,
+        "offset": 7.5,
+        "width": 3
+      }
+    ],
+    "conveyors": [
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": 6,
+        "width": 6,
+        "dir": 1
+      },
+      {
+        "ring": 2,
+        "side": 1,
+        "offset": -8,
+        "width": 4,
+        "dir": -1
+      }
+    ],
+    "platforms": [
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": 12,
+        "width": 6,
+        "platformWidth": 2,
+        "period": 3.6
+      },
+      {
+        "ring": 4,
+        "side": 1,
+        "offset": -4,
+        "width": 4,
+        "platformWidth": 1.6,
+        "period": 3
+      }
+    ],
+    "locks": [
+      {
+        "kind": "switch",
+        "ladder": 3,
+        "switchAt": {
+          "ring": 2,
+          "side": 0,
+          "offset": -6
+        }
+      },
+      {
+        "kind": "key",
+        "ladder": 7
+      }
+    ],
+    "tiers": [
+      {
+        "top": [
+          14272928,
+          13350792,
+          15391926
+        ],
+        "side": [
+          15250026,
+          16751135
+        ],
+        "pattern": "speckle"
+      },
+      {
+        "top": [
+          14472898,
+          14272928
+        ],
+        "side": [
+          12866874,
+          11027244
+        ],
+        "pattern": "rows"
+      },
+      {
+        "top": [
+          16052710,
+          14472898,
+          14272928
+        ],
+        "side": [
+          16052710,
+          14472898
+        ],
+        "pattern": "checker"
+      },
+      {
+        "top": [
+          14272928,
+          13350792,
+          15391926
+        ],
+        "side": [
+          15250026,
+          16751135
+        ],
+        "pattern": "speckle"
+      },
+      {
+        "top": [
+          14472898,
+          14272928
+        ],
+        "side": [
+          12866874,
+          11027244
+        ],
+        "pattern": "rows"
+      },
+      {
+        "top": [
+          3026488,
+          4539727
+        ],
+        "side": [
+          16723834,
+          14162784
+        ]
+      },
+      {
+        "top": [
+          16726843,
+          16751135,
+          16765498,
+          10211900,
+          2795174,
+          2981848,
+          9326552
+        ],
+        "side": [
+          3026488,
+          4539727
+        ]
+      }
+    ],
+    "neon": [
+      {
+        "tier": 1,
+        "side": 1,
+        "look": 1
+      }
+    ]
+  },
+  "3": {
+    "name": "harvest woods",
+    "skin": "autumn",
+    "tip": "Springs and vines cross wide pits · Gather 3 pumpkins",
+    "rings": 7,
+    "terraceDepth": 3,
+    "tierHeight": 4,
+    "summitHalf": 3,
+    "ladders": [
+      {
+        "ring": 2,
+        "side": 1,
+        "offset": -4
+      },
+      {
+        "ring": 2,
+        "side": 3,
+        "offset": 6
+      },
+      {
+        "ring": 3,
+        "side": 2,
+        "offset": 3
+      },
+      {
+        "ring": 4,
+        "side": 3,
+        "offset": 2
+      },
+      {
+        "ring": 4,
+        "side": 1,
+        "offset": 0
+      },
+      {
+        "ring": 5,
+        "side": 0,
+        "offset": -2
+      },
+      {
+        "ring": 6,
+        "side": 3,
+        "offset": 0
+      },
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": 12
+      },
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": -11
+      }
+    ],
+    "chutes": [
+      {
+        "ring": 3,
+        "side": 0,
+        "offset": -6
+      },
+      {
+        "ring": 4,
+        "side": 0,
+        "offset": 0
+      },
+      {
+        "ring": 5,
+        "side": 1,
+        "offset": 3
+      },
+      {
+        "ring": 6,
+        "side": 2,
+        "offset": 0
+      },
+      {
+        "ring": 1,
+        "side": 2,
+        "offset": 0
+      },
+      {
+        "ring": 2,
+        "side": 2,
+        "offset": 6
+      }
+    ],
+    "playerStart": {
+      "ring": 0,
+      "side": 0,
+      "offset": -14
+    },
+    "drum": {
+      "ring": 0,
+      "side": 0,
+      "offset": -19
+    },
+    "barrelSpawn": {
+      "ring": 6,
+      "side": 1,
+      "offset": 1
+    },
+    "items": [
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 2,
+          "side": 0,
+          "offset": -6
+        }
+      },
+      {
+        "type": "relic",
+        "spot": {
+          "ring": 2,
+          "side": 0,
+          "offset": 11
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 2,
+          "side": 1,
+          "offset": -12
+        }
+      },
+      {
+        "type": "hammer",
+        "spot": {
+          "ring": 2,
+          "side": 2,
+          "offset": 0
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 3,
+          "side": 1,
+          "offset": -1
+        }
+      },
+      {
+        "type": "relic",
+        "spot": {
+          "ring": 3,
+          "side": 1,
+          "offset": 4
+        }
+      },
+      {
+        "type": "oneup",
+        "spot": {
+          "ring": 4,
+          "side": 2,
+          "offset": -5
+        }
+      },
+      {
+        "type": "relic",
+        "spot": {
+          "ring": 4,
+          "side": 2,
+          "offset": 8
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 4,
+          "side": 3,
+          "offset": 0
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 5,
+          "side": 3,
+          "offset": 4
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 5,
+          "side": 0,
+          "offset": -5
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 6,
+          "side": 0,
+          "offset": -3
+        }
+      },
+      {
+        "type": "letter-1",
+        "spot": {
+          "ring": 2,
+          "side": 3,
+          "offset": 12
+        }
+      },
+      {
+        "type": "letter-u",
+        "spot": {
+          "ring": 4,
+          "side": 2,
+          "offset": -9
+        }
+      },
+      {
+        "type": "letter-p",
+        "spot": {
+          "ring": 5,
+          "side": 2,
+          "offset": 3
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 0,
+          "side": 0,
+          "offset": -9
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 0,
+          "side": 0,
+          "offset": 3
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 1,
+          "side": 0,
+          "offset": 7
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 1,
+          "side": 0,
+          "offset": -7
+        }
+      }
+    ],
+    "totems": [
+      {
+        "ring": 2,
+        "from": [
+          0,
+          10.5
+        ],
+        "to": [
+          0,
+          15
+        ]
+      }
+    ],
+    "patrols": [
+      {
+        "ring": 1,
+        "from": [
+          0,
+          -16
+        ],
+        "to": [
+          0,
+          9
+        ]
+      },
+      {
+        "ring": 3,
+        "from": [
+          2,
+          -10
+        ],
+        "to": [
+          2,
+          10
+        ]
+      },
+      {
+        "ring": 5,
+        "from": [
+          0,
+          -6
+        ],
+        "to": [
+          1,
+          6
+        ]
+      },
+      {
+        "ring": 4,
+        "from": [
+          3,
+          -8
+        ],
+        "to": [
+          0,
+          8
+        ]
+      },
+      {
+        "ring": 2,
+        "from": [
+          3,
+          -12
+        ],
+        "to": [
+          0,
+          -12
+        ]
+      }
+    ],
+    "ghosts": 2,
+    "fires": 3,
+    "pits": [
+      {
+        "ring": 2,
+        "side": 0,
+        "offset": 4.5,
+        "width": 5
+      },
+      {
+        "ring": 3,
+        "side": 1,
+        "offset": 9,
+        "width": 6
+      },
+      {
+        "ring": 4,
+        "side": 3,
+        "offset": -4.5,
+        "width": 5
+      },
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": -3.5,
+        "width": 5
+      },
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": 1,
+        "width": 6
+      }
+    ],
+    "vines": [
+      {
+        "ring": 3,
+        "side": 1,
+        "offset": 9
+      },
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": 1
+      }
+    ],
+    "crumbles": [
+      {
+        "ring": 3,
+        "side": 2,
+        "offset": -6.5,
+        "width": 3
+      }
+    ],
+    "conveyors": [],
+    "platforms": [],
+    "locks": [
+      {
+        "kind": "relics",
+        "ladder": 6
+      }
+    ],
+    "springs": [
+      {
+        "ring": 2,
+        "side": 0,
+        "offset": 0.8
+      },
+      {
+        "ring": 4,
+        "side": 3,
+        "offset": -7.8
+      },
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": -7.2
+      }
+    ],
+    "drops": [
+      {
+        "ring": 3,
+        "side": 1,
+        "offset": 2
+      },
+      {
+        "ring": 4,
+        "side": 2,
+        "offset": 6
+      },
+      {
+        "ring": 5,
+        "side": 3,
+        "offset": 5
+      },
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": 6
+      },
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": -6
+      }
+    ],
+    "crawlers": [
+      {
+        "ring": 2,
+        "from": [
+          1,
+          -14
+        ],
+        "to": [
+          1,
+          -6
+        ]
+      },
+      {
+        "ring": 4,
+        "from": [
+          2,
+          4
+        ],
+        "to": [
+          2,
+          9
+        ]
+      },
+      {
+        "ring": 5,
+        "from": [
+          3,
+          3
+        ],
+        "to": [
+          0,
+          -4
+        ]
+      },
+      {
+        "ring": 0,
+        "from": [
+          0,
+          2
+        ],
+        "to": [
+          0,
+          9
+        ]
+      }
+    ],
+    "ice": [],
+    "jets": [],
+    "neon": [
+      {
+        "tier": 3,
+        "side": 2,
+        "look": 1
+      }
+    ],
+    "tiers": [
+      {
+        "top": [
+          7648556,
+          6266922,
+          10211900
+        ],
+        "side": [
+          9076066,
+          6971209
+        ],
+        "pattern": "speckle"
+      },
+      {
+        "top": [
+          16751135,
+          15229228,
+          16765498
+        ],
+        "side": [
+          8014378,
+          6175008
+        ],
+        "pattern": "speckle"
+      },
+      {
+        "top": [
+          16765498,
+          15250026
+        ],
+        "side": [
+          12076831,
+          15229228
+        ],
+        "pattern": "gingham"
+      },
+      {
+        "top": [
+          16751135,
+          15229228,
+          16765498
+        ],
+        "side": [
+          8014378,
+          6175008
+        ],
+        "pattern": "speckle"
+      },
+      {
+        "top": [
+          13037626,
+          10211900,
+          7648556
+        ],
+        "side": [
+          13037626,
+          7648556
+        ],
+        "pattern": "gingham"
+      },
+      {
+        "top": [
+          16726843,
+          16751135,
+          16765498,
+          10211900,
+          2795174,
+          2981848,
+          9326552
+        ],
+        "side": [
+          3026488,
+          4539727
+        ]
+      },
+      {
+        "top": [
+          7648556,
+          6266922,
+          10211900
+        ],
+        "side": [
+          9076066,
+          6971209
+        ],
+        "pattern": "speckle"
+      },
+      {
+        "top": [
+          16751135,
+          15229228,
+          16765498
+        ],
+        "side": [
+          8014378,
+          6175008
+        ],
+        "pattern": "speckle"
+      }
+    ]
+  },
+  "6": {
+    "name": "volcano isle",
+    "skin": "volcano",
+    "tip": "Lava jets erupt on a beat · Ride the springs",
+    "rings": 8,
+    "terraceDepth": 3,
+    "tierHeight": 4,
+    "summitHalf": 4,
+    "ladders": [
+      {
+        "ring": 2,
+        "side": 1,
+        "offset": -8
+      },
+      {
+        "ring": 2,
+        "side": 3,
+        "offset": 5
+      },
+      {
+        "ring": 3,
+        "side": 0,
+        "offset": 6
+      },
+      {
+        "ring": 4,
+        "side": 1,
+        "offset": 5.5
+      },
+      {
+        "ring": 4,
+        "side": 3,
+        "offset": -4
+      },
+      {
+        "ring": 5,
+        "side": 0,
+        "offset": -3
+      },
+      {
+        "ring": 6,
+        "side": 1,
+        "offset": -1
+      },
+      {
+        "ring": 7,
+        "side": 0,
+        "offset": 0
+      },
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": 20
+      },
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": -10
+      }
+    ],
+    "chutes": [
+      {
+        "ring": 3,
+        "side": 2,
+        "offset": 0
+      },
+      {
+        "ring": 4,
+        "side": 2,
+        "offset": 5
+      },
+      {
+        "ring": 5,
+        "side": 2,
+        "offset": -4
+      },
+      {
+        "ring": 6,
+        "side": 3,
+        "offset": 0
+      },
+      {
+        "ring": 7,
+        "side": 2,
+        "offset": 0
+      },
+      {
+        "ring": 1,
+        "side": 2,
+        "offset": 0
+      },
+      {
+        "ring": 2,
+        "side": 2,
+        "offset": 0
+      }
+    ],
+    "playerStart": {
+      "ring": 0,
+      "side": 0,
+      "offset": -14
+    },
+    "drum": {
+      "ring": 0,
+      "side": 0,
+      "offset": -21
+    },
+    "barrelSpawn": {
+      "ring": 7,
+      "side": 1,
+      "offset": 1
+    },
+    "items": [
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 2,
+          "side": 0,
+          "offset": 0
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 2,
+          "side": 0,
+          "offset": 12
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 2,
+          "side": 1,
+          "offset": -15
+        }
+      },
+      {
+        "type": "hammer",
+        "spot": {
+          "ring": 2,
+          "side": 3,
+          "offset": 0
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 3,
+          "side": 0,
+          "offset": 9
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 3,
+          "side": 1,
+          "offset": -14
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 4,
+          "side": 0,
+          "offset": 12
+        }
+      },
+      {
+        "type": "oneup",
+        "spot": {
+          "ring": 4,
+          "side": 3,
+          "offset": 0
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 5,
+          "side": 0,
+          "offset": 0
+        }
+      },
+      {
+        "type": "key",
+        "spot": {
+          "ring": 6,
+          "side": 0,
+          "offset": 5
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 6,
+          "side": 0,
+          "offset": -1
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 7,
+          "side": 0,
+          "offset": 3
+        }
+      },
+      {
+        "type": "letter-1",
+        "spot": {
+          "ring": 2,
+          "side": 3,
+          "offset": 12
+        }
+      },
+      {
+        "type": "letter-u",
+        "spot": {
+          "ring": 4,
+          "side": 0,
+          "offset": -4
+        }
+      },
+      {
+        "type": "letter-p",
+        "spot": {
+          "ring": 6,
+          "side": 3,
+          "offset": -3
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 0,
+          "side": 0,
+          "offset": -10
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 0,
+          "side": 0,
+          "offset": 13
+        }
+      },
+      {
+        "type": "hotdog",
+        "spot": {
+          "ring": 1,
+          "side": 0,
+          "offset": 16
+        }
+      },
+      {
+        "type": "gem",
+        "spot": {
+          "ring": 1,
+          "side": 0,
+          "offset": 0
+        }
+      },
+      {
+        "type": "oneup",
+        "spot": {
+          "ring": 1,
+          "side": 3,
+          "offset": 10
+        }
+      }
+    ],
+    "totems": [
+      {
+        "ring": 5,
+        "from": [
+          1,
+          -9
+        ],
+        "to": [
+          1,
+          -3
+        ]
+      }
+    ],
+    "patrols": [
+      {
+        "ring": 1,
+        "from": [
+          0,
+          -20
+        ],
+        "to": [
+          0,
+          20
+        ]
+      },
+      {
+        "ring": 0,
+        "from": [
+          0,
+          6
+        ],
+        "to": [
+          1,
+          -12
+        ]
+      },
+      {
+        "ring": 3,
+        "from": [
+          1,
+          -14
+        ],
+        "to": [
+          1,
+          -2
+        ]
+      },
+      {
+        "ring": 5,
+        "from": [
+          0,
+          -8
+        ],
+        "to": [
+          0,
+          0
+        ]
+      },
+      {
+        "ring": 2,
+        "from": [
+          1,
+          -8
+        ],
+        "to": [
+          2,
+          8
+        ]
+      },
+      {
+        "ring": 6,
+        "from": [
+          2,
+          -6
+        ],
+        "to": [
+          3,
+          6
+        ]
+      },
+      {
+        "ring": 4,
+        "from": [
+          2,
+          -10
+        ],
+        "to": [
+          3,
+          -10
+        ]
+      }
+    ],
+    "ghosts": 3,
+    "fires": 4,
+    "pits": [
+      {
+        "ring": 2,
+        "side": 0,
+        "offset": 8.5,
+        "width": 5
+      },
+      {
+        "ring": 5,
+        "side": 0,
+        "offset": 4.5,
+        "width": 5
+      },
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": 6.5,
+        "width": 5
+      }
+    ],
+    "crumbles": [
+      {
+        "ring": 3,
+        "side": 0,
+        "offset": 11.5,
+        "width": 3
+      },
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": -3.5,
+        "width": 3
+      }
+    ],
+    "conveyors": [
+      {
+        "ring": 2,
+        "side": 0,
+        "offset": 15,
+        "width": 4,
+        "dir": 1
+      },
+      {
+        "ring": 6,
+        "side": 0,
+        "offset": 5,
+        "width": 2,
+        "dir": -1
+      },
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": -2,
+        "width": 4,
+        "dir": -1
+      }
+    ],
+    "platforms": [
+      {
+        "ring": 4,
+        "side": 1,
+        "offset": -7,
+        "width": 6,
+        "platformWidth": 2,
+        "period": 3.4
+      },
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": 10,
+        "width": 6,
+        "platformWidth": 2,
+        "period": 3.4
+      }
+    ],
+    "locks": [
+      {
+        "kind": "switch",
+        "ladder": 5,
+        "switchAt": {
+          "ring": 4,
+          "side": 0,
+          "offset": 10
+        }
+      },
+      {
+        "kind": "key",
+        "ladder": 7
+      }
+    ],
+    "springs": [
+      {
+        "ring": 2,
+        "side": 0,
+        "offset": 4.8
+      },
+      {
+        "ring": 5,
+        "side": 0,
+        "offset": 8.2
+      },
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": 2.8
+      }
+    ],
+    "jets": [
+      {
+        "ring": 2,
+        "side": 0,
+        "offset": -3,
+        "period": 3.2
+      },
+      {
+        "ring": 3,
+        "side": 1,
+        "offset": -12,
+        "period": 2.8
+      },
+      {
+        "ring": 6,
+        "side": 0,
+        "offset": 3,
+        "period": 2.6
+      },
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": -8,
+        "period": 2.8
+      },
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": 12,
+        "period": 2.6,
+        "phase": 1.3
+      },
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": 3,
+        "period": 3
+      }
+    ],
+    "drops": [
+      {
+        "ring": 2,
+        "side": 1,
+        "offset": -14
+      },
+      {
+        "ring": 3,
+        "side": 0,
+        "offset": 14
+      },
+      {
+        "ring": 5,
+        "side": 1,
+        "offset": -6
+      },
+      {
+        "ring": 0,
+        "side": 0,
+        "offset": 15.5
+      },
+      {
+        "ring": 1,
+        "side": 0,
+        "offset": -7
+      }
+    ],
+    "crawlers": [
+      {
+        "ring": 3,
+        "from": [
+          0,
+          7
+        ],
+        "to": [
+          0,
+          15
+        ]
+      },
+      {
+        "ring": 4,
+        "from": [
+          0,
+          7
+        ],
+        "to": [
+          0,
+          12
+        ]
+      },
+      {
+        "ring": 6,
+        "from": [
+          0,
+          -6
+        ],
+        "to": [
+          0,
+          6
+        ]
+      },
+      {
+        "ring": 0,
+        "from": [
+          0,
+          10
+        ],
+        "to": [
+          0,
+          17
+        ]
+      },
+      {
+        "ring": 1,
+        "from": [
+          3,
+          4
+        ],
+        "to": [
+          3,
+          16
+        ]
+      }
+    ],
+    "ice": [],
+    "vines": [],
+    "neon": [],
+    "tiers": [
+      {
+        "top": [
+          14272928,
+          15917752
+        ],
+        "side": [
+          3814464,
+          2762032
+        ],
+        "pattern": "stripes"
+      },
+      {
+        "top": [
+          3026488,
+          4539727,
+          1776418
+        ],
+        "side": [
+          2762032,
+          3814464
+        ],
+        "pattern": "gingham"
+      },
+      {
+        "top": [
+          3814464,
+          2762032,
+          12076831
+        ],
+        "side": [
+          16734751,
+          12076831
+        ],
+        "pattern": "speckle"
+      },
+      {
+        "top": [
+          4539727,
+          4539727,
+          1776418
+        ],
+        "side": [
+          2762032,
+          3814464
+        ],
+        "pattern": "gingham"
+      },
+      {
+        "top": [
+          3814464,
+          2762032,
+          12076831
+        ],
+        "side": [
+          16734751,
+          12076831
+        ],
+        "pattern": "speckle"
+      },
+      {
+        "top": [
+          3026488,
+          4539727
+        ],
+        "side": [
+          3026488,
+          4539727
+        ]
+      },
+      {
+        "top": [
+          3026488,
+          4539727,
+          4539727,
+          10211900,
+          2795174,
+          2981848,
+          9326552
+        ],
+        "side": [
+          16734751,
+          12076831
+        ]
+      },
+      {
+        "top": [
+          1776418,
+          4539727,
+          3814464
+        ],
+        "side": [
+          3814464,
+          12076831
+        ],
+        "pattern": "speckle"
+      },
+      {
+        "top": [
+          3026488,
+          3026488,
+          4539727
+        ],
+        "side": [
+          3026488,
+          3814464
+        ],
+        "pattern": "checker"
+      }
+    ]
+  }
+}

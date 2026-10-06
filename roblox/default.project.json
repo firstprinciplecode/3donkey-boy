@@ -48,7 +48,7 @@
         "Brightness": 2,
         "GlobalShadows": true,
         "Outlines": false,
-        "Technology": "Voxel"
+        "LightingStyle": "Realistic"
       }
     },
     "SoundService": {

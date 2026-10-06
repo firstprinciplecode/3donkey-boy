@@ -11,8 +11,12 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared").Config)
 local HudKit = require(script.Parent.HudKit)
 
 local C = Config.COLORS
--- Fraction of the pad's radius the thumb has to travel before a direction engages.
-local ENGAGE = 0.3
+-- Fraction of the pad's radius treated as the centre, where the thumb steers nowhere.
+local DEAD_CENTRE = 0.12
+-- Left and right win unless the thumb is this many times further up or down than sideways.
+local VERTICAL_BIAS = 1.4
+-- A press shorter than this is a tap: left and right still run for this long, up and down latch a climb.
+local TAP_TIME = 0.18
 local PAD_SIZE = 132
 local JUMP_SIZE = 110
 -- Both circles' centres sit on one line this far up from the bottom, and this far in from the sides.
@@ -23,6 +27,9 @@ local JUMP_IN = 80
 export type Handlers = {
 	setHeld: (direction: string, on: boolean) -> (),
 	press: (action: string) -> (),
+	-- Up or down engaged, and a quick tap on up or down; the game turns taps into a climb that keeps going.
+	climbPress: (direction: string) -> (),
+	climbTap: (direction: string) -> (),
 }
 
 local TouchControls = {}
@@ -60,6 +67,10 @@ function TouchControls.new(gui: Instance, handlers: Handlers)
 	local self = setmetatable({}, TouchControls)
 	self.handlers = handlers
 	self.held = { left = false, right = false, up = false, down = false }
+	self.current = nil :: string?
+	self.since = 0
+	-- Bumped on every new direction, so a tap's delayed release can tell it was overtaken.
+	self.generation = 0
 
 	local root = Instance.new("Frame")
 	root.Name = "TouchControls"
@@ -70,7 +81,19 @@ function TouchControls.new(gui: Instance, handlers: Handlers)
 	root.Parent = gui
 	self.root = root
 
+	-- The pad listens across the lower left of the screen, so near misses still steer.
+	local zone = Instance.new("Frame")
+	zone.Name = "PadZone"
+	zone.BackgroundTransparency = 1
+	zone.AnchorPoint = Vector2.new(0, 1)
+	zone.Position = UDim2.fromScale(0, 1)
+	zone.Size = UDim2.fromScale(0.5, 0.7)
+	zone.Active = true
+	zone.Parent = root
+	self.zone = zone
+
 	local padWrap, pad = hitTarget(root, PAD_SIZE)
+	pad.Active = false
 	padWrap.AnchorPoint = Vector2.new(0.5, 0.5)
 	padWrap.Position = UDim2.new(0, PAD_IN, 1, -CENTRE_UP)
 	self.padWrap = padWrap
@@ -142,42 +165,91 @@ function TouchControls:_lightArrows()
 	end
 end
 
--- Held directions follow the thumb's offset from the pad's centre.
-function TouchControls:_aim(point: Vector2?)
-	local next = { left = false, right = false, up = false, down = false }
+-- The one direction a thumb at (dx, dy) of the pad's radius points: no diagonals, sideways first.
+local function wedge(dx: number, dy: number): string?
+	if math.sqrt(dx * dx + dy * dy) < DEAD_CENTRE then
+		return nil
+	end
+	if math.abs(dy) > math.abs(dx) * VERTICAL_BIAS then
+		return if dy < 0 then "up" else "down"
+	end
+	return if dx < 0 then "left" else "right"
+end
+
+function TouchControls:_hold(direction: string, on: boolean)
+	if self.held[direction] == on then
+		return
+	end
+	self.held[direction] = on
+	self.handlers.setHeld(direction, on)
+	if on then
+		self.handlers.press(direction)
+		if direction == "up" or direction == "down" then
+			self.handlers.climbPress(direction)
+		end
+	end
+	self:_lightArrows()
+end
+
+-- Ends the current direction. `lifted` is a finger leaving the screen rather than sliding on: a
+-- quick tap on left or right keeps running for TAP_TIME, and one on up or down is a climb tap.
+function TouchControls:_release(lifted: boolean)
+	local direction = self.current
+	self.current = nil
+	if not direction then
+		return
+	end
+	local held = os.clock() - self.since
+	local vertical = direction == "up" or direction == "down"
+	if lifted and held < TAP_TIME and not vertical then
+		local generation = self.generation
+		task.delay(TAP_TIME - held, function()
+			if self.generation == generation then
+				self:_hold(direction, false)
+			end
+		end)
+		return
+	end
+	if lifted and held < TAP_TIME then
+		self.handlers.climbTap(direction)
+	end
+	self:_hold(direction, false)
+end
+
+-- Points the pad from the thumb's offset to the pad's centre, or lets go with nil.
+function TouchControls:_aim(point: Vector2?, lifted: boolean?)
+	local next = nil
 	if point then
 		local radius = self.pad.AbsoluteSize.X / 2
 		local centre = self.pad.AbsolutePosition + self.pad.AbsoluteSize / 2
-		local dx = (point.X - centre.X) / radius
-		local dy = (point.Y - centre.Y) / radius
-		next.left, next.right = dx < -ENGAGE, dx > ENGAGE
-		next.up, next.down = dy < -ENGAGE, dy > ENGAGE
+		next = wedge((point.X - centre.X) / radius, (point.Y - centre.Y) / radius)
 	end
-	local changed = false
-	for direction, on in next do
-		if self.held[direction] ~= on then
-			self.held[direction] = on
-			self.handlers.setHeld(direction, on)
-			if on then
-				self.handlers.press(direction)
+	if next == self.current and point then
+		return
+	end
+	self:_release(lifted == true)
+	if next then
+		self.generation += 1
+		for direction, on in self.held do
+			if on and direction ~= next then
+				self:_hold(direction, false)
 			end
-			changed = true
 		end
-	end
-	if changed then
-		self:_lightArrows()
+		self.current = next
+		self.since = os.clock()
+		self:_hold(next, true)
 	end
 end
 
 function TouchControls:_wirePad()
 	local tracking: InputObject? = nil
-	self.pad.InputBegan:Connect(function(input)
+	self.zone.InputBegan:Connect(function(input)
 		if isPointer(input) and input.UserInputState == Enum.UserInputState.Begin then
 			tracking = input
 			self:_aim(screenPoint(input))
 		end
 	end)
-	-- The finger keeps steering after it slides off the pad, until it lifts.
+	-- The finger keeps steering after it slides off the zone, until it lifts.
 	UserInputService.InputChanged:Connect(function(input)
 		if not tracking then
 			return
@@ -194,7 +266,7 @@ function TouchControls:_wirePad()
 		local mouseUp = tracking.UserInputType == Enum.UserInputType.MouseButton1 and input.UserInputType == Enum.UserInputType.MouseButton1
 		if input == tracking or mouseUp then
 			tracking = nil
-			self:_aim(nil)
+			self:_aim(nil, true)
 		end
 	end)
 end

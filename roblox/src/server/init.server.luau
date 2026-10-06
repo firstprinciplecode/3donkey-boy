@@ -34,7 +34,7 @@ Lighting.OutdoorAmbient = Color3.fromRGB(170, 190, 160)
 Lighting.EnvironmentDiffuseScale = 0.3
 Lighting.EnvironmentSpecularScale = 0
 Lighting.GlobalShadows = true
-Lighting.ShadowSoftness = 0.3
+Lighting.ShadowSoftness = 0.1
 Lighting.FogEnd = 100000
 local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
 if atmosphere then

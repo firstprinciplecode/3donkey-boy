@@ -24,6 +24,8 @@ for (const def of LEVELS) {
   p.reset(def.playerStart);
   const keys = def.items.filter((it) => it.type === 'key').map((it) => it.spot);
   const relics = new Set(def.items.filter((it) => it.type === 'relic').map((it) => it.spot));
+  let torch = level.torchSpot();
+  obs.setTorchGate(torch?.ladder ?? null);
   const steps = ROUTES[def.name];
   const vines = (def.vines ?? []).map((v) => ({
     ring: v.ring,
@@ -103,6 +105,10 @@ for (const def of LEVELS) {
       if (r.ring === p.ring && level.ringDistance(p.ring, p.s, level.spotS(r)) < 0.5) relics.delete(r);
     }
     if (def.items.some((it) => it.type === 'relic') && relics.size === 0) obs.unlockRelicDoors();
+    if (torch && torch.ring === p.ring && level.ringDistance(p.ring, p.s, torch.s) < 0.5) {
+      obs.setTorchGate(null);
+      torch = null;
+    }
     if (r.fellInPit) {
       outcome = `fell in a pit on ring ${p.ring} at step ${i}`;
       break;

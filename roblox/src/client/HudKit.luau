@@ -22,7 +22,7 @@ function HudKit.text(parent: Instance, text: string, size: number, color: Color3
 	l.TextSize = size
 	l.TextColor3 = color or HudKit.INK
 	l.TextStrokeTransparency = 1
-	l.Text = text
+	l.Text = string.upper(text)
 	l.Parent = parent
 	return l
 end
@@ -232,8 +232,70 @@ function HudKit.keycap(parent: Instance, text: string, order: number, arrow: str
 	return wrap
 end
 
+local function bar(parent: Instance, x: number, y: number, w: number, h: number, radius: number): Frame
+	local f = Instance.new("Frame")
+	f.BackgroundColor3 = HudKit.INK
+	f.BorderSizePixel = 0
+	f.Position = UDim2.fromOffset(x, y)
+	f.Size = UDim2.fromOffset(w, h)
+	f.Parent = parent
+	Instance.new("UICorner", f).CornerRadius = UDim.new(0, radius)
+	return f
+end
+
+local function clip(parent: Instance, x: number, y: number, w: number, h: number): Frame
+	local f = Instance.new("Frame")
+	f.BackgroundTransparency = 1
+	f.ClipsDescendants = true
+	f.Position = UDim2.fromOffset(x, y)
+	f.Size = UDim2.fromOffset(w, h)
+	f.Parent = parent
+	return f
+end
+
+-- The Figma pause icon, two rounded bars, drawn in a 30 x 30 box.
+function HudKit.pauseMark(parent: Instance): CanvasGroup
+	local root = Instance.new("CanvasGroup")
+	root.BackgroundTransparency = 1
+	root.Size = UDim2.fromOffset(30, 30)
+	root.Parent = parent
+	bar(root, 4, 2, 8.5, 26, 2)
+	bar(root, 17.5, 2, 8.5, 26, 2)
+	return root
+end
+
+-- The Figma speaker icon in a 30 x 30 box: a body, a cone cut from a turned square, and two arcs
+-- cut from rings. Fade it through the CanvasGroup for muted.
+function HudKit.speakerMark(parent: Instance): CanvasGroup
+	local root = Instance.new("CanvasGroup")
+	root.BackgroundTransparency = 1
+	root.Size = UDim2.fromOffset(30, 30)
+	root.Parent = parent
+	bar(root, 1, 10, 8, 10, 2)
+	local cone = clip(root, 8, 4, 7, 22)
+	local diamond = bar(cone, 7 - 7.8, 11 - 7.8, 15.6, 15.6, 2)
+	diamond.Rotation = 45
+	local waves = clip(root, 16, 0, 14, 30)
+	for _, r in { 6, 10.5 } do
+		local ring = Instance.new("Frame")
+		ring.BackgroundTransparency = 1
+		ring.AnchorPoint = Vector2.new(0.5, 0.5)
+		ring.Position = UDim2.fromOffset(12 - 16, 15)
+		ring.Size = UDim2.fromOffset(r * 2, r * 2)
+		ring.Parent = waves
+		Instance.new("UICorner", ring).CornerRadius = UDim.new(1, 0)
+		local stroke = Instance.new("UIStroke")
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.Color = HudKit.INK
+		stroke.Thickness = 3
+		stroke.Parent = ring
+	end
+	return root
+end
+
 -- Green 1-Up coin for the lives row: `size` across the face, with a darker ring drawn outside it.
-function HudKit.lifeBadge(parent: Instance, order: number, size: number): Frame
+-- Returns the coin and its label, so a layout can resize both.
+function HudKit.lifeBadge(parent: Instance, order: number, size: number): (Frame, TextLabel)
 	local coin = Instance.new("Frame")
 	coin.LayoutOrder = order
 	coin.Size = UDim2.fromOffset(size, size)
@@ -248,7 +310,7 @@ function HudKit.lifeBadge(parent: Instance, order: number, size: number): Frame
 	ring.Parent = coin
 	local badge = HudKit.text(coin, "1-Up", 8, WHITE)
 	badge.Size = UDim2.fromScale(1, 1)
-	return coin
+	return coin, badge
 end
 
 -- The bonus star: a yellow glyph with an ink outline, from the Figma HUD.

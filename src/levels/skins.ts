@@ -1,5 +1,5 @@
 import { COLORS, RAINBOW } from '../config';
-import type { SkinName } from './types';
+import type { SkinName, TilePattern } from './types';
 
 export type DecorKind =
   | 'tree'
@@ -31,10 +31,19 @@ export type DropLook = 'acorn' | 'icicle' | 'spike' | 'lavarock';
 export type RelicLook = 'pumpkin' | 'idol' | 'present';
 export type ProjectileLook = 'barrel' | 'snowball' | 'tumbleweed' | 'pumpkin' | 'lavarock' | 'boulder' | 'gumball';
 
+/**
+ * How a terrace top uses its colours:
+ * - `checker`: two colours alternating (more than two cycle diagonally, like the rainbow ring)
+ * - `gingham`: light, mid and dark tints of one colour woven like a picnic cloth
+ * - `speckle`: mostly the first colour, scattered with the second and a rare third
+ * - `rows`: bands that follow the terrace from its edge to the wall behind it
+ * - `border`: a checker of the first two colours framed by the third along both edges
+ * - `stripes`: awning stripes running across the terrace, from its edge to the wall
+ */
 export interface TierStyle {
-  /** Alternating colours for the terrace top (rainbow styles cycle through all of them). */
   top: readonly number[];
   side: readonly number[];
+  pattern?: TilePattern;
 }
 
 export interface Skin {
@@ -59,25 +68,25 @@ export interface Skin {
 }
 
 const STYLE = {
-  grass: { top: [COLORS.grass, COLORS.grassDark], side: [COLORS.stone, COLORS.stoneDark] },
-  tile: { top: [COLORS.cream, COLORS.creamDark], side: [COLORS.teal, COLORS.cyan] },
+  grass: { top: [0xbfe56a, COLORS.grass, COLORS.grassDark], side: [COLORS.stone, COLORS.stoneDark], pattern: 'gingham' },
+  tile: { top: [COLORS.cream, COLORS.creamDark, COLORS.cyan], side: [COLORS.teal, COLORS.cyan], pattern: 'border' },
   checker: { top: [COLORS.charcoal, COLORS.grey], side: [COLORS.pink, COLORS.magenta] },
   rainbow: { top: RAINBOW, side: [COLORS.charcoal, COLORS.grey] },
-  candy: { top: [COLORS.cream, COLORS.pink], side: [0xffb3cf, COLORS.cream] },
-  mint: { top: [COLORS.cyan, COLORS.cream], side: [COLORS.purple, 0xb48ef0] },
-  sand: { top: [COLORS.sand, 0xcbb788], side: [COLORS.tan, COLORS.orange] },
-  brick: { top: [COLORS.creamDark, COLORS.sand], side: [0xc4553a, 0xa8432c] },
-  leaves: { top: [COLORS.orange, COLORS.maple], side: [COLORS.brown, 0x5e3920] },
-  harvest: { top: [COLORS.yellow, COLORS.tan], side: [COLORS.rust, COLORS.maple] },
-  moss: { top: [COLORS.grassDark, COLORS.leaf], side: [COLORS.stone, COLORS.stoneDark] },
-  snow: { top: [COLORS.snow, COLORS.snowShade], side: [COLORS.iceDark, COLORS.ice] },
-  frost: { top: [COLORS.ice, COLORS.snow], side: [COLORS.blue, 0x5a9ae0] },
-  granite: { top: [COLORS.snowShade, COLORS.snow], side: [COLORS.grey, COLORS.charcoal] },
-  sandstone: { top: [COLORS.sandstone, COLORS.sand], side: [COLORS.sandstoneDark, 0xa97c45] },
-  tomb: { top: [COLORS.gold, COLORS.sandstone], side: [COLORS.teal, 0x1f7f80] },
-  basalt: { top: [COLORS.basalt, COLORS.basaltDark], side: [COLORS.lava, COLORS.rust] },
-  beach: { top: [COLORS.sand, 0xf2e2b8], side: [COLORS.basalt, COLORS.basaltDark] },
-  jungle: { top: [COLORS.grass, COLORS.leaf], side: [COLORS.basaltDark, COLORS.basalt] },
+  candy: { top: [COLORS.cream, COLORS.pink], side: [0xffb3cf, COLORS.cream], pattern: 'stripes' },
+  mint: { top: [COLORS.cream, COLORS.mint, COLORS.mintDark], side: [COLORS.purple, 0xb48ef0], pattern: 'gingham' },
+  sand: { top: [COLORS.sand, 0xcbb788, 0xeadcb6], side: [COLORS.tan, COLORS.orange], pattern: 'speckle' },
+  brick: { top: [COLORS.creamDark, COLORS.sand], side: [0xc4553a, 0xa8432c], pattern: 'rows' },
+  leaves: { top: [COLORS.orange, COLORS.maple, COLORS.yellow], side: [COLORS.brown, 0x5e3920], pattern: 'speckle' },
+  harvest: { top: [COLORS.yellow, COLORS.tan], side: [COLORS.rust, COLORS.maple], pattern: 'rows' },
+  moss: { top: [COLORS.grassDark, COLORS.leaf, COLORS.grass], side: [COLORS.stone, COLORS.stoneDark], pattern: 'speckle' },
+  snow: { top: [COLORS.snow, COLORS.snowShade, 0xffffff], side: [COLORS.iceDark, COLORS.ice], pattern: 'speckle' },
+  frost: { top: [COLORS.snow, COLORS.ice, COLORS.iceDark], side: [COLORS.blue, 0x5a9ae0], pattern: 'border' },
+  granite: { top: [COLORS.snow, COLORS.snowShade], side: [COLORS.grey, COLORS.charcoal], pattern: 'rows' },
+  sandstone: { top: [COLORS.sandstone, COLORS.sand], side: [COLORS.sandstoneDark, 0xa97c45], pattern: 'rows' },
+  tomb: { top: [COLORS.gold, COLORS.sandstone, COLORS.teal], side: [COLORS.teal, 0x1f7f80], pattern: 'border' },
+  basalt: { top: [COLORS.basalt, COLORS.basaltDark, COLORS.rust], side: [COLORS.lava, COLORS.rust], pattern: 'speckle' },
+  beach: { top: [COLORS.sand, 0xf2e2b8], side: [COLORS.basalt, COLORS.basaltDark], pattern: 'stripes' },
+  jungle: { top: [COLORS.lime, COLORS.grass, COLORS.leaf], side: [COLORS.basaltDark, COLORS.basalt], pattern: 'gingham' },
 } satisfies Record<string, TierStyle>;
 
 export const SKINS: Record<SkinName, Skin> = {

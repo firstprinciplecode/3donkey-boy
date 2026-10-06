@@ -2,7 +2,7 @@ import { cascadeSpots } from './cascades';
 import { COLORS } from './config';
 import { Frame } from './frame';
 import type { Level } from './level';
-import type { SpanDef } from './levels/types';
+import type { NeonWallDef, SpanDef } from './levels/types';
 import type { VoxelBuilder } from './voxel';
 
 type Rand = () => number;
@@ -15,16 +15,23 @@ const NEON_PALETTES: readonly (readonly number[])[] = [
   [COLORS.yellow, COLORS.orange, COLORS.maple, COLORS.pink],
 ];
 
-/** One or two tier walls per level get the poster's striped neon treatment. */
-export function neonPanels(level: Level, rand: Rand): NeonPanels {
-  const panels: NeonPanels = new Map();
+/**
+ * One or two tier walls per level get the poster's striped neon treatment, unless the level lists
+ * its own. The random picks are drawn either way so the scenery seeded after them stays put.
+ */
+export function neonWalls(level: Level, rand: Rand): NeonWallDef[] {
+  const picked: NeonWallDef[] = [];
   const count = level.ringCount > 4 ? 2 : 1;
   for (let i = 0; i < count; i++) {
     const tier = 1 + Math.floor(rand() * (level.ringCount - 1));
     const side = Math.floor(rand() * 4);
-    panels.set(`${tier}:${side}`, NEON_PALETTES[i % NEON_PALETTES.length]);
+    picked.push({ tier, side, look: i % 2 === 0 ? 0 : 1 });
   }
-  return panels;
+  return level.def.neon ?? picked;
+}
+
+export function neonPanels(level: Level, rand: Rand): NeonPanels {
+  return new Map(neonWalls(level, rand).map((wall) => [`${wall.tier}:${wall.side}`, NEON_PALETTES[wall.look]]));
 }
 
 /** Thin glowing ribs over each neon panel, stopping short of ladders and barrel chutes. */

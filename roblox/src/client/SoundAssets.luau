@@ -26,8 +26,8 @@ return {
 			hammer = "rbxassetid://95470191932069", -- popscotch-music-winter-hammer.wav
 		},
 		tomb = {
-			music = "rbxassetid://85296937162789", -- popscotch-music-tomb.wav
-			hammer = "rbxassetid://83119709049380", -- popscotch-music-tomb-hammer.wav
+			music = "rbxassetid://72824407928195", -- popscotch-music-tomb.wav
+			hammer = "rbxassetid://121162233803784", -- popscotch-music-tomb-hammer.wav
 		},
 		volcano = {
 			music = "rbxassetid://132911028558250", -- popscotch-music-volcano.wav

@@ -1,4 +1,6 @@
+import { growBase } from './grow';
 import type { LevelDef } from './types';
+import saved from './overrides.json';
 
 /** Gentle intro: short 4-tier pyramid, spiral climbs to the right, one of each simple obstacle. */
 const MEADOW: LevelDef = {
@@ -196,7 +198,7 @@ const DESERT: LevelDef = {
 };
 
 /** Autumn: spring pads launch you over wide pits, acorns drop from the branches, 3 pumpkins unseal the summit. */
-const HARVEST: LevelDef = {
+const HARVEST_TOP: LevelDef = {
   name: 'harvest woods',
   skin: 'autumn',
   tip: 'Springs and vines cross wide pits · Gather 3 pumpkins',
@@ -275,7 +277,7 @@ const HARVEST: LevelDef = {
 };
 
 /** Winter: slippery ice before the pits, icicles, penguins that belly slide, and a switch plus key to reach the top. */
-const FROST: LevelDef = {
+const FROST_TOP: LevelDef = {
   name: 'frost peak',
   skin: 'winter',
   tip: 'Ice is slippery · Icicles fall when you pass',
@@ -357,7 +359,7 @@ const FROST: LevelDef = {
 };
 
 /** Desert tomb: snakes that rear up, fire traps on a timer, crumbling sand, and 3 golden idols to unseal the summit. */
-const TOMB: LevelDef = {
+const TOMB_TOP: LevelDef = {
   name: 'serpent tomb',
   skin: 'tomb',
   tip: 'Snakes rear up · Fire traps keep time · Find 3 idols',
@@ -367,7 +369,6 @@ const TOMB: LevelDef = {
   summitHalf: 3,
   ladders: [
     { ring: 0, side: 3, offset: 8 },
-    { ring: 0, side: 1, offset: -6 },
     { ring: 1, side: 2, offset: 5 },
     { ring: 2, side: 1, offset: 2 },
     { ring: 2, side: 3, offset: 4 },
@@ -423,7 +424,7 @@ const TOMB: LevelDef = {
   ],
   conveyors: [],
   platforms: [{ ring: 1, side: 2, offset: 11, width: 6, platformWidth: 2, period: 3.6 }],
-  locks: [{ kind: 'relics', ladder: 7 }],
+  locks: [{ kind: 'relics', ladder: 6 }],
   jets: [
     { ring: 0, side: 0, offset: 4, period: 3 },
     { ring: 1, side: 3, offset: 1, period: 2.6 },
@@ -447,7 +448,7 @@ const TOMB: LevelDef = {
 };
 
 /** Summer volcano: lava jets, falling lava rocks, scorpions, spring jumps, a switch gate and a key door. Uses everything. */
-const VOLCANO: LevelDef = {
+const VOLCANO_TOP: LevelDef = {
   name: 'volcano isle',
   skin: 'volcano',
   tip: 'Lava jets erupt on a beat · Ride the springs',
@@ -537,5 +538,197 @@ const VOLCANO: LevelDef = {
   ],
 };
 
-/** Played in order, then loop with rising speed. */
-export const LEVELS: readonly LevelDef[] = [MEADOW, CANDY, DESERT, HARVEST, FROST, TOMB, VOLCANO];
+/*
+ * From level 4 on, each pyramid stands on two new outer terraces, so every level is wider than the
+ * last: 15, 18, 21, 24, 25, 27 and 28 cells from the middle to the base edge. The new rings are the
+ * longest walks in the level and lean on that theme's own hazards, with an extra ghost and fire.
+ */
+
+/** Ground: spring over a wide pit, a nut-dropping branch and a squirrel. Then a vine pit under a ghost. */
+const HARVEST = growBase(
+  HARVEST_TOP,
+  {
+    rings: 2,
+    ladders: [
+      { ring: 0, side: 0, offset: 12 },
+      { ring: 1, side: 0, offset: -11 },
+    ],
+    chutes: [
+      { ring: 1, side: 2, offset: 0 },
+      { ring: 2, side: 2, offset: 6 },
+    ],
+    playerStart: { ring: 0, side: 0, offset: -14 },
+    drum: { ring: 0, side: 0, offset: -19 },
+    items: [
+      { type: 'gem', spot: { ring: 0, side: 0, offset: -9 } },
+      { type: 'gem', spot: { ring: 0, side: 0, offset: 3 } },
+      { type: 'hotdog', spot: { ring: 1, side: 0, offset: 7 } },
+      { type: 'gem', spot: { ring: 1, side: 0, offset: -7 } },
+    ],
+    patrols: [{ ring: 1, from: [0, -16], to: [0, 9] }],
+    crawlers: [{ ring: 0, from: [0, 2], to: [0, 9] }],
+    pits: [
+      { ring: 0, side: 0, offset: -3.5, width: 5 },
+      { ring: 1, side: 0, offset: 1, width: 6 },
+    ],
+    springs: [{ ring: 0, side: 0, offset: -7.2 }],
+    vines: [{ ring: 1, side: 0, offset: 1 }],
+    drops: [
+      { ring: 0, side: 0, offset: 6 },
+      { ring: 1, side: 0, offset: -6 },
+    ],
+  },
+  { ghosts: 2, fires: 3 },
+);
+
+/** Ground: ice runs straight into a pit, with icicles and a penguin. Then more ice under a ghost. */
+const FROST = growBase(
+  FROST_TOP,
+  {
+    rings: 2,
+    ladders: [
+      { ring: 0, side: 3, offset: 14 },
+      { ring: 1, side: 0, offset: 8 },
+    ],
+    chutes: [
+      { ring: 1, side: 2, offset: -4 },
+      { ring: 2, side: 2, offset: 6 },
+    ],
+    playerStart: { ring: 0, side: 0, offset: 16 },
+    drum: { ring: 0, side: 0, offset: 21 },
+    items: [
+      { type: 'gem', spot: { ring: 0, side: 0, offset: 13 } },
+      { type: 'gem', spot: { ring: 0, side: 0, offset: 1 } },
+      { type: 'hotdog', spot: { ring: 1, side: 0, offset: 0 } },
+      { type: 'gem', spot: { ring: 1, side: 0, offset: 6 } },
+    ],
+    patrols: [{ ring: 1, from: [0, -12], to: [0, 12] }],
+    crawlers: [
+      { ring: 0, from: [0, -3], to: [0, 2] },
+      { ring: 0, from: [3, 16], to: [3, 21] },
+      { ring: 1, from: [3, 15], to: [0, -14] },
+    ],
+    pits: [
+      { ring: 0, side: 0, offset: 4, width: 2 },
+      { ring: 1, side: 0, offset: 4, width: 2 },
+    ],
+    ice: [
+      { ring: 0, side: 0, offset: 9, width: 6 },
+      { ring: 1, side: 0, offset: 0, width: 4 },
+    ],
+    drops: [
+      { ring: 0, side: 0, offset: 0 },
+      { ring: 1, side: 0, offset: -3 },
+    ],
+  },
+  { ghosts: 2, fires: 3 },
+);
+
+/** Ground: fire jets out of step, a crumbling bridge and a vine pit, then the torch by the ladder. */
+const TOMB = growBase(
+  TOMB_TOP,
+  {
+    rings: 2,
+    ladders: [
+      { ring: 0, side: 1, offset: -14 },
+      { ring: 1, side: 0, offset: 10 },
+    ],
+    chutes: [
+      { ring: 1, side: 3, offset: 0 },
+      { ring: 2, side: 1, offset: 6 },
+    ],
+    playerStart: { ring: 0, side: 0, offset: -12 },
+    drum: { ring: 0, side: 0, offset: -19 },
+    items: [
+      { type: 'gem', spot: { ring: 0, side: 0, offset: -8 } },
+      { type: 'gem', spot: { ring: 0, side: 0, offset: 10 } },
+      { type: 'hotdog', spot: { ring: 0, side: 1, offset: -22 } },
+      { type: 'gem', spot: { ring: 1, side: 0, offset: 19 } },
+      { type: 'oneup', spot: { ring: 1, side: 1, offset: -21 } },
+    ],
+    patrols: [
+      { ring: 1, from: [1, -20], to: [0, 14] },
+      { ring: 0, from: [0, 8], to: [1, -18] },
+    ],
+    crawlers: [
+      { ring: 0, from: [1, -23], to: [1, -18] },
+      { ring: 1, from: [0, 11.5], to: [0, 14] },
+    ],
+    pits: [
+      { ring: 0, side: 0, offset: -1, width: 2 },
+      { ring: 0, side: 0, offset: 19, width: 6 },
+    ],
+    vines: [{ ring: 0, side: 0, offset: 19, period: 2.4 }],
+    crumbles: [
+      { ring: 0, side: 0, offset: 5.5, width: 3 },
+      { ring: 1, side: 0, offset: 16.5, width: 3 },
+    ],
+    jets: [
+      { ring: 0, side: 0, offset: -6, period: 3 },
+      { ring: 0, side: 0, offset: 11, period: 2.8, phase: 1.4 },
+      { ring: 0, side: 0, offset: 13, period: 2.8 },
+      { ring: 1, side: 1, offset: -19, period: 2.6 },
+    ],
+    drops: [
+      { ring: 0, side: 0, offset: 8.5 },
+      { ring: 1, side: 0, offset: 13 },
+    ],
+  },
+  { ghosts: 3, fires: 3 },
+);
+
+/** Ground: lava jets, a belt pushing back, a spring over lava and a scorpion. Then a raft crossing. */
+const VOLCANO = growBase(
+  VOLCANO_TOP,
+  {
+    rings: 2,
+    ladders: [
+      { ring: 0, side: 0, offset: 20 },
+      { ring: 1, side: 0, offset: -10 },
+    ],
+    chutes: [
+      { ring: 1, side: 2, offset: 0 },
+      { ring: 2, side: 2, offset: 0 },
+    ],
+    playerStart: { ring: 0, side: 0, offset: -14 },
+    drum: { ring: 0, side: 0, offset: -21 },
+    items: [
+      { type: 'gem', spot: { ring: 0, side: 0, offset: -10 } },
+      { type: 'gem', spot: { ring: 0, side: 0, offset: 13 } },
+      { type: 'hotdog', spot: { ring: 1, side: 0, offset: 16 } },
+      { type: 'gem', spot: { ring: 1, side: 0, offset: 0 } },
+      { type: 'oneup', spot: { ring: 1, side: 3, offset: 10 } },
+    ],
+    patrols: [
+      { ring: 1, from: [0, -20], to: [0, 20] },
+      { ring: 0, from: [0, 6], to: [1, -12] },
+    ],
+    crawlers: [
+      { ring: 0, from: [0, 10], to: [0, 17] },
+      { ring: 1, from: [3, 4], to: [3, 16] },
+    ],
+    pits: [{ ring: 0, side: 0, offset: 6.5, width: 5 }],
+    springs: [{ ring: 0, side: 0, offset: 2.8 }],
+    conveyors: [{ ring: 0, side: 0, offset: -2, width: 4, dir: -1 }],
+    platforms: [{ ring: 1, side: 0, offset: 10, width: 6, platformWidth: 2, period: 3.4 }],
+    crumbles: [{ ring: 1, side: 0, offset: -3.5, width: 3 }],
+    jets: [
+      { ring: 0, side: 0, offset: -8, period: 2.8 },
+      { ring: 0, side: 0, offset: 12, period: 2.6, phase: 1.3 },
+      { ring: 1, side: 0, offset: 3, period: 3 },
+    ],
+    drops: [
+      { ring: 0, side: 0, offset: 15.5 },
+      { ring: 1, side: 0, offset: -7 },
+    ],
+  },
+  { ghosts: 3, fires: 4, summitHalf: 4 },
+);
+
+/** The levels as written here, before any editor save. */
+export const AUTHORED_LEVELS: readonly LevelDef[] = [MEADOW, CANDY, DESERT, HARVEST, FROST, TOMB, VOLCANO];
+
+const savedBook = saved as unknown as Record<string, LevelDef>;
+
+/** Played in order, then loop with rising speed. A saved edit replaces that level at load. */
+export const LEVELS: readonly LevelDef[] = AUTHORED_LEVELS.map((def, i) => savedBook[String(i)] ?? def);

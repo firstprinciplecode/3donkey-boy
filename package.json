@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "typecheck": "tsc",
     "check:levels": "node --import tsx scripts/validate-levels.ts && node --import tsx scripts/sim-routes.ts",
+    "export:roblox-levels": "node --import tsx scripts/export-roblox-levels.ts",
     "rojo": "rojo serve roblox/default.project.json",
     "roblox:smoke": "roblox/tools/smoke.sh",
     "roblox:audio": "node --import tsx roblox/tools/render-audio.ts",
@@ -20,6 +21,7 @@
     "bot:play": "node --import tsx scripts/bot/play.ts"
   },
   "dependencies": {
+    "@fontsource/fredoka-one": "^5.3.0",
     "better-sqlite3": "^12.11.1",
     "three": "^0.186.1"
   },

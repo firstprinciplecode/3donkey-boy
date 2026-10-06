@@ -32,6 +32,7 @@ local Particles = require(script.Parent.Particles)
 local Player = require(script.Parent.Player)
 local Rig = require(script.Parent.Rig)
 local Scores = require(script.Parent.Scores)
+local Torch = require(script.Parent.Torch)
 local Totem = require(script.Parent.Totem)
 local Weather = require(script.Parent.Weather)
 
@@ -53,7 +54,7 @@ local TOTEM = Config.TOTEM
 local READY_TIME = 1.6
 local DEATH_TIME = 2.2
 local CLEAR_TIME = 2.5
-local JUMP_BUFFER = 0.12
+local JUMP_BUFFER = Config.PHYSICS.jumpBuffer
 -- Ignore Space for a moment on the game over screen so a held jump doesn't skip it.
 local GAMEOVER_LOCK = 1
 -- Fire jets erupting within this distance of the player are heard.
@@ -62,6 +63,7 @@ local SCORCH_HEARING = 10
 local HINT_COOLDOWN = 1.4
 -- Smash splinters for fires, ghosts and totems; thrown things use their own look's burst.
 local SPLINTERS = { C.cream, C.yellow, C.orange }
+local LIGHTS_OUT = "The lamps go out · Grab the torch!"
 local FOOTSTEP_EVERY = 0.16
 -- The web picks footstep pitches at random: steps 90-120 Hz, rungs 420-500 Hz over the rendered low note.
 local STEP_PITCH_RANGE = 30 / 90
@@ -97,6 +99,13 @@ function Game.new(playerGui: Instance)
 	self.boss = Boss.new(workspace, first)
 	self.barrels = Barrels.new(first, workspace)
 	self.particles = Particles.new(workspace)
+	self.torch = Torch.new(workspace)
+	-- Eases the saturation back a little, like the web's grade pass.
+	local soften = Instance.new("ColorCorrectionEffect")
+	soften.Name = "Soften"
+	soften.Saturation = -0.1
+	soften.Contrast = 0.04
+	soften.Parent = Lighting
 	self.combo = Combo.new()
 	self.audio = Audio.tryNew()
 	self.enemies = Instance.new("Folder")
@@ -148,6 +157,10 @@ function Game.new(playerGui: Instance)
 	self.stateT = 0
 	self.accumulator = 0
 	self.jumpBuffer = 0
+	-- Touch: a tap on up or down keeps climbing until you leave the ladder or tap again.
+	self.climbLatch = nil :: string?
+	-- The latch that was running when the current pad press began; tapping that way again stops it.
+	self.latchAtPress = nil :: string?
 	self.score = 0
 	self.lives = GAME_RULES.lives
 	self.round = 1
@@ -242,6 +255,17 @@ function Game:pressJump()
 	self:press("jump")
 end
 
+-- The touch pad started pointing up or down.
+function Game:climbPress(_direction: string)
+	self.latchAtPress = self.climbLatch
+	self.climbLatch = nil
+end
+
+-- The touch pad was tapped up or down: start climbing that way, or stop if it already was.
+function Game:climbTap(direction: string)
+	self.climbLatch = if self.latchAtPress == direction then nil else direction
+end
+
 function Game:setInputMode(mode: string)
 	self.hud:setInputMode(mode)
 end
@@ -307,6 +331,7 @@ end
 
 function Game:toggleMute()
 	local muted = self.audio:toggleMute()
+	self.hud:setMuted(muted)
 	local p = self.player
 	self:_popup(if muted then "Sound off" else "Sound on", Vector3.new(p.px, p.py + 2.2, p.pz))
 end
@@ -371,6 +396,8 @@ function Game:_lockHint(ladder: number)
 		local left = self.items:relicsLeft()
 		local name = Skins[self.level.def.skin].relic.name
 		self:_hint(`Sealed · {left} {name}{if left == 1 then "" else "s"} to go!`)
+	elseif kind == "torch" then
+		self:_hint("Too dark · Take the torch!")
 	elseif kind then
 		self:_hint(if kind == "key" then "Locked · Find the key!" else "Gated · Find the switch!")
 	end
@@ -409,10 +436,13 @@ function Game:_startRound(fresh: boolean)
 	self.combo:reset()
 	self.particles:clear()
 	self.player:reset(def.playerStart)
+	self.torch:reset(self.level, TimeOfDay.lighting(self.time, def.skin), { self.worldGlow, self.backdrop.glowParts })
+	self.obstacles:setTorchGate(if self.torch.active then self.torch.ladderIndex else nil)
 	self.rig:snap(self.player)
 	self.cameraRig:snapTo(def.playerStart.side, self:_focus())
 	self.jumpBuffer = 0
-	self.bonus = GAME_RULES.bonusStart
+	self.climbLatch = nil
+	self.bonus = GAME_RULES.bonusStart + GAME_RULES.bonusPerRing * math.max(0, def.rings - 4)
 	self.bonusClock = 0
 	self.bossClock = 1.2
 	self.hud:setBonus(self.bonus)
@@ -604,6 +634,14 @@ function Game:_collect(item)
 			self.audio:play("relic")
 		end
 	end
+end
+
+function Game:_takeTorch()
+	local at = self.torch.foot
+	self.obstacles:setTorchGate(nil)
+	self.particles:burst(at + Vector3.yAxis, { C.orange, C.yellow, C.cream }, 12, 3)
+	self:_popup("Torch", at + Vector3.yAxis * 1.4)
+	self.audio:play("pickup")
 end
 
 function Game:_die(heading: string, sub: string, fell: boolean?)
@@ -857,18 +895,22 @@ function Game:_stepPlaying(dt: number)
 	self.accumulator += dt
 	while self.accumulator >= SUBSTEP do
 		self.accumulator -= SUBSTEP
-		local jump = self.jumpBuffer > 0 and (p.state == "ground" or p.state == "swing")
+		local jump = self.jumpBuffer > 0 and p:canJump()
 		if jump then
 			self.jumpBuffer = 0
 		end
 		local held = self.held
+		local latch = if held.up or held.down then nil else self.climbLatch
 		local result = p:step(SUBSTEP, {
 			left = held.left,
 			right = held.right,
-			up = held.up,
-			down = held.down,
+			up = held.up or latch == "up",
+			down = held.down or latch == "down",
 			jump = jump,
 		}, self.obstacles)
+		if p.state ~= "ladder" then
+			self.climbLatch = nil
+		end
 		if result.jumped then
 			self.audio:play("jump")
 		end
@@ -1076,6 +1118,15 @@ function Game:_frame(dt: number)
 	self.hazards:render()
 	self.particles:update(dt)
 	self.items:update(dt)
+	local p = self.player
+	local tookTorch, lampsOut = self.torch:update(dt, Vector3.new(p.px, p.py, p.pz), self.state == "playing")
+	if tookTorch then
+		self:_takeTorch()
+	end
+	if lampsOut then
+		self:_popup(LIGHTS_OUT, Vector3.new(p.px, p.py + 2.2, p.pz))
+	end
+	self.rig.torchShown = self.torch.held
 	self.rig:update(dt, self.player)
 	self.cameraRig:update(dt, self:_focus())
 	self.backdrop:update(dt, self.cameraRig.azimuth, self.cameraRig.focus)

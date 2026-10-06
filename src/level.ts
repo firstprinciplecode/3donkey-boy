@@ -14,6 +14,8 @@ export type Spot = Readonly<SpotDef>;
  */
 
 export const BASE_DEPTH = 10;
+/** How far before its ladder the tomb's torch stands, along the ring. */
+const TORCH_STAND_BACK = 2.2;
 /** Depth of spike pits below the walkway. */
 export const PIT_DEPTH = 1;
 export const BOSS_POS = { x: -1, z: 0 } as const;
@@ -127,6 +129,15 @@ export class Level {
 
   spotS(spot: Spot): number {
     return this.sOf(spot.ring, spot.side, spot.offset);
+  }
+
+  /** The tomb's torch: just before the ground ring's ladder, which stays shut until it is taken. */
+  torchSpot(): { ladder: number; ring: number; s: number } | null {
+    if (this.def.skin !== 'tomb') return null;
+    const found = this.def.ladders.findIndex((l) => l.ring === 0);
+    const ladder = Math.max(0, found);
+    const at = this.def.ladders[ladder];
+    return { ladder, ring: at.ring, s: this.sOf(at.ring, at.side, at.offset - TORCH_STAND_BACK) };
   }
 
   ringSide(ring: number, s: number): { side: number; offset: number } {

@@ -108,6 +108,8 @@ Config.GAME_RULES = {
 	lives = 3,
 	maxLives = 6,
 	bonusStart = 5000,
+	-- Extra starting bonus per ring past four, so bigger pyramids get more time on the clock.
+	bonusPerRing = 1000,
 	bonusStep = 100,
 	bonusInterval = 2,
 	maxSpeedMul = 1.8,
@@ -139,6 +141,10 @@ Config.PHYSICS = {
 	jumpVelocity = 10.5,
 	ladderGrab = 0.5,
 	substep = 1 / 120,
+	-- A jump pressed this long before landing still fires on touchdown.
+	jumpBuffer = 0.12,
+	-- You can still jump this long after running off an edge.
+	coyoteTime = 0.1,
 }
 
 Config.OBSTACLES = {

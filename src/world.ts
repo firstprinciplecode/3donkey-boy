@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { COLORS } from './config';
 import { BOSS_POS, PIT_DEPTH, mod, squareCoords, type Level, type Spot } from './level';
-import { SKINS, type DecorKind, type Skin } from './levels/skins';
-import type { SpanDef } from './levels/types';
+import { SKINS, type DecorKind, type Skin, type TierStyle } from './levels/skins';
+import type { NeonWallDef, SpanDef } from './levels/types';
 import { buildBackground } from './background';
 import { Frame } from './frame';
-import { buildBaseSpikes, buildFences, buildNeonRibs, neonPanels, type NeonPanels } from './terraceExtras';
+import { buildBaseSpikes, buildFences, buildNeonRibs, neonPanels, neonWalls, type NeonPanels } from './terraceExtras';
 import { seededRandom } from './utils';
 import { VoxelBuilder } from './voxel';
 
@@ -35,7 +35,7 @@ export function buildWorld(level: Level, glowing = false): THREE.Group {
   buildDrum(vb, level);
   vb.castShadows(false);
   buildBaseSpikes(vb, level, rand);
-  buildBackground(vb, skin, rand);
+  buildBackground(vb, skin, rand, level.tierHalf(0));
 
   return vb.build(glowing);
 }
@@ -47,6 +47,11 @@ export function disposeWorld(group: THREE.Group): void {
       (o.material as THREE.Material).dispose();
     }
   });
+}
+
+/** The neon walls `buildWorld` will paint, for tools that show or edit them. */
+export function levelNeonWalls(level: Level): NeonWallDef[] {
+  return neonWalls(level, seededRandom(hashString(level.def.name)));
 }
 
 function hashString(s: string): number {
@@ -77,8 +82,7 @@ function buildTier(
   const inner = k < level.summitTier ? level.tierHalf(k + 1) : 0;
   const top = level.tierTop(k);
   const wallBottom = k === 0 ? level.baseBottom : level.tierTop(k - 1) - PIT_DEPTH;
-  const style = skin.tiers[k % skin.tiers.length];
-  const multi = style.top.length > 2;
+  const style = level.def.tiers?.[k] ?? skin.tiers[k % skin.tiers.length];
 
   for (let ix = -half; ix < half; ix++) {
     for (let iz = -half; iz < half; iz++) {
@@ -91,8 +95,7 @@ function buildTier(
         if (cheb < half - 1) vb.box(cx, top - PIT_DEPTH - 0.5, cz, 1, 1, 1, COLORS.charcoal);
         vb.cone(cx, top - PIT_DEPTH, cz, 0.2, 0.6, (ix + iz) % 2 ? COLORS.cream : COLORS.creamDark);
       } else {
-        const topColor = multi ? style.top[mod(ix + iz, style.top.length)] : style.top[mod(ix + iz, 2)];
-        vb.box(cx, top - 0.5, cz, 1, 1, 1, topColor);
+        vb.box(cx, top - 0.5, cz, 1, 1, 1, tileColor(style, ix, iz, k, Math.floor(half - cheb), Math.floor(cheb - inner)));
       }
 
       if (cheb < half - 1) continue;
@@ -105,6 +108,40 @@ function buildTier(
         else vb.box(cx, y - 0.5, cz, 1, 1, 1, style.side[mod(ix + iz + layer, 2)]);
       }
     }
+  }
+}
+
+/** Cheap integer hash in [0, 1); keeps speckles stable without touching the level's random sequence. */
+function cellNoise(ix: number, iz: number, k: number): number {
+  let h = Math.imul(ix, 374761393) ^ Math.imul(iz, 668265263) ^ Math.imul(k, 2147483647);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/** Colour of one terrace tile; `fromEdge` and `fromWall` count whole cells (0 is the outermost or innermost row). */
+function tileColor(style: TierStyle, ix: number, iz: number, k: number, fromEdge: number, fromWall: number): number {
+  const top = style.top;
+  const third = top[2] ?? top[0];
+  switch (style.pattern ?? 'checker') {
+    case 'gingham': {
+      const a = mod(ix, 2) === 0;
+      const b = mod(iz, 2) === 0;
+      return a && b ? top[0] : a || b ? top[1] : third;
+    }
+    case 'speckle': {
+      const n = cellNoise(ix, iz, k);
+      return n < 0.64 ? top[0] : n < 0.96 ? top[1] : third;
+    }
+    case 'rows':
+      return top[mod(fromEdge, top.length)];
+    case 'border':
+      return fromEdge === 0 || fromWall === 0 ? third : top[mod(ix + iz, 2)];
+    case 'stripes': {
+      const along = Math.abs(ix + 0.5) > Math.abs(iz + 0.5) ? iz : ix;
+      return top[mod(along, top.length)];
+    }
+    case 'checker':
+      return top.length > 2 ? top[mod(ix + iz, top.length)] : top[mod(ix + iz, 2)];
   }
 }
 
@@ -133,22 +170,18 @@ function buildChute(vb: VoxelBuilder, level: Level, c: Spot): void {
 
 type DecorFn = (vb: VoxelBuilder, f: Frame, y: number, rand: Rand) => void;
 
-/** Voxel "sphere": three crossed slabs, the lime topiary look from the poster. */
-function limeBall(vb: VoxelBuilder, f: Frame, yCenter: number, r: number, u = 0): void {
-  const d = r * 2;
-  f.box(vb, u, yCenter, 0, d, d * 0.62, d * 0.62, COLORS.lime);
-  f.box(vb, u, yCenter, 0, d * 0.62, d, d * 0.62, COLORS.lime);
-  f.box(vb, u, yCenter, 0, d * 0.6, d * 0.6, d, COLORS.limeDark);
-  f.box(vb, u - r * 0.25, yCenter + r * 0.3, r + 0.02, d * 0.2, d * 0.2, 0.04, COLORS.cream);
+/** Round lime topiary from the poster, with a little cream shine on the front. */
+function limeBall(vb: VoxelBuilder, f: Frame, yCenter: number, r: number, u = 0, color: number = COLORS.lime): void {
+  f.ball(vb, u, yCenter, 0, r, color);
+  f.ball(vb, u - r * 0.3, yCenter + r * 0.35, r * 0.75, r * 0.2, COLORS.cream);
 }
 
 const DECOR: Record<DecorKind, DecorFn> = {
   tree(vb, f, y, rand) {
     const s = 0.85 + rand() * 0.35;
-    f.block(vb, 0, y, 0, 0.25 * s, 0.6 * s, 0.25 * s, COLORS.brown);
-    f.block(vb, 0, y + 0.5 * s, 0, 0.95 * s, 0.7 * s, 0.95 * s, COLORS.leaf);
-    f.block(vb, 0, y + 1.1 * s, 0, 0.7 * s, 0.55 * s, 0.7 * s, COLORS.grass);
-    f.block(vb, 0, y + 1.6 * s, 0, 0.35 * s, 0.35 * s, 0.35 * s, COLORS.grassDark);
+    f.block(vb, 0, y, 0, 0.22 * s, 0.75 * s, 0.22 * s, COLORS.brown);
+    f.ball(vb, 0, y + 1.05 * s, 0, 0.55 * s, COLORS.leaf);
+    f.ball(vb, -0.22 * s, y + 1.35 * s, 0.12 * s, 0.36 * s, COLORS.grass);
   },
   pine(vb, f, y, rand) {
     const s = 0.9 + rand() * 0.35;
@@ -156,11 +189,12 @@ const DECOR: Record<DecorKind, DecorFn> = {
     f.cone(vb, 0, y + 0.3 * s, 0, 0.42 * s, 1.5 * s, COLORS.leafDark);
   },
   pot(vb, f, y) {
-    f.block(vb, 0, y, 0, 0.5, 0.4, 0.5, COLORS.orange);
-    f.block(vb, 0, y + 0.4, 0, 0.62, 0.45, 0.62, COLORS.grass);
-    f.block(vb, -0.15, y + 0.85, 0.12, 0.15, 0.15, 0.15, COLORS.red);
-    f.block(vb, 0.16, y + 0.85, -0.1, 0.15, 0.15, 0.15, COLORS.yellow);
-    f.block(vb, 0.05, y + 0.85, 0.2, 0.12, 0.12, 0.12, COLORS.pink);
+    f.cylinder(vb, 0, y, 0, 0.26, 0.4, COLORS.orange);
+    f.cylinder(vb, 0, y + 0.36, 0, 0.3, 0.08, COLORS.cream);
+    f.ball(vb, 0, y + 0.66, 0, 0.32, COLORS.grass);
+    f.ball(vb, -0.15, y + 0.9, 0.16, 0.09, COLORS.red);
+    f.ball(vb, 0.17, y + 0.88, 0.1, 0.09, COLORS.yellow);
+    f.ball(vb, 0.02, y + 0.98, -0.05, 0.08, COLORS.pink);
   },
   arcade(vb, f, y) {
     f.block(vb, 0, y, 0, 0.8, 1.6, 0.7, COLORS.teal);
@@ -182,12 +216,15 @@ const DECOR: Record<DecorKind, DecorFn> = {
   },
   cactus(vb, f, y, rand) {
     const h = 1.2 + rand() * 0.8;
-    f.block(vb, 0, y, 0, 0.36, h, 0.36, COLORS.leaf);
-    f.block(vb, -0.3, y + h * 0.4, 0, 0.26, 0.18, 0.2, COLORS.leaf);
-    f.block(vb, -0.38, y + h * 0.4, 0, 0.18, 0.5, 0.18, COLORS.leaf);
-    f.block(vb, 0.3, y + h * 0.55, 0, 0.26, 0.18, 0.2, COLORS.leaf);
-    f.block(vb, 0.38, y + h * 0.55, 0, 0.18, 0.4, 0.18, COLORS.leaf);
-    f.block(vb, 0, y + h, 0, 0.14, 0.14, 0.14, COLORS.pink);
+    f.cylinder(vb, 0, y, 0, 0.18, h, COLORS.leaf);
+    f.ball(vb, 0, y + h, 0, 0.18, COLORS.leaf);
+    f.block(vb, -0.28, y + h * 0.4, 0, 0.3, 0.16, 0.18, COLORS.leaf);
+    f.cylinder(vb, -0.38, y + h * 0.4, 0, 0.1, 0.4, COLORS.leaf);
+    f.ball(vb, -0.38, y + h * 0.4 + 0.4, 0, 0.1, COLORS.leaf);
+    f.block(vb, 0.28, y + h * 0.55, 0, 0.3, 0.16, 0.18, COLORS.leaf);
+    f.cylinder(vb, 0.38, y + h * 0.55, 0, 0.1, 0.3, COLORS.leaf);
+    f.ball(vb, 0.38, y + h * 0.55 + 0.3, 0, 0.1, COLORS.leaf);
+    f.ball(vb, 0, y + h + 0.18, 0, 0.08, COLORS.pink);
   },
   palm(vb, f, y, rand) {
     const h = 1.8 + rand() * 0.6;
@@ -220,28 +257,31 @@ const DECOR: Record<DecorKind, DecorFn> = {
   maple(vb, f, y, rand) {
     const s = 0.9 + rand() * 0.3;
     const crown = rand() < 0.5 ? COLORS.maple : COLORS.orange;
-    f.block(vb, 0, y, 0, 0.26 * s, 0.7 * s, 0.26 * s, COLORS.brown);
-    f.block(vb, 0, y + 0.6 * s, 0, 1.05 * s, 0.6 * s, 1.05 * s, crown);
-    f.block(vb, 0, y + 1.15 * s, 0, 0.75 * s, 0.5 * s, 0.75 * s, COLORS.yellow);
-    f.block(vb, 0.3 * s, y + 1.6 * s, 0.1, 0.3 * s, 0.3 * s, 0.3 * s, crown);
+    f.block(vb, 0, y, 0, 0.24 * s, 0.75 * s, 0.24 * s, COLORS.brown);
+    f.ball(vb, 0, y + 1.05 * s, 0, 0.56 * s, crown);
+    f.ball(vb, 0.26 * s, y + 1.4 * s, 0.1 * s, 0.34 * s, COLORS.yellow);
+    f.ball(vb, -0.3 * s, y + 0.9 * s, 0.2 * s, 0.26 * s, crown);
   },
   pumpkin(vb, f, y, rand) {
     const s = 0.8 + rand() * 0.4;
-    f.block(vb, 0, y, 0, 0.7 * s, 0.5 * s, 0.6 * s, COLORS.orange);
-    f.block(vb, 0, y + 0.04, 0, 0.5 * s, 0.44 * s, 0.7 * s, COLORS.maple);
-    f.block(vb, 0, y + 0.5 * s, 0, 0.1, 0.18, 0.1, COLORS.leafDark);
+    f.ball(vb, -0.12 * s, y + 0.27 * s, 0, 0.28 * s, COLORS.orange);
+    f.ball(vb, 0.12 * s, y + 0.27 * s, 0, 0.28 * s, COLORS.orange);
+    f.ball(vb, 0, y + 0.28 * s, 0.06 * s, 0.28 * s, COLORS.maple);
+    f.cylinder(vb, 0, y + 0.5 * s, 0, 0.05, 0.18, COLORS.leafDark);
   },
   haystack(vb, f, y) {
-    f.block(vb, 0, y, 0, 1.1, 0.5, 0.8, COLORS.yellow);
-    f.block(vb, 0, y + 0.5, 0, 0.8, 0.4, 0.6, COLORS.tan);
-    f.box(vb, 0, y + 0.25, 0.41, 1.12, 0.08, 0.02, COLORS.brown);
+    f.cylinder(vb, -0.25, y, 0, 0.4, 0.55, COLORS.yellow);
+    f.cylinder(vb, 0.3, y, 0.05, 0.34, 0.45, COLORS.tan);
+    f.cylinder(vb, -0.25, y + 0.25, 0, 0.41, 0.08, COLORS.brown);
   },
   mushroom(vb, f, y, rand) {
     const h = 0.5 + rand() * 0.4;
-    f.block(vb, 0, y, 0, 0.22, h, 0.22, COLORS.cream);
-    f.block(vb, 0, y + h, 0, 0.8, 0.3, 0.8, COLORS.red);
-    f.box(vb, -0.18, y + h + 0.31, 0.12, 0.14, 0.02, 0.14, COLORS.cream);
-    f.box(vb, 0.2, y + h + 0.31, -0.1, 0.12, 0.02, 0.12, COLORS.cream);
+    f.cylinder(vb, 0, y, 0, 0.11, h, COLORS.cream);
+    f.cylinder(vb, 0, y + h - 0.05, 0, 0.4, 0.16, COLORS.red);
+    f.ball(vb, 0, y + h + 0.08, 0, 0.32, COLORS.red);
+    f.ball(vb, -0.16, y + h + 0.3, 0.14, 0.07, COLORS.cream);
+    f.ball(vb, 0.18, y + h + 0.26, -0.08, 0.06, COLORS.cream);
+    f.ball(vb, 0.04, y + h + 0.24, 0.26, 0.06, COLORS.cream);
   },
   snowpine(vb, f, y, rand) {
     const s = 0.9 + rand() * 0.35;
@@ -250,15 +290,15 @@ const DECOR: Record<DecorKind, DecorFn> = {
     f.cone(vb, 0, y + 0.9 * s, 0, 0.34 * s, 0.9 * s, COLORS.snow);
   },
   snowman(vb, f, y) {
-    f.block(vb, 0, y, 0, 0.7, 0.6, 0.7, COLORS.snow);
-    f.block(vb, 0, y + 0.6, 0, 0.5, 0.45, 0.5, COLORS.snow);
-    f.block(vb, 0, y + 1.05, 0, 0.36, 0.34, 0.36, COLORS.snowShade);
-    f.box(vb, -0.08, y + 1.26, 0.19, 0.06, 0.06, 0.02, COLORS.black);
-    f.box(vb, 0.08, y + 1.26, 0.19, 0.06, 0.06, 0.02, COLORS.black);
-    f.box(vb, 0, y + 1.18, 0.26, 0.06, 0.06, 0.16, COLORS.orange);
-    f.box(vb, 0, y + 0.98, 0, 0.54, 0.08, 0.54, COLORS.red);
-    f.block(vb, 0, y + 1.39, 0, 0.44, 0.06, 0.44, COLORS.black);
-    f.block(vb, 0, y + 1.45, 0, 0.26, 0.26, 0.26, COLORS.black);
+    f.ball(vb, 0, y + 0.36, 0, 0.38, COLORS.snow);
+    f.ball(vb, 0, y + 0.86, 0, 0.27, COLORS.snow);
+    f.ball(vb, 0, y + 1.22, 0, 0.2, COLORS.snowShade);
+    f.ball(vb, -0.07, y + 1.27, 0.17, 0.035, COLORS.black);
+    f.ball(vb, 0.07, y + 1.27, 0.17, 0.035, COLORS.black);
+    f.box(vb, 0, y + 1.2, 0.24, 0.06, 0.06, 0.16, COLORS.orange);
+    f.cylinder(vb, 0, y + 1.0, 0, 0.24, 0.08, COLORS.red);
+    f.cylinder(vb, 0, y + 1.38, 0, 0.22, 0.04, COLORS.black);
+    f.cylinder(vb, 0, y + 1.42, 0, 0.13, 0.22, COLORS.black);
   },
   iceblock(vb, f, y, rand) {
     const s = 0.6 + rand() * 0.4;
@@ -273,10 +313,11 @@ const DECOR: Record<DecorKind, DecorFn> = {
     f.cone(vb, 0, y + 0.2 + h, 0, 0.28, 0.4, COLORS.gold);
   },
   urn(vb, f, y) {
-    f.block(vb, 0, y, 0, 0.36, 0.14, 0.36, COLORS.rust);
-    f.block(vb, 0, y + 0.14, 0, 0.56, 0.5, 0.56, COLORS.maple);
-    f.box(vb, 0, y + 0.4, 0, 0.58, 0.08, 0.58, COLORS.gold);
-    f.block(vb, 0, y + 0.64, 0, 0.3, 0.2, 0.3, COLORS.rust);
+    f.cylinder(vb, 0, y, 0, 0.18, 0.14, COLORS.rust);
+    f.ball(vb, 0, y + 0.4, 0, 0.3, COLORS.maple);
+    f.cylinder(vb, 0, y + 0.36, 0, 0.305, 0.08, COLORS.gold);
+    f.cylinder(vb, 0, y + 0.62, 0, 0.14, 0.2, COLORS.rust);
+    f.cylinder(vb, 0, y + 0.8, 0, 0.18, 0.05, COLORS.gold);
   },
   rock(vb, f, y, rand) {
     const s = 0.7 + rand() * 0.5;
@@ -285,8 +326,8 @@ const DECOR: Record<DecorKind, DecorFn> = {
   },
   topiary(vb, f, y, rand) {
     const h = 0.5 + rand() * 0.5;
-    f.block(vb, 0, y, 0, 0.5, 0.36, 0.5, COLORS.terracotta);
-    f.box(vb, 0, y + 0.36, 0, 0.58, 0.08, 0.58, COLORS.creamDark);
+    f.cylinder(vb, 0, y, 0, 0.25, 0.36, COLORS.terracotta);
+    f.cylinder(vb, 0, y + 0.32, 0, 0.29, 0.08, COLORS.creamDark);
     f.block(vb, 0, y + 0.4, 0, 0.08, h, 0.08, COLORS.brown);
     limeBall(vb, f, y + 0.4 + h + 0.35, 0.36);
     if (rand() < 0.5) limeBall(vb, f, y + 0.4 + h + 0.95, 0.22);
@@ -299,11 +340,10 @@ const DECOR: Record<DecorKind, DecorFn> = {
   pottree(vb, f, y, rand) {
     const s = 0.8 + rand() * 0.3;
     const pot = [COLORS.pink, COLORS.teal, COLORS.yellow, COLORS.terracotta][Math.floor(rand() * 4)];
-    f.block(vb, 0, y, 0, 0.44, 0.34, 0.44, pot);
-    f.box(vb, 0, y + 0.31, 0, 0.5, 0.1, 0.5, COLORS.cream);
-    f.block(vb, 0, y + 0.34, 0, 0.08, 0.3 * s, 0.08, COLORS.brown);
-    f.cone(vb, 0, y + 0.5 * s, 0, 0.3 * s, 0.9 * s, COLORS.grassDark);
-    f.block(vb, 0, y + 1.35 * s, 0, 0.1, 0.1, 0.1, COLORS.yellow);
+    f.cylinder(vb, 0, y, 0, 0.22, 0.34, pot);
+    f.cylinder(vb, 0, y + 0.3, 0, 0.25, 0.08, COLORS.cream);
+    f.block(vb, 0, y + 0.34, 0, 0.07, 0.45 * s, 0.07, COLORS.brown);
+    limeBall(vb, f, y + 0.34 + 0.45 * s + 0.3 * s, 0.32 * s, 0, pot === COLORS.yellow ? COLORS.grass : COLORS.lime);
   },
   tiki(vb, f, y) {
     f.block(vb, 0, y, 0, 0.55, 1.5, 0.45, COLORS.brown);
@@ -369,6 +409,24 @@ function buildDecor(vb: VoxelBuilder, level: Level, skin: Skin, gaps: readonly S
 
 const LANTERN_SPACING = 5;
 
+/** Where each wall lantern's flame sits. */
+export function lanternPoints(level: Level): { x: number; y: number; z: number }[] {
+  const def = level.def;
+  const lanternY = Math.min(2.3, def.tierHeight - 0.5);
+  const points: { x: number; y: number; z: number }[] = [];
+  for (let k = 0; k < level.ringCount; k++) {
+    const inner = level.tierHalf(k + 1);
+    const y = level.tierTop(k) + lanternY;
+    for (let side = 0; side < 4; side++) {
+      for (let offset = -inner + 2.5; offset <= inner - 2.5; offset += LANTERN_SPACING) {
+        if (def.ladders.some((l) => l.ring === k && l.side === side && Math.abs(l.offset - offset) < 1.2)) continue;
+        points.push(new Frame(side, inner, offset).world(0, y - 0.2, 0.36));
+      }
+    }
+  }
+  return points;
+}
+
 /** Wall lanterns along the back of each terrace; they only light up at dusk and night. */
 function buildLanterns(vb: VoxelBuilder, level: Level): void {
   const def = level.def;
@@ -413,9 +471,9 @@ function buildDrum(vb: VoxelBuilder, level: Level): void {
   const drum = level.def.drum;
   const f = new Frame(drum.side, level.ringRadius(drum.ring) + 0.95, drum.offset);
   const y = level.tierTop(drum.ring);
-  f.block(vb, 0, y, 0, 1.0, 1.2, 1.0, COLORS.pink);
-  f.box(vb, 0, y + 0.3, 0, 1.04, 0.1, 1.04, COLORS.black);
-  f.box(vb, 0, y + 0.9, 0, 1.04, 0.1, 1.04, COLORS.black);
+  f.cylinder(vb, 0, y, 0, 0.55, 1.2, COLORS.pink);
+  f.cylinder(vb, 0, y + 0.25, 0, 0.57, 0.1, COLORS.black);
+  f.cylinder(vb, 0, y + 0.85, 0, 0.57, 0.1, COLORS.black);
   f.block(vb, -0.2, y + 1.2, 0.1, 0.28, 0.4, 0.28, COLORS.orange);
   f.block(vb, 0.18, y + 1.2, -0.12, 0.22, 0.6, 0.22, COLORS.yellow);
   f.block(vb, 0.04, y + 1.2, 0.25, 0.18, 0.28, 0.18, COLORS.red);

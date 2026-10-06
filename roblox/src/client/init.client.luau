@@ -50,9 +50,18 @@ local PAD: { [Enum.KeyCode]: string } = {
 	[Enum.KeyCode.ButtonX] = "pause",
 	[Enum.KeyCode.ButtonY] = "mute",
 }
--- Testing aids, only bound in Studio and never in a published game: skip ahead a level, and hide
--- the touch pad and jump button for clean mobile screenshots in the device emulator.
-if RunService:IsStudio() then
+-- Testing aids: skip ahead a level, and hide the touch pad and jump button for clean screenshots.
+-- Bound in Studio, and in the published game only for its owner (for recording videos). Skipping
+-- marks the run as practice, so it never reaches the hi-score board.
+local function isOwner(): boolean
+	local player = Players.LocalPlayer
+	if game.CreatorType == Enum.CreatorType.User then
+		return player.UserId == game.CreatorId
+	end
+	local ok, rank = pcall(player.GetRankInGroup, player, game.CreatorId)
+	return ok and rank >= 255
+end
+if RunService:IsStudio() or isOwner() then
 	KEYS[Enum.KeyCode.N] = "nextLevel"
 	KEYS[Enum.KeyCode.H] = "cleanShot"
 end
@@ -165,11 +174,19 @@ end
 ContextActionService:BindActionAtPriority("PopscotchControls", onButton, false, Enum.ContextActionPriority.High.Value, table.unpack(codes))
 ContextActionService:BindActionAtPriority("PopscotchStick", onStick, false, Enum.ContextActionPriority.High.Value, Enum.KeyCode.Thumbstick1)
 
+popscotch.hud.onPress = press
+
 touch = TouchControls.new(popscotch.hud.gui, {
 	setHeld = function(direction, on)
 		sources.touch[direction] = on
 	end,
 	press = press,
+	climbPress = function(direction)
+		popscotch:climbPress(direction)
+	end,
+	climbTap = function(direction)
+		popscotch:climbTap(direction)
+	end,
 })
 
 -- Prompts and the on-screen controls follow whatever the player used last.

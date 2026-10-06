@@ -8,6 +8,15 @@
  */
 
 export type SkinName = 'meadow' | 'candy' | 'desert' | 'autumn' | 'winter' | 'tomb' | 'volcano';
+
+export type TilePattern = 'checker' | 'gingham' | 'speckle' | 'rows' | 'border' | 'stripes';
+
+/** Floor and wall colours for one terrace. The pattern fills every tile; tiles are not stored one by one. */
+export interface TerracePaint {
+  top: number[];
+  side: number[];
+  pattern?: TilePattern;
+}
 /** `letter-*` spell 1-U-P for an extra life; `orb` bubbles are generated, never authored. */
 export type ItemType =
   | 'gem'
@@ -121,4 +130,18 @@ export interface LevelDef {
   crawlers?: PatrolDef[];
   /** Spike totems: too tall to jump, but they hop — run underneath while they are airborne. */
   totems?: PatrolDef[];
+  /**
+   * Painted floors from the ground up, including the summit. Absent means this level uses its skin,
+   * which is the same cost: one style per terrace, applied while the world is baked.
+   */
+  tiers?: TerracePaint[];
+  /** Wall faces painted with striped neon panels. Absent means one or two are picked from the level name. */
+  neon?: NeonWallDef[];
+}
+
+/** One tier's wall on one side, covered in ribbed neon; `look` 0 is pink, 1 is sunset. */
+export interface NeonWallDef {
+  tier: number;
+  side: number;
+  look: 0 | 1;
 }

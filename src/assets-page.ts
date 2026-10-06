@@ -1,6 +1,5 @@
 import './assets-page.css';
 import * as THREE from 'three';
-import { SkyCritters } from './background';
 import { COLORS } from './config';
 import { PROJECTILES } from './entities/projectiles';
 import type { ProjectileLook } from './levels/skins';
@@ -324,15 +323,6 @@ function conveyor(): THREE.Group {
   return g;
 }
 
-function skyCritter(): THREE.Group {
-  const critters = new SkyCritters(1);
-  const flyer = critters.group.children[0];
-  flyer.scale.setScalar(1);
-  flyer.position.set(0, 0, 0);
-  flyer.rotation.set(0, 0, 0);
-  return critters.group;
-}
-
 const flame = new Fire(level);
 flame.group.children[0].scale.setScalar(1);
 
@@ -373,7 +363,6 @@ const sections: { title: string; cells: Entry[] }[] = [
       { name: 'player', object: new Player(level).group },
       { name: 'ghost', object: new Ghost(level, level.def.patrols[0], 1).group },
       { name: 'flame', object: flame.group },
-      { name: 'sky critter', object: skyCritter() },
     ],
   },
   {
