@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 
 # Dependencies stage
 FROM base AS deps
@@ -16,8 +16,11 @@ COPY . .
 RUN npm run build
 
 # Production stage. The host publishes the port named in uplink.host.json.
+# libstdc++ is what the compiled SQLite addon links against. The build stage
+# has it via g++, but this runtime image does not unless it is installed here.
 FROM base AS runner
 WORKDIR /app
+RUN apk add --no-cache libstdc++
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV DATABASE_PATH=/data/scores.db

@@ -31,10 +31,19 @@ function fileFor(pathname) {
   return path.join(root, 'index.html');
 }
 
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled rejection:', err instanceof Error ? err.stack || err.message : err);
+});
+
 createServer((req, res) => {
   const url = new URL(req.url || '/', 'http://localhost');
   if (url.pathname === '/api/scores') {
-    void handleScoreRequest(req, res);
+    void handleScoreRequest(req, res).catch((err) => {
+      console.error('Score request failed:', err instanceof Error ? err.message : err);
+      if (res.headersSent) return;
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: 'Score database unavailable' }));
+    });
     return;
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -53,7 +62,13 @@ createServer((req, res) => {
     res.end();
     return;
   }
-  createReadStream(file).pipe(res);
+  const stream = createReadStream(file);
+  stream.on('error', (err) => {
+    console.error('Static file failed:', err instanceof Error ? err.message : err);
+    if (!res.headersSent) res.writeHead(500);
+    res.end();
+  });
+  stream.pipe(res);
 }).listen(port, '0.0.0.0', () => {
   console.log(`Popscotch listening on ${port}`);
 });

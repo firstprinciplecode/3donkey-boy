@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
-const Database = require('better-sqlite3');
 
 const SIZE = 10;
 const MAX_SCORE = 10_000_000;
@@ -12,6 +11,7 @@ const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'sc
 let readRows;
 let replaceBoard;
 try {
+  const Database = require('better-sqlite3');
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
@@ -77,7 +77,13 @@ export function submitScores(entries) {
     rows = placed.rows;
     index = placed.index;
     improved = improved || placed.improved;
-    if (placed.improved && replaceBoard) replaceBoard(rows);
+    if (placed.improved && replaceBoard) {
+      try {
+        replaceBoard(rows);
+      } catch (err) {
+        console.error('Score write failed:', err instanceof Error ? err.message : err);
+      }
+    }
   }
   return { board: publicBoard(rows), index, improved };
 }
